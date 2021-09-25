@@ -18,8 +18,8 @@ from nales_alpha.NDS.model import NModel, NNode, setup_dummy_model
 from qt_material import apply_stylesheet
 
 #debug related import
-import debugpy
-debugpy.debug_this_thread()
+# import debugpy
+# debugpy.debug_this_thread()
 
 
 console_theme ="""QPlainTextEdit, QTextEdit { background-color: yellow;
