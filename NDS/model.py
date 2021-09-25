@@ -14,7 +14,7 @@ from collections import OrderedDict
 from typing import Iterable, List
 import sys
 from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtCore import QModelIndex, QAbstractItemModel, QAbstractTableModel, Qt, pyqtSignal
+from PyQt5.QtCore import QModelIndex, QAbstractItemModel, QAbstractTableModel,QItemSelectionModel, Qt, pyqtSignal
 from cadquery import Workplane
 
 from OCP.TDataStd import TDataStd_Name
@@ -252,16 +252,54 @@ class Parameter(NNode):
 
 
 
-
-
 class ParamTableModel(QAbstractTableModel):
     def __init__(self, param_table: List[list]):
         super().__init__()
         self._data = param_table
 
     def add_parameter(self):
-        self.insertRows(self.rowCount())
+        self.insertRows(1) # whatever value I pass it always append row which is fine in our case 
 
+
+    def is_null(self):
+        if len(self._data) == 0:
+            return True
+        else:
+            return False
+
+    def remove_parameter(self, rmv_idxs : List[QModelIndex]):
+        # if self.selectionModel().hasSelection():
+        #     selected_param_idx = self.selectionModel().selectedRows()
+        
+        self.removeRows(rmv_idxs)
+
+    def insertRows(self, row: int) -> bool:
+        self.beginInsertRows(QModelIndex(), row, 0)
+
+        automatic_param_name_indices = [int(param[0][5:]) for param in self._data if (param[0].startswith("param") and param[0][5:].isnumeric())]
+        automatic_param_name_indices.sort()
+        if len(automatic_param_name_indices) != 0:
+            idx =automatic_param_name_indices[-1] + 1
+        else :
+            idx = 1
+        self._data.append([f"param{idx}", None])
+
+        self.endInsertRows()
+        self.layoutChanged.emit()
+        return True
+
+    def removeRows(self, rmv_idxs: List[QModelIndex]) -> bool:
+        for index in rmv_idxs:
+            if index.isValid():
+                self.beginRemoveRows(index, 0, 0)
+                ptr = index.internalPointer()       
+                for idx,param in enumerate(self._data):
+                    if ptr in param:
+                        self._data.pop(idx)
+                        break
+                self.endRemoveRows()
+                self.layoutChanged.emit()
+        return True
 
     def data(self, index, role = QtCore.Qt.DisplayRole):
         if not index.isValid():
@@ -272,21 +310,22 @@ class ParamTableModel(QAbstractTableModel):
             return self._data[row][col]
 
 
+
     def flags(self, index):        
         # parameter name and value can always be edited so this is always true
         return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
 
 
 
-    def rowCount(self, parent: QModelIndex) -> int:
+    def rowCount(self, parent: QModelIndex = None) -> int:
         return len(self._data)
     
     def columnCount(self, parent: QModelIndex) -> int:
         # there is only two columns in the param table
         return 2
 
-    # def index(self, row, column):
-    #     return self.createIndex(row, column)
+    def index(self, row, column, parent = QModelIndex()):
+        return self.createIndex(row, column, self._data[row][column])
 
     def setData(self, index, value, role):
         if role == Qt.EditRole:

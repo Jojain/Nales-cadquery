@@ -18,8 +18,8 @@ from nales_alpha.NDS.model import NModel, NNode, ParamTableModel, setup_dummy_mo
 from qt_material import apply_stylesheet
 
 #debug related import
-# import debugpy
-# debugpy.debug_this_thread()
+import debugpy
+debugpy.debug_this_thread()
 
 
 console_theme ="""QPlainTextEdit, QTextEdit { background-color: yellow;
@@ -44,7 +44,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         ctx = self.viewer.context
         self.model = NModel(ctx = ctx)
         self.tree.setModel(self.model)
-        self.param_model = ParamTableModel([["toto",10], ["papa", 60]])
+        # self.param_model = ParamTableModel([["toto",10], ["papa", 60]])
+        self.param_model = ParamTableModel([])
         self.param_table_view.setModel(self.param_model)
 
         self._setup_param_table_view()
@@ -93,7 +94,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         table.verticalHeader().hide()
         table.horizontalHeader().setStretchLastSection(True) 
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch) 
-        # self.left_panel_container.doubleClicked.connect(self.param_model.add_parameter)
+
+        self.add_param_btn.clicked.connect(self.param_model.add_parameter)        
+        self.rmv_param_btn.clicked.connect(lambda : self.param_model.remove_parameter(table.selectionModel().selectedIndexes()))
+        
+
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
