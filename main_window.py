@@ -1,7 +1,7 @@
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QTreeWidgetItem
+from PyQt5.QtWidgets import QHeaderView
 from nales_alpha.uic.mainwindow import Ui_MainWindow
 import qtconsole
 from PyQt5.QtCore import pyqtSlot, pyqtSignal
@@ -13,7 +13,7 @@ from nales_alpha.NDS import NOCAF
 # from nales_alpha.NDS.NOCAF import Feature, Part
 import re
 from nales_alpha.NDS.commands import Command
-from nales_alpha.NDS.model import NModel, NNode, setup_dummy_model
+from nales_alpha.NDS.model import NModel, NNode, ParamTableModel, setup_dummy_model
 
 from qt_material import apply_stylesheet
 
@@ -43,12 +43,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         ctx = self.viewer.context
         self.model = NModel(ctx = ctx)
+        self.tree.setModel(self.model)
+        self.param_model = ParamTableModel([["toto",10], ["papa", 60]])
+        self.param_table_view.setModel(self.param_model)
+
+        self._setup_param_table_view()
         self._console.push_vars({"model" : self.model, "mw": self, "save": self.model.app.save_as, "cq" : cq}) 
+        
+
         
 
 
 
-        self.tree.setModel(self.model)
 
         #Connect all the slots to the needed signals
         self._console.on_command.connect(lambda c : handle_command(self, c))
@@ -78,10 +84,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.model.app._pres_viewer.Update()
                     self.tree.expandAll()
 
-                
-        # @pyqtSlot(Command)   
-        # def _add_feature(self, command):
-
+    def _setup_param_table_view(self):
+        """
+        Method for handling all the display settings of the param table view      
+        """
+        table = self.param_table_view
+        table.horizontalHeader().hide()
+        table.verticalHeader().hide()
+        table.horizontalHeader().setStretchLastSection(True) 
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch) 
+        # self.left_panel_container.doubleClicked.connect(self.param_model.add_parameter)
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)

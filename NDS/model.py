@@ -258,50 +258,40 @@ class ParamTableModel(QAbstractTableModel):
     def __init__(self, param_table: List[list]):
         super().__init__()
         self._data = param_table
-    
+
+    def add_parameter(self):
+        self.insertRows(self.rowCount())
+
 
     def data(self, index, role = QtCore.Qt.DisplayRole):
         if not index.isValid():
             return None
         row = index.row()
         col = index.column()
-        if role == Qt.DisplayRole:
-            return self._data[row][col]
-        #  elif role == Qt.UserRole:
-        #     return node.data(index.column())
-
-        elif role == Qt.EditRole:
+        if role == Qt.DisplayRole or role == Qt.EditRole:
             return self._data[row][col]
 
-        return None
-    
+
     def flags(self, index):        
         # parameter name and value can always be edited so this is always true
-        return Qt.ItemIsEditable
+        return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
+
 
 
     def rowCount(self, parent: QModelIndex) -> int:
-        return super().rowCount(parent=parent)
+        return len(self._data)
     
     def columnCount(self, parent: QModelIndex) -> int:
-        return super().columnCount(parent=parent)
+        # there is only two columns in the param table
+        return 2
 
-    def index(self, row, column):
-        if row self.rowC
-        if not _parent or not _parent.isValid():
-            parent = self._root
-        else:
-            parent = _parent.internalPointer()
+    # def index(self, row, column):
+    #     return self.createIndex(row, column)
 
-        if not self.hasIndex(row, column, _parent):
-            return QtCore.QModelIndex()
-
-        child = parent.child(row)
-        if child:
-            return self.createIndex(row, column, child)
-        else:
-            return QtCore.QModelIndex()
-
+    def setData(self, index, value, role):
+        if role == Qt.EditRole:
+            self._data[index.row()][index.column()] = value
+            return True
 
 
 
@@ -495,7 +485,14 @@ def setup_dummy_model():
 
 
 if __name__ == "__main__":
+    class Table(QtWidgets.QTableView):
+        def __init__(self, parent = None) -> None:
+            super().__init__(parent=parent)
+
     app = QtWidgets.QApplication(sys.argv)
-    mytree = MyTree()
-    mytree.tw.show()
+    param_table = [["toto",5],["marie",">Z"]]
+    table = Table()
+    model = ParamTableModel(param_table)
+    table.setModel(model)
+    table.show()
     sys.exit(app.exec_())

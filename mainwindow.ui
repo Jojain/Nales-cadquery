@@ -128,7 +128,7 @@
                <enum>Qt::LeftToRight</enum>
               </property>
              </widget>
-             <widget class="QTableView" name="tableView"/>
+             <widget class="QTableView" name="param_table_view"/>
             </widget>
            </item>
           </layout>
