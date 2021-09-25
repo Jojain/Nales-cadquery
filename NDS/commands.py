@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QObject
 import ast
-import astpretty
+# import astpretty
 from ast import Expr, Assign, Name, Call, Store, Attribute, Load, Constant, Expression, Module
 import cadquery.cqgi
 from cadquery import Workplane
