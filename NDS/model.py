@@ -11,10 +11,10 @@ Taken from : https://gist.github.com/nbassler/342fc56c42df27239fa5276b79fca8e6
 """
 
 from collections import OrderedDict
-from typing import Iterable
+from typing import Iterable, List
 import sys
 from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtCore import QModelIndex, QAbstractItemModel, Qt, pyqtSignal
+from PyQt5.QtCore import QModelIndex, QAbstractItemModel, QAbstractTableModel, Qt, pyqtSignal
 from cadquery import Workplane
 
 from OCP.TDataStd import TDataStd_Name
@@ -28,6 +28,8 @@ from OCP.TDF import TDF_Label, TDF_TagSource
 from OCP.TCollection import TCollection_ExtendedString
 from OCP.TopoDS import TopoDS_Shape
 from nales_alpha.utils import get_Workplane_operations
+
+
 
 import cadquery as cq
 
@@ -251,6 +253,54 @@ class Parameter(NNode):
 
 
 
+
+class ParamTableModel(QAbstractTableModel):
+    def __init__(self, param_table: List[list]):
+        super().__init__()
+        self._data = param_table
+    
+
+    def data(self, index, role = QtCore.Qt.DisplayRole):
+        if not index.isValid():
+            return None
+        row = index.row()
+        col = index.column()
+        if role == Qt.DisplayRole:
+            return self._data[row][col]
+        #  elif role == Qt.UserRole:
+        #     return node.data(index.column())
+
+        elif role == Qt.EditRole:
+            return self._data[row][col]
+
+        return None
+    
+    def flags(self, index):        
+        # parameter name and value can always be edited so this is always true
+        return Qt.ItemIsEditable
+
+
+    def rowCount(self, parent: QModelIndex) -> int:
+        return super().rowCount(parent=parent)
+    
+    def columnCount(self, parent: QModelIndex) -> int:
+        return super().columnCount(parent=parent)
+
+    def index(self, row, column):
+        if row self.rowC
+        if not _parent or not _parent.isValid():
+            parent = self._root
+        else:
+            parent = _parent.internalPointer()
+
+        if not self.hasIndex(row, column, _parent):
+            return QtCore.QModelIndex()
+
+        child = parent.child(row)
+        if child:
+            return self.createIndex(row, column, child)
+        else:
+            return QtCore.QModelIndex()
 
 
 
