@@ -1,7 +1,7 @@
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QHeaderView
+from PyQt5.QtWidgets import QAbstractItemView, QHeaderView
 from nales_alpha.uic.mainwindow import Ui_MainWindow
 import qtconsole
 from PyQt5.QtCore import pyqtSlot, pyqtSignal
@@ -16,7 +16,7 @@ from nales_alpha.NDS.commands import Command
 from nales_alpha.NDS.model import NModel, NNode, ParamTableModel, setup_dummy_model
 
 from qt_material import apply_stylesheet
-
+from nales_alpha.views.tree_views import ModelingOpsView
 #debug related import
 import debugpy
 debugpy.debug_this_thread()
@@ -43,12 +43,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         ctx = self.viewer.context
         self.model = NModel(ctx = ctx)
-        self.tree.setModel(self.model)
-        # self.param_model = ParamTableModel([["toto",10], ["papa", 60]])
+        self.modeling_ops_tree.setModel(self.model)
         self.param_model = ParamTableModel([])
         self.param_table_view.setModel(self.param_model)
+        self.param_model.dataChanged.connect(self.model._update_parameters)
 
+        # Views / Widgets setup
         self._setup_param_table_view()
+        self._setup_modeling_ops_view()
+        
         self._console.push_vars({"model" : self.model, "mw": self, "save": self.model.app.save_as, "cq" : cq}) 
         
 
@@ -59,7 +62,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         #Connect all the slots to the needed signals
         self._console.on_command.connect(lambda c : handle_command(self, c))
-
+     
 
         @pyqtSlot(Command)
         def handle_command(self, command):
@@ -73,7 +76,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.model.add_part(part_name, wp)
                 if len(operations) != 0 :
                     self.model.add_operations(part_name, wp, operations)
-                    self.tree.expandAll()
+                    self.modeling_ops_tree.expandAll()
                     self.viewer.fit()
 
             if command.type == "part_edit":
@@ -83,20 +86,34 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 if len(operations) != 0 :
                     self.model.add_operations(part_name, wp, operations)
                     self.model.app._pres_viewer.Update()
-                    self.tree.expandAll()
+                    self.modeling_ops_tree.expandAll()
+
+    def _setup_modeling_ops_view(self):
+        """
+        Method for handling all the display settings of the modeling operations tree view      
+        """
+        tree = self.modeling_ops_tree
+        tree.setHeaderHidden(True)
+        tree.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        tree.customContextMenuRequested.connect(lambda pos: tree._on_context_menu_request(pos, tree.selectionModel().selectedRows(), self.param_model, self.model)) 
+        # connecting slots
+        
+
+
+
 
     def _setup_param_table_view(self):
         """
         Method for handling all the display settings of the param table view      
         """
-        table = self.param_table_view
-        table.horizontalHeader().hide()
-        table.verticalHeader().hide()
-        table.horizontalHeader().setStretchLastSection(True) 
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch) 
+        param_table = self.param_table_view
+        param_table.horizontalHeader().hide()
+        param_table.verticalHeader().hide()
+        param_table.horizontalHeader().setStretchLastSection(True) 
+        param_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch) 
 
         self.add_param_btn.clicked.connect(self.param_model.add_parameter)        
-        self.rmv_param_btn.clicked.connect(lambda : self.param_model.remove_parameter(table.selectionModel().selectedIndexes()))
+        self.rmv_param_btn.clicked.connect(lambda : self.param_model.remove_parameter(param_table.selectionModel().selectedIndexes()))
         
 
 

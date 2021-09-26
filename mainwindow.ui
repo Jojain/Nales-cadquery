@@ -93,7 +93,7 @@
              <widget class="QWidget" name="tree_view_container" native="true">
               <layout class="QVBoxLayout" name="verticalLayout_6">
                <item>
-                <widget class="QTreeView" name="tree">
+                <widget class="ModelingOpsView" name="modeling_ops_tree">
                  <property name="enabled">
                   <bool>true</bool>
                  </property>
@@ -120,6 +120,9 @@
                    <width>200</width>
                    <height>0</height>
                   </size>
+                 </property>
+                 <property name="contextMenuPolicy">
+                  <enum>Qt::CustomContextMenu</enum>
                  </property>
                  <property name="layoutDirection">
                   <enum>Qt::LeftToRight</enum>
@@ -275,9 +278,14 @@
    <extends>QTextEdit</extends>
    <header>nales_alpha/widgets/console.h</header>
   </customwidget>
+  <customwidget>
+   <class>ModelingOpsView</class>
+   <extends>QTreeView</extends>
+   <header>nales_alpha/views/tree_views.h</header>
+  </customwidget>
  </customwidgets>
  <tabstops>
-  <tabstop>tree</tabstop>
+  <tabstop>modeling_ops_tree</tabstop>
  </tabstops>
  <resources/>
  <connections/>

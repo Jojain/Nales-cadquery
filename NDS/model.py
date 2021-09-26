@@ -10,12 +10,14 @@ TODO: handle changing data.
 Taken from : https://gist.github.com/nbassler/342fc56c42df27239fa5276b79fca8e6
 """
 
+from PyQt5.QtGui import QColor, QFont
 from collections import OrderedDict
 from tokenize import any
-from typing import Iterable, List
+from typing import Iterable, List, Tuple
 import sys
 from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtCore import QModelIndex, QAbstractItemModel, QAbstractTableModel,QItemSelectionModel, Qt, pyqtSignal
+from PyQt5.QtWidgets import QMenu
+from PyQt5.QtCore import QModelIndex, QAbstractItemModel, QAbstractTableModel,QItemSelectionModel, QPersistentModelIndex, QPoint, QVariant, Qt, pyqtSignal
 from cadquery import Workplane
 
 from OCP.TDataStd import TDataStd_Name
@@ -35,6 +37,7 @@ from nales_alpha.utils import get_Workplane_operations
 import cadquery as cq
 
 class NNode():
+    error = pyqtSignal(str) # is emitted when an error occurs
     def __init__(self, data, name = None, parent = None):
         self._data = data
         self._parent = parent
@@ -158,7 +161,7 @@ class Part(NNode):
         self.root_node._viewer.Update()
 
 
-    def rebuild(self, param_edited: "Parameter" = None) :
+    def rebuild(self, param_edited: "Argument" = None) :
         """
         Reconstruit le workplane et le réaffiche
         Il faut voir si je peux faire un truc du style:
@@ -176,7 +179,7 @@ class Part(NNode):
         wp_rebuilt = "cq.Workplane()"
 
         for operation in self.childs:
-            args = str(tuple(param.data(2)((param.data(0))) for param in operation.childs))
+            args = str(tuple(param.value for param in operation.childs))
             wp_rebuilt += "."+operation.data(0) + args 
 
         wp = eval(wp_rebuilt)
@@ -228,16 +231,28 @@ class Operation(NNode):
 
 
 
-class Parameter(NNode):
-    def __init__(self, method_args: Iterable, name, parent):
-        super().__init__(method_args, name, parent=parent)
-        
-        self.method_args = method_args
+class Argument(NNode):
+    """
+    The underlying data of an Argument is as follow :
+    name : cq argument name
+    value : value
+    linked_param : the name of the parameter linked to this arg, None if not connected to any
+    type: value type : a voir si je garde ca
+    If the Argument is linked to a Parameter, the Parameter name is displayed
+    """
+    def __init__(self, arg_name:str, value, type,  parent):
+        super().__init__(None, arg_name, parent=parent)
 
+
+        self._name = arg_name
+        self._value = value
+        self._type = type
+        self._linked_param = None
+
+        self._param_pidx = None
     
     @property
     def name(self):
-        self._name = self._data[0] # petit truc hacky a modifier plus tard
         return self._name 
 
     @name.setter 
@@ -245,6 +260,22 @@ class Parameter(NNode):
         self._name = value    
 
 
+    @property 
+    def value(self):
+        return self._value
+    @value.setter
+    def value(self, value):
+        try:
+            self._value = self._type(value)
+        except (ValueError , TypeError) as exp:
+            if exp == ValueError:
+                error_msg = f"Expected arguments if of type: {self._type} you specified argument of type {type(value)}"
+                self.error.emit(error_msg)
+            # print(error_msg)
+
+    @property 
+    def linked_param(self):
+        return self._linked_param
 
 
 
@@ -268,11 +299,17 @@ class ParamTableModel(QAbstractTableModel):
         else:
             return False
 
+    @property
+    def parameters(self):
+        return {name: value for (name, value) in self._data}
+
     def remove_parameter(self, rmv_idxs : List[QModelIndex]):
         # if self.selectionModel().hasSelection():
         #     selected_param_idx = self.selectionModel().selectedRows()
         
         self.removeRows(rmv_idxs)
+
+
 
     def insertRows(self, row: int) -> bool:
         self.beginInsertRows(QModelIndex(), row, row)
@@ -311,8 +348,6 @@ class ParamTableModel(QAbstractTableModel):
         self.endRemoveRows()
         self.layoutChanged.emit()
 
-
-
         return True
 
     def data(self, index, role = QtCore.Qt.DisplayRole):
@@ -339,14 +374,15 @@ class ParamTableModel(QAbstractTableModel):
         return 2
 
     def index(self, row, column, parent = QModelIndex()):
-        print("--------------")
-        print("row ", row, "col ", column)
-        print("--------------")
+        # print("--------------")
+        # print("row ", row, "col ", column)
+        # print("--------------")
         return self.createIndex(row, column, self._data[row][column])
 
     def setData(self, index, value, role):
         if role == Qt.EditRole:
             self._data[index.row()][index.column()] = value
+            self.dataChanged.emit(index,index)
             return True
 
 
@@ -399,23 +435,62 @@ class NModel(QAbstractItemModel):
 
             operation_idx = self.index(operation._row, 0, part_idx)
 
-            for param in parameters:
+            for param_value in parameters:
                 # pour l'instant j'ai laissé tout les row count à 0 mais il faudrait le modifier
                 # pour pouvoir insérer plusieurs paramètres d'un coup
-                self.insertRows(self.rowCount(operation_idx),0, Parameter([param,None,type(param)], param, operation), operation_idx)
+
+                # ---------- Il faudra récupérer le vrai ARG name ici et pas passer deux fois le param value comme un sale
+                self.insertRows(self.rowCount(operation_idx),0, Argument(str(param_value), param_value, type(param_value), operation), operation_idx)
         
         parent_part.rebuild()
 
-    def update_display(self, index, index2):
+    def _link_parameters(self, indexes: List[QModelIndex], name_pidx:QPersistentModelIndex, value_pidx:QPersistentModelIndex):
+        
+        for idx in indexes:
+            self.setData(idx, (name_pidx.data(), value_pidx.data(), value_pidx), Qt.EditRole)
+
+    
+        for part_idx in self.childrens():
+            part_idx.internalPointer().rebuild()
+
+    def _disconnect_parameter(self, arg_idx: QModelIndex):
+
+        arg = arg_idx.internalPointer()
+        arg._linked_param = None 
+
+        self.dataChanged.emit(arg_idx, arg_idx)
+
+        
+    def _update_parameters(self):
         """
-        Update the display of the Part linked to :index:
+        Update the modeling ops view and model when parameters are modified in the Parameter table
+        (Note : It's handled with signals and slot, but It could be done with Proxy Models and having only 1 model holding all the data of the app)
         """
-        pass
+
+        for idx in self.walk():
+
+            node = idx.internalPointer()
+            if isinstance(node, Argument):
+                if node._linked_param:
+                    node.value = node._param_pidx.data()
+
+                    node_idx = self.index(node._row, 0)
+                    
+                    self.dataChanged.emit(node_idx,node_idx) # here we could modify the behaviour to send only one signal after we modified all the nodes
+                    
+
+                
+        
+        # for arg in self.arguments:
+        #     if arg.linked_param:
+        #         linked_args.append(arg)
+        
+        # for arg in linked_args:
+        #     if arg
 
         
 
-
-
+    
 
     def _add_child(self, node, _parent: QModelIndex = QModelIndex()):
         if not _parent or not _parent.isValid():
@@ -425,14 +500,37 @@ class NModel(QAbstractItemModel):
         parent.add_child(node)
 
 
+    def walk(self, index: QModelIndex = QModelIndex()):
+        
+        for idx in self.childrens(index):
+            if self.hasChildren(idx):
+                yield from self.walk(idx)
+            else:
+                yield idx
+
+        
+
+    def childrens(self, index: QModelIndex = QModelIndex()):
+        if self.hasChildren(index):
+            return [self.index(i,0, index) for i in range(self.rowCount(index))]
+
+        else:
+            return []
+
     ##############
     # Handlers 
     ##############
+    # def _on_context_menu_request(self, pos: QPoint, selection: List[QModelIndex]):
+    #     for item in selection:
+    #         if isinstance(item.internalPointer(), Argument):
+    #             context_menu = QMenu("Argument selection")
+    #         else:
+    #             return
 
     # def _on_double_click_item_in_view(self, index: QModelIndex):
         
     #     node = index.internalPointer()
-    #     if type(node) == Parameter:
+    #     if type(node) == Argument:
     #         self.setData(index, 100)
             
     # def _on_data_changed(self, first_idx, last_idx):
@@ -492,9 +590,13 @@ class NModel(QAbstractItemModel):
         if not index.isValid():
             return None
         node = index.internalPointer()
+
         if role == Qt.DisplayRole:
-            if isinstance(node, Parameter):
-                return node.data(0)
+            if isinstance(node, Argument):
+                if node._linked_param: # if linked to a param 
+                    return node._linked_param
+                else :
+                    return node._value
             else:
                 return node.name
         elif role == Qt.UserRole:
@@ -502,20 +604,45 @@ class NModel(QAbstractItemModel):
 
         elif role == Qt.EditRole:
             return node
+        
+        elif role == Qt.ForegroundRole:
+            if isinstance(node, Argument):
+                if node._linked_param: # if linked to a param , gets overidden by the stylesheet
+                    return QColor(Qt.green)
+        
+        elif role == Qt.FontRole:
+            if isinstance(node, Argument):
+                if node._linked_param: # if linked to a param , gets overidden by the stylesheet
+                    font = QFont()
+                    font.setItalic(True)
+                    font.setBold(True)
+                    return font
+
 
         return None
 
     def flags(self, index):
-        
-        if type(index.internalPointer()) == Parameter:
-            return (Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable)
+        node = index.internalPointer()
+        if type(node) == Argument:
+            if node._linked_param:
+                return (Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+            else:
+                return (Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable)
         else:
             return Qt.ItemIsEnabled
 
     def setData(self, index, value, role):
         
         node = self.data(index, role = role)
-        node._data = [value,None,node._data[2]]
+        if isinstance(node, Argument):
+            if isinstance(value, tuple): #♣ we assign a paramerter
+                node._linked_param = value[0]
+                node.value = value[1]
+                node._param_pidx = value[2]
+                return True
+
+            node.value = value
+
         self.dataChanged.emit(index,index)
         return True
     
