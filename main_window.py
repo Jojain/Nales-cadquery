@@ -47,6 +47,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.param_model = ParamTableModel([])
         self.param_table_view.setModel(self.param_model)
         self.param_model.dataChanged.connect(self.model._update_parameters)
+        self.param_model.rowsRemoved.connect(lambda first : self.model._disconnect_parameter(param_idx = first))
 
         # Views / Widgets setup
         self._setup_param_table_view()
@@ -120,8 +121,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
-    apply_stylesheet(app, theme="dark_teal.xml")
+    extra = {
 
+    # Button colors
+    'danger': '#dc3545',
+    'warning': '#ffc107',
+    'success': '#17a2b8',
+
+    # Font
+    'font-family': 'Roboto',
+}
+
+    apply_stylesheet(app, theme="dark_teal.xml",extra=extra)
+# 
     window.show()
 
 

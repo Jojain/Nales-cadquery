@@ -249,8 +249,24 @@ class Argument(NNode):
         self._type = type
         self._linked_param = None
 
-        self._param_pidx = None
+        self._param_name_pidx = None
+        self._param_value_pidx = None
     
+    def is_linked(self):
+        if self._linked_param:
+            return True 
+        else:
+            return False
+
+    @property
+    def linked_param(self):
+        if self.is_linked():
+            return self._linked_param
+        else:
+            raise ValueError("This argument is not linked to a param")
+
+
+
     @property
     def name(self):
         return self._name 
@@ -276,6 +292,7 @@ class Argument(NNode):
     @property 
     def linked_param(self):
         return self._linked_param
+    
 
 
 
@@ -447,18 +464,28 @@ class NModel(QAbstractItemModel):
     def _link_parameters(self, indexes: List[QModelIndex], name_pidx:QPersistentModelIndex, value_pidx:QPersistentModelIndex):
         
         for idx in indexes:
-            self.setData(idx, (name_pidx.data(), value_pidx.data(), value_pidx), Qt.EditRole)
+            self.setData(idx, (name_pidx.data(), value_pidx.data(), name_pidx, value_pidx), Qt.EditRole)
 
     
         for part_idx in self.childrens():
             part_idx.internalPointer().rebuild()
 
-    def _disconnect_parameter(self, arg_idx: QModelIndex):
+    def _disconnect_parameter(self, arg_idx: QModelIndex = None, param_idx: QModelIndex = None):
+        if arg_idx and not param_idx:
+            arg = arg_idx.internalPointer()
+            arg._linked_param = None 
+            self.dataChanged.emit(arg_idx, arg_idx)
 
-        arg = arg_idx.internalPointer()
-        arg._linked_param = None 
+        elif param_idx and not arg_idx:
+            for idx in self.walk():
+                node = idx.internalPointer()
 
-        self.dataChanged.emit(arg_idx, arg_idx)
+                if isinstance(node, Argument) and node.is_linked():
+                    
+                    if node._param_name_pidx.data() is None:
+                        node._linked_param = None 
+                        self.dataChanged.emit(idx, idx)
+
 
         
     def _update_parameters(self):
@@ -471,8 +498,9 @@ class NModel(QAbstractItemModel):
 
             node = idx.internalPointer()
             if isinstance(node, Argument):
-                if node._linked_param:
-                    node.value = node._param_pidx.data()
+                if node.is_linked():
+                    node._linked_param = node._param_name_pidx.data()
+                    node.value = node._param_value_pidx.data()
 
                     node_idx = self.index(node._row, 0)
                     
@@ -500,7 +528,7 @@ class NModel(QAbstractItemModel):
         parent.add_child(node)
 
 
-    def walk(self, index: QModelIndex = QModelIndex()):
+    def walk(self, index: QModelIndex = QModelIndex()) -> QModelIndex:
         
         for idx in self.childrens(index):
             if self.hasChildren(idx):
@@ -593,8 +621,8 @@ class NModel(QAbstractItemModel):
 
         if role == Qt.DisplayRole:
             if isinstance(node, Argument):
-                if node._linked_param: # if linked to a param 
-                    return node._linked_param
+                if node.is_linked(): # if linked to a param 
+                    return node.linked_param
                 else :
                     return node._value
             else:
@@ -607,12 +635,12 @@ class NModel(QAbstractItemModel):
         
         elif role == Qt.ForegroundRole:
             if isinstance(node, Argument):
-                if node._linked_param: # if linked to a param , gets overidden by the stylesheet
+                if node.is_linked(): # if linked to a param , gets overidden by the stylesheet
                     return QColor(Qt.green)
         
         elif role == Qt.FontRole:
             if isinstance(node, Argument):
-                if node._linked_param: # if linked to a param , gets overidden by the stylesheet
+                if node.is_linked(): # if linked to a param , gets overidden by the stylesheet
                     font = QFont()
                     font.setItalic(True)
                     font.setBold(True)
@@ -623,8 +651,8 @@ class NModel(QAbstractItemModel):
 
     def flags(self, index):
         node = index.internalPointer()
-        if type(node) == Argument:
-            if node._linked_param:
+        if isinstance(node, Argument):
+            if node.is_linked():
                 return (Qt.ItemIsEnabled | Qt.ItemIsSelectable)
             else:
                 return (Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable)
@@ -635,10 +663,11 @@ class NModel(QAbstractItemModel):
         
         node = self.data(index, role = role)
         if isinstance(node, Argument):
-            if isinstance(value, tuple): #♣ we assign a paramerter
+            if isinstance(value, tuple): # we assign a paramerter
                 node._linked_param = value[0]
                 node.value = value[1]
-                node._param_pidx = value[2]
+                node._param_name_pidx = value[2]
+                node._param_value_pidx = value[3]
                 return True
 
             node.value = value

@@ -1,0 +1,31 @@
+digraph {
+	<class '_ast.Module'>
+	<class '_ast.Assign'>
+	<class '_ast.Module'> -> <class '_ast.Assign'>
+	<class '_ast.Name'>
+	<class '_ast.Assign'> -> <class '_ast.Name'>
+	<class '_ast.Store'>
+	<class '_ast.Name'> -> <class '_ast.Store'>
+	<class '_ast.Call'>
+	<class '_ast.Store'> -> <class '_ast.Call'>
+	<class '_ast.Attribute'>
+	<class '_ast.Call'> -> <class '_ast.Attribute'>
+	<class '_ast.Call'>
+	<class '_ast.Attribute'> -> <class '_ast.Call'>
+	<class '_ast.Attribute'>
+	<class '_ast.Call'> -> <class '_ast.Attribute'>
+	<class '_ast.Name'>
+	<class '_ast.Attribute'> -> <class '_ast.Name'>
+	<class '_ast.Load'>
+	<class '_ast.Name'> -> <class '_ast.Load'>
+	<class '_ast.Load'>
+	<class '_ast.Load'> -> <class '_ast.Load'>
+	<class '_ast.Load'>
+	<class '_ast.Load'> -> <class '_ast.Load'>
+	<class '_ast.Constant'>
+	<class '_ast.Load'> -> <class '_ast.Constant'>
+	<class '_ast.Constant'>
+	<class '_ast.Constant'> -> <class '_ast.Constant'>
+	<class '_ast.Constant'>
+	<class '_ast.Constant'> -> <class '_ast.Constant'>
+}
