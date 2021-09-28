@@ -12,6 +12,7 @@ Taken from : https://gist.github.com/nbassler/342fc56c42df27239fa5276b79fca8e6
 
 from PyQt5.QtGui import QColor, QFont
 from collections import OrderedDict
+from inspect import signature
 from tokenize import any
 from typing import Iterable, List, Tuple
 import sys
@@ -196,9 +197,11 @@ class Operation(NNode):
 
         # Here we should modify the parent 'Part' shape with the help of TFunctions
         # Otherwise we will fill the memory with a lot of shapes, but as a start it's ok 
+        self.name = method_name
         Workplane_methods = get_Workplane_operations()
-
         self.method = Workplane_methods[method_name]
+
+
         # self.cq_shape = part.val()
         # self.occt_shape = part.val().wrapped
         # bldr = TNaming_Builder(self._label)
@@ -251,12 +254,23 @@ class Argument(NNode):
 
         self._param_name_pidx = None
         self._param_value_pidx = None
-    
+
+        self._get_args_names_and_types()
+
     def is_linked(self):
         if self._linked_param:
             return True 
         else:
             return False
+
+
+    def _get_args_names_and_types(self):
+        parent_method = self.parent.method
+        sig = signature(parent_method)
+
+        args_infos = tuple((p_name, p_obj.annotation) for (p_name, p_obj) in sig.parameters.items() if p_name != "self" )
+        self._arg_infos = args_infos[self._row]
+
 
     @property
     def linked_param(self):
@@ -619,32 +633,35 @@ class NModel(QAbstractItemModel):
             return None
         node = index.internalPointer()
 
+        if isinstance(node, Argument):
+            if role == Qt.DisplayRole:
+                if index.column() == 0:
+                    return node._arg_infos[0]
+                else:
+                    if node.is_linked(): # if linked to a param 
+                        return node.linked_param
+                    else :
+                        return node._value
+            elif role == Qt.FontRole:
+                if node.is_linked(): # if linked to a param , gets overidden by the stylesheet
+                    font = QFont()
+                    font.setItalic(True)
+                    font.setBold(True)
+                    return font         
+
+        elif isinstance(node, Operation):
+            if role == Qt.DisplayRole:
+                return node.name # display method's name
+
         if role == Qt.DisplayRole:
-            if isinstance(node, Argument):
-                if node.is_linked(): # if linked to a param 
-                    return node.linked_param
-                else :
-                    return node._value
-            else:
-                return node.name
+            return node.name
         elif role == Qt.UserRole:
             return node.data(index.column())
 
         elif role == Qt.EditRole:
             return node
         
-        elif role == Qt.ForegroundRole:
-            if isinstance(node, Argument):
-                if node.is_linked(): # if linked to a param , gets overidden by the stylesheet
-                    return QColor(Qt.green)
-        
-        elif role == Qt.FontRole:
-            if isinstance(node, Argument):
-                if node.is_linked(): # if linked to a param , gets overidden by the stylesheet
-                    font = QFont()
-                    font.setItalic(True)
-                    font.setBold(True)
-                    return font
+ 
 
 
         return None

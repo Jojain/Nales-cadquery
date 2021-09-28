@@ -1,5 +1,6 @@
-
+#%%
 from cadquery import Workplane
+from inspect import signature
 
 def get_Workplane_operations() -> dict:
     """
@@ -14,6 +15,8 @@ def get_Workplane_operations() -> dict:
     operations = dict((func,getattr(Workplane,func)) for func in dir(Workplane) if callable(getattr(Workplane, func)) and not func.startswith("_"))
 
     return operations
+
+
 
 if __name__ == "__main__":
     print(get_Workplane_operations())
