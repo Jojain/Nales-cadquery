@@ -1,6 +1,7 @@
 from PyQt5.QtCore import QModelIndex, QObject, QPersistentModelIndex, QPoint, Qt
 from PyQt5.QtGui import QPalette
-from nales_alpha.NDS.model import NModel, ParamTableModel, Argument
+from nales_alpha.NDS.model import NModel, ParamTableModel
+from nales_alpha.NDS.interfaces import NArgument
 from PyQt5.QtWidgets import QMenu, QStyle, QStyleOptionViewItem, QStyledItemDelegate, QTreeView, QWidget
 from typing import List, Optional
 
@@ -23,8 +24,8 @@ class ModelingOpsView(QTreeView):
     def __init__(self, parent: Optional[QWidget] = ...) -> None:
         super().__init__(parent=parent)
 
-        self.dl = MyDelegate()
-        self.setItemDelegateForRow(0,self.dl)
+        # self.dl = MyDelegate()
+        # self.setItemDelegateForRow(0,self.dl)
         # self.actions = []
         
 
@@ -32,7 +33,7 @@ class ModelingOpsView(QTreeView):
     def _on_context_menu_request(self, pos: QPoint, selection: List[QModelIndex], param_model: ParamTableModel, modeling_ops_model: NModel):
         for item in selection:
             node = item.internalPointer()
-            if isinstance(node, Argument):
+            if isinstance(node, NArgument):
                 context_menu = QMenu("Parameter selection", self)
                 submenu = context_menu.addMenu("Set parameter")
                 

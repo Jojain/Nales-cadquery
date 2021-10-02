@@ -89,6 +89,17 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.model.app._pres_viewer.Update()
                     self.modeling_ops_tree.expandAll()
 
+            if command.type == "new_shape":
+                shape = command.shape
+                shape_name = command.var
+                source_data = command.invoked_method
+                self.model.add_shape(shape_name, shape, source_data)
+                # self.model.app._pres_viewer.Update()
+                # self.viewer.fit()
+                self.modeling_ops_tree.expandAll()
+
+        
+
     def _setup_modeling_ops_view(self):
         """
         Method for handling all the display settings of the modeling operations tree view      

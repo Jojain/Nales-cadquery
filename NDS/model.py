@@ -32,7 +32,7 @@ from OCP.TDF import TDF_Label, TDF_TagSource
 from OCP.TCollection import TCollection_ExtendedString
 from OCP.TopoDS import TopoDS_Shape
 from nales_alpha.utils import get_Workplane_operations
-from nales_alpha.NDS.interfaces import NNode, Part, Operation, Argument
+from nales_alpha.NDS.interfaces import NNode, NPart, NOperation, NArgument, NShape
 
 
 import cadquery as cq
@@ -122,7 +122,12 @@ class ParamTableModel(QAbstractTableModel):
 
     def flags(self, index):        
         # parameter name and value can always be edited so this is always true
-        return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
+        node = index.internalPointer()
+        if isinstance(node, NPart):
+            return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsUserCheckable
+
+        return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsUserCheckable
+        # return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
 
 
 
@@ -172,7 +177,7 @@ class NModel(QAbstractItemModel):
         
 
     def add_part(self, name: str, part: Workplane):
-        node = Part(name, part, self._root.child(0))    
+        node = NPart(name, part, self._root.child(0))    
 
         self.dataChanged.connect(node.rebuild) # ce genre de truc devra être géré par le model 
                                                 # actuellement le code reconstruirait toutes les parts meme si elles n'ont pas été modifiées
@@ -196,7 +201,7 @@ class NModel(QAbstractItemModel):
         
         
         for operation, parameters in reversed(operations.items()):
-            operation = Operation(operation, operation, wp, parent_part)
+            operation = NOperation(operation, operation, wp, parent_part)
             self.insertRows(self.rowCount(), 0, operation, part_idx)
 
             operation_idx = self.index(operation._row, 0, part_idx)
@@ -206,9 +211,25 @@ class NModel(QAbstractItemModel):
                 # pour pouvoir insérer plusieurs paramètres d'un coup
 
                 # ---------- Il faudra récupérer le vrai ARG name ici et pas passer deux fois le param value comme un sale
-                self.insertRows(self.rowCount(operation_idx),0, Argument(str(param_value), param_value, type(param_value), operation), operation_idx)
+                
+                #si param_value est un tuple c'est qu'on a un param qui est un objet
+
+                if isinstance(param_value, tuple):
+                    node = NArgument(str(param_value[0]), None, "cq_shape", operation) 
+                else:
+                    node = NArgument(str(param_value), param_value, type(param_value), operation)                    
+                self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
         
         parent_part.rebuild()
+
+
+    def add_shape(self, shape_name, shape, source_data):
+        node = NShape(shape_name, shape, source_data, self._root.child(1))    
+        # self.dataChanged.connect(node.rebuild) # ce genre de truc devra être géré par le model 
+                                                # actuellement le code reconstruirait toutes les parts meme si elles n'ont pas été modifiées
+        shapes_idx = self.index(self._root.child(1)._row, 0)
+        self.insertRows(self.rowCount(shapes_idx), 0, node, parent=shapes_idx)
+       
 
     def _link_parameters(self, indexes: List[QModelIndex], name_pidx:QPersistentModelIndex, value_pidx:QPersistentModelIndex):
         
@@ -216,7 +237,7 @@ class NModel(QAbstractItemModel):
             self.setData(idx, (name_pidx.data(), value_pidx.data(), name_pidx, value_pidx), Qt.EditRole)
 
     
-        for part_idx in self.childrens():
+        for part_idx in self.childrens(self.index(0,0)):
             part_idx.internalPointer().rebuild()
 
     def _disconnect_parameter(self, arg_idx: QModelIndex = None, param_idx: QModelIndex = None):
@@ -229,7 +250,7 @@ class NModel(QAbstractItemModel):
             for idx in self.walk():
                 node = idx.internalPointer()
 
-                if isinstance(node, Argument) and node.is_linked():
+                if isinstance(node, NArgument) and node.is_linked():
                     
                     if node._param_name_pidx.data() is None:
                         node._linked_param = None 
@@ -246,7 +267,7 @@ class NModel(QAbstractItemModel):
         for idx in self.walk():
 
             node = idx.internalPointer()
-            if isinstance(node, Argument):
+            if isinstance(node, NArgument):
                 if node.is_linked():
                     node._linked_param = node._param_name_pidx.data()
                     node.value = node._param_value_pidx.data()
@@ -369,7 +390,7 @@ class NModel(QAbstractItemModel):
             return None
         node = index.internalPointer()
 
-        if isinstance(node, Argument):
+        if isinstance(node, NArgument):
             if role == Qt.DisplayRole:
                 if index.column() == 0: # 
                     if node.is_linked():
@@ -382,6 +403,8 @@ class NModel(QAbstractItemModel):
                 #     else :
                 #         return node._value
 
+            elif role == Qt.EditRole:
+                return node
 
 
             elif role == Qt.FontRole:
@@ -391,9 +414,12 @@ class NModel(QAbstractItemModel):
                     font.setBold(True)
                     return font         
 
-        elif isinstance(node, Operation):
+        elif isinstance(node, NOperation):
             if role == Qt.DisplayRole:
                 return node.name # display method's name
+            
+            elif role == Qt.CheckStateRole:
+                return node.visible
 
         if role == Qt.DisplayRole:
             return node.name
@@ -406,7 +432,7 @@ class NModel(QAbstractItemModel):
 
     def flags(self, index):
         node = index.internalPointer()
-        if isinstance(node, Argument):
+        if isinstance(node, NArgument):
             if node.is_linked():
                 return (Qt.ItemIsEnabled | Qt.ItemIsSelectable)
             else:
@@ -417,7 +443,7 @@ class NModel(QAbstractItemModel):
     def setData(self, index, value, role):
         
         node = self.data(index, role = role)
-        if isinstance(node, Argument):
+        if isinstance(node, NArgument):
             if isinstance(value, tuple): # we assign a paramerter
                 node._linked_param = value[0]
                 node.value = value[1]

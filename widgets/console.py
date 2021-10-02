@@ -57,9 +57,7 @@ class ConsoleWidget(RichJupyterWidget):
         # self.exit_requested.connect a voir si je peux gerer les erreurs de la console avec un signal pour pas excecuter la suite du code
         # self.executed.connect
 
-        if "op" in source:
-            print("code de debug a supprimer dans console.py execute")
-            return
+
 
         analyzer = CommandAnalyzer(ns, ns_before_cmd)
 

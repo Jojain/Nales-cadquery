@@ -4,9 +4,10 @@ import ast
 from ast import Expr, Assign, Name, Call, Store, Attribute, Load, Constant, Expression, Module
 import cadquery.cqgi
 from cadquery import Workplane
+from cadquery.occ_impl.shapes import Shape
 import cadquery as cq
 from collections import OrderedDict
-
+from nales_alpha.utils import get_Workplane_operations, get_shapes_classes_methods
 
 class CommandAnalyzer(ast.NodeVisitor):
     def __init__(self, namespace: dict, ns_before_cmd: dict):
@@ -14,14 +15,59 @@ class CommandAnalyzer(ast.NodeVisitor):
         self.ns_before_cmd = ns_before_cmd
         self.ns = namespace
         self.cmd.operations = OrderedDict()
+        self.cmd.invoked_method = {}
 
     def visit_Call(self, node):
         # astpretty.pprint(node, show_offsets = False, indent = "    ")
+        func = node.func
+        if type(node.func) == Attribute:            
+            attribute = func.attr
+            if attribute in get_Workplane_operations().keys():
+                # If every node.args is a constant :
+                try:
+                    self.cmd.operations[attribute] = tuple(arg.value for arg in node.args)
+                except AttributeError:
+                    # else, if an arg is a name (i.e an object):
+                    args = []                 
+                    for arg in node.args:
+                        # since we can have both Constant and Objects :
+                        try:
+                            args.append(arg.value)
+                        except AttributeError:
+                            args.append((arg.id,True))
+                    self.cmd.operations[attribute] = tuple(args)                        
 
-        if type(node.func) == Attribute:
-            if node.func.attr != "cq" and node.func.attr != "Workplane": # dont count cq.Workplane() as an operation
-                
-                self.cmd.operations[node.func.attr] = tuple(arg.value for arg in node.args)
+
+            else:      
+                # Checks if the Call is from a method of CQ Topological Shape class         
+                try:
+                    func_name = func.attr 
+                    func_bounded_class = func.value.attr
+
+                    if func_name in get_shapes_classes_methods(func_bounded_class):
+                        self.cmd.invoked_method["class_name"] = func_bounded_class
+                        self.cmd.invoked_method["method_name"] = func_name
+                        # If every node.args is a constant :
+                        try:
+                            args = tuple(arg.value for arg in node.args)
+                        except AttributeError:
+                            # else, if an arg is a name (i.e an object):
+                            args = []                 
+                            for arg in node.args:
+                                # since we can have both Constant and Objects :
+                                try:
+                                    args.append(arg.value)
+                                except AttributeError:
+                                    args.append(arg.name)
+
+                        self.cmd.invoked_method["args"] = tuple(args)
+                               
+
+
+                except AttributeError:
+                    #
+                    pass
+                        
 
         self.generic_visit(node)
 
@@ -43,7 +89,12 @@ class CommandAnalyzer(ast.NodeVisitor):
             self.cmd.type = "part_edit"            
             self.cmd.workplane = obj
 
-            
+        elif isinstance(obj, Shape):    
+            self.cmd.shape = obj # maybe try to target the globals() of the qtconsole
+            self.cmd.type = "new_shape"
+
+
+
         self.generic_visit(node)
 
 

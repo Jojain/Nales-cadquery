@@ -43,10 +43,18 @@ class NNode():
 
         
 
+    def __str__(self):
+            return f"{self.name}"
 
 
+    def walk(self, node: "NNode" = None) -> "NNode":
+        base_node = node if node else self 
 
-
+        for sub_node in base_node.childs:
+            if sub_node.childs:
+                yield from self.walk(sub_node)
+            else:
+                yield sub_node
 
     def data(self, column):
         if column >= 0 and column < len(self._data):
@@ -99,7 +107,7 @@ class NNode():
 
 
 
-class Part(NNode):
+class NPart(NNode):
 
     # viewer_updated = pyqtSignal()
 
@@ -154,7 +162,11 @@ class Part(NNode):
         wp_rebuilt = "cq.Workplane()"
 
         for operation in self.childs:
-            args = str(tuple(param.value for param in operation.childs))
+            args_list = []
+            for param in operation.childs:
+                args_list.append(param.value)
+                    
+            args = f"({','.join(map(str,args_list))})"
             wp_rebuilt += "."+operation.data(0) + args 
 
         wp = eval(wp_rebuilt)
@@ -164,14 +176,18 @@ class Part(NNode):
 
 
 
-class Shape(NNode):
-    def __init__(self, name, cq_shape, parent : NNode):       
+class NShape(NNode):
+    def __init__(self, name, cq_shape, invoked_method: dict, parent : NNode):       
 
         self._occt_shape = shape = cq_shape.wrapped 
-
+        self._source_code = self._retrieve_source_code(invoked_method)
         super().__init__(shape, name, parent=parent)
 
-        self.display(self._occt_shape)
+        # self.display(self._occt_shape)
+
+    def _retrieve_source_code(self, invoked_method: dict) -> str:
+        source = f"cq.{invoked_method['class_name']}.{invoked_method['method_name']}{invoked_method['args']}"
+        return source
 
     def display(self, shape: TopoDS_Shape, update = False):
         """
@@ -193,7 +209,7 @@ class Shape(NNode):
         self.root_node._viewer.Update()
 
 
-class Operation(NNode):
+class NOperation(NNode):
     def __init__(self, method_name: str, name, part: Workplane, parent : NNode):
         super().__init__(method_name, name, parent=parent)
 
@@ -207,7 +223,7 @@ class Operation(NNode):
 
 
 
-class Argument(NNode):
+class NArgument(NNode):
     """
     The underlying data of an Argument is as follow :
     name : cq argument name
@@ -219,10 +235,14 @@ class Argument(NNode):
     def __init__(self, arg_name:str, value, type,  parent):
         super().__init__(None, arg_name, parent=parent)
 
-
         self._name = arg_name
         self._value = value
         self._type = type
+        if type == "cq_shape":
+            self._value = self._get_shape_source()
+
+
+
         self._linked_param = None
 
         self._param_name_pidx = None
@@ -235,6 +255,16 @@ class Argument(NNode):
             return True 
         else:
             return False
+    
+    def _get_shape_source(self):
+        """
+        If the Argument is a cq shape object we retrieve the source code to be able to rebuild everything from scratch        
+        """
+        var_name = self.name
+
+        for shape_node in self.walk(self.root_node.child(1)):
+            if var_name == shape_node.name:
+                return shape_node._source_code
 
 
     def _get_args_names_and_types(self):
