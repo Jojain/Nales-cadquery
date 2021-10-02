@@ -32,286 +32,10 @@ from OCP.TDF import TDF_Label, TDF_TagSource
 from OCP.TCollection import TCollection_ExtendedString
 from OCP.TopoDS import TopoDS_Shape
 from nales_alpha.utils import get_Workplane_operations
-
+from nales_alpha.NDS.interfaces import NNode, Part, Operation, Argument
 
 
 import cadquery as cq
-
-class NNode():
-    error = pyqtSignal(str) # is emitted when an error occurs
-    def __init__(self, data, name = None, parent = None):
-        self._data = data
-        self._parent = parent
-        if type(data) == tuple:
-            self._data = list(data)
-        if type(data) is str or not hasattr(data, '__getitem__'):
-            self._data = [data]
-        self._columns_nb = len(self._data) 
-        self._childrens = []
-
-        if parent:
-            parent._childrens.append(self)
-            parent._columns_nb = max(self.columns_nb, parent.columns_nb)
-            self._label = TDF_TagSource.NewChild_s(parent._label)
-            self._row = len(parent._childrens)
-            self._name = name
-            TDataStd_Name.Set_s(self._label, TCollection_ExtendedString(self.name))
-        else:
-            self._label = TDF_Label()
-            self._name = "root"
-            self._row = 0
-
-        
-
-
-
-
-
-
-    def data(self, column):
-        if column >= 0 and column < len(self._data):
-            return self._data[column]
-
-    @property
-    def columns_nb(self):
-        # return 3
-        return self._columns_nb
-
-    def child_count(self):
-        return len(self._childrens)
-
-    def child(self, row):
-        if row >= 0 and row < self.child_count():
-            return self._childrens[row]
-
-
-    def has_children(self):
-        if len(self._childrens) != 0:
-            return True
-        else: 
-            return False
-
-    @property
-    def parent(self):
-        return self._parent
-
-    @property
-    def childs(self):
-        return self._childrens
-
-    @property
-    def name(self):
-        return self._name 
-
-    @name.setter 
-    def name(self, value):
-        self._name = value    
-
-
-    @property
-    def root_node(self):
-        root = self.parent
-        while True:
-            if root.parent:
-                root = root.parent
-            else:
-                return root
-
-    # def add_child(self, child: "NNode") -> None:
-    #     child._parent = self
-    #     child._row = len(self._childrens)
-    #     self._childrens.append(child)
-    #     self._columncount = max(child.columns_nb(), self._columncount)
-    #     self._label = TDF_TagSource.NewChild_s(self._parent._label)
-    #     TDataStd_Name.Set_s(self._label, TCollection_ExtendedString(self.name))
-
-
-
-class Part(NNode):
-
-    # viewer_updated = pyqtSignal()
-
-    def __init__(self, name: str, part: Workplane, parent):
-        super().__init__(part, name, parent=parent)
-        
-        if len(part.objects) != 0:
-
-            self.occt_shape = part.val().wrapped
-
-        self.occt_shape = TopoDS_Shape()
-
-        self.display(self.occt_shape)
-
-    def display(self, shape: TopoDS_Shape, update = False):
-        """
-        Builds the display object and attach it to the OCAF tree
-        """
-        if update:
-            self.ais_shape.Erase(remove=True)
-            self.root_node._viewer.Update()
-            # self.root_node._viewer
-            # return
-
-        self.bldr = TNaming_Builder(self._label) #_label is  TDF_Label
-        self.bldr.Generated(shape)
-
-        named_shape = self.bldr.NamedShape()
-        self._label.FindAttribute(TNaming_NamedShape.GetID_s(), named_shape)
-
-        self.ais_shape = TPrsStd_AISPresentation.Set_s(named_shape)
-        # self.ais_shape = TPrsStd_AISPresentation.Set_s(self._label, TNaming_NamedShape.GetID_s())
-        self.ais_shape.Display(update=True)
-        self.root_node._viewer.Update()
-
-
-    def rebuild(self, param_edited: "Argument" = None) :
-        """
-        Reconstruit le workplane et le réaffiche
-        Il faut voir si je peux faire un truc du style:
-
-        new_wp = old.end(n) avec n la pos de l'opération du param modifié
-        for operations in self.childs:
-            new_wp += operation(args)
-        """
-
-        #Pour l'instant on rebuild tout le Workplane
-        # Mais il faut recup param_edited, localiser la
-
-        #Il faudrait créer un AST Tree mais pour l'instant on fait ça salement
-
-        wp_rebuilt = "cq.Workplane()"
-
-        for operation in self.childs:
-            args = str(tuple(param.value for param in operation.childs))
-            wp_rebuilt += "."+operation.data(0) + args 
-
-        wp = eval(wp_rebuilt)
-        self.occt_shape = wp.val().wrapped
-
-        self.display(self.occt_shape, update=True)
-
-
-
-
-class Operation(NNode):
-    def __init__(self, method_name: str, name, part: Workplane, parent : NNode):
-        super().__init__(method_name, name, parent=parent)
-
-        # Here we should modify the parent 'Part' shape with the help of TFunctions
-        # Otherwise we will fill the memory with a lot of shapes, but as a start it's ok 
-        self.name = method_name
-        Workplane_methods = get_Workplane_operations()
-        self.method = Workplane_methods[method_name]
-
-
-        # self.cq_shape = part.val()
-        # self.occt_shape = part.val().wrapped
-        # bldr = TNaming_Builder(self._label)
-        # bldr.Generated(self.occt_shape)
-
-        # named_shape = bldr.NamedShape()
-        # self._label.FindAttribute(TNaming_NamedShape.GetID_s(), named_shape)
-        
-        # #Disable display of the parent shape
-        # self._parent.ais_shape.Erase()
-
-    #     self.display(self.occt_shape)
-
-    # def display(self, shape):
-    #     """
-    #     Builds the display object and attach it to the OCAF tree
-    #     """
-    #     self.bldr = TNaming_Builder(self._label)
-    #     self.bldr.Generated(shape)
-
-    #     named_shape = self.bldr.NamedShape()
-    #     self._label.FindAttribute(TNaming_NamedShape.GetID_s(), named_shape)
-
-
-    #     #And update the display with the new shape
-    #     self.ais_shape = TPrsStd_AISPresentation.Set_s(named_shape)
-    #     self.ais_shape.Display(update=True)
-
-
-
-
-
-class Argument(NNode):
-    """
-    The underlying data of an Argument is as follow :
-    name : cq argument name
-    value : value
-    linked_param : the name of the parameter linked to this arg, None if not connected to any
-    type: value type : a voir si je garde ca
-    If the Argument is linked to a Parameter, the Parameter name is displayed
-    """
-    def __init__(self, arg_name:str, value, type,  parent):
-        super().__init__(None, arg_name, parent=parent)
-
-
-        self._name = arg_name
-        self._value = value
-        self._type = type
-        self._linked_param = None
-
-        self._param_name_pidx = None
-        self._param_value_pidx = None
-
-        self._get_args_names_and_types()
-
-    def is_linked(self):
-        if self._linked_param:
-            return True 
-        else:
-            return False
-
-
-    def _get_args_names_and_types(self):
-        parent_method = self.parent.method
-        sig = signature(parent_method)
-
-        args_infos = tuple((p_name, p_obj.annotation) for (p_name, p_obj) in sig.parameters.items() if p_name != "self" )
-        self._arg_infos = args_infos[self._row]
-
-
-    @property
-    def linked_param(self):
-        if self.is_linked():
-            return self._linked_param
-        else:
-            raise ValueError("This argument is not linked to a param")
-
-
-    @property
-    def columns_nb(self):
-        return 3
-
-    @property
-    def name(self):
-        return self._name 
-
-    @name.setter 
-    def name(self, value):
-        self._name = value    
-
-
-    @property 
-    def value(self):
-        return self._value
-    @value.setter
-    def value(self, value):
-        try:
-            self._value = self._type(value)
-        except (ValueError , TypeError) as exp:
-            if exp == ValueError:
-                error_msg = f"Expected arguments if of type: {self._type} you specified argument of type {type(value)}"
-                self.error.emit(error_msg)
-            # print(error_msg)
-
-    @property 
-    def linked_param(self):
-        return self._linked_param
-    
 
 
 
@@ -438,31 +162,37 @@ class NModel(QAbstractItemModel):
         self._root = NNode(None)
         self._root._viewer = self.app._pres_viewer # attach the viewer to the root node so child interfaces can Update the viewer without the need to send a signal
         self._root._label = self.app.doc.GetData().Root()
-       
+
+
+        self.insertRows(0,0,NNode(None, "Parts", self._root))
+        self.insertRows(1,0,NNode(None, "Shapes", self._root))
 
         # Slots connection 
 
         
 
     def add_part(self, name: str, part: Workplane):
-        node = Part(name, part, self._root)    
+        node = Part(name, part, self._root.child(0))    
 
         self.dataChanged.connect(node.rebuild) # ce genre de truc devra être géré par le model 
                                                 # actuellement le code reconstruirait toutes les parts meme si elles n'ont pas été modifiées
+        parts_idx = self.index(self._root.child(0)._row, 0)
+        self.insertRows(self.rowCount(parts_idx), 0, node, parent=parts_idx)
 
-        self.insertRows(self.rowCount(), 1, node)
    
     def add_operations(self, part_name: str, wp: Workplane,  operations: OrderedDict):
         # Implémentation à l'arrache il faudra étudier les TFUNCTIONS et voir comment gérer de l'UNDO REDO
-        parts = self._root._childrens
+        parts = self._root.child(0).childs
+        parts_idx = self.index(0,0) # the Parts container index
         
         for part in parts:
             if part.name == part_name:
                 row = part._row
                 parent_part = part
+                
                 break 
 
-        part_idx = self.index(row, 0)
+        part_idx = self.index(row, 0, parts_idx)
         
         
         for operation, parameters in reversed(operations.items()):
@@ -539,12 +269,13 @@ class NModel(QAbstractItemModel):
 
     
 
-    def _add_child(self, node, _parent: QModelIndex = QModelIndex()):
-        if not _parent or not _parent.isValid():
-            parent = self._root
-        else:
-            parent = _parent.internalPointer()
-        parent.add_child(node)
+    # def _add_child(self, node, _parent: QModelIndex = QModelIndex()):
+    #     if not _parent or not _parent.isValid():
+    #         parent = self._root
+    #     else:
+    #         parent = _parent.internalPointer()
+    #     parent.add_child(node)
+    #     NNode()
 
 
     def walk(self, index: QModelIndex = QModelIndex()) -> QModelIndex:
@@ -671,11 +402,7 @@ class NModel(QAbstractItemModel):
 
         elif role == Qt.EditRole:
             return node
-        
- 
 
-
-        return None
 
     def flags(self, index):
         node = index.internalPointer()
@@ -711,8 +438,8 @@ class NModel(QAbstractItemModel):
 
         
 
-    def insertColumns(self, column, count):
-        pass
+    # def insertColumns(self, column, count):
+    #     pass
 
 
 def setup_dummy_model():
