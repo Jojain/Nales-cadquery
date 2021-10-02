@@ -46,15 +46,15 @@ class NNode():
             self._data = list(data)
         if type(data) is str or not hasattr(data, '__getitem__'):
             self._data = [data]
-        self._columncount = len(self._data) 
+        self._columns_nb = len(self._data) 
         self._childrens = []
 
         if parent:
             parent._childrens.append(self)
-            parent._columncount = max(self.column_count(), parent._columncount)
+            parent._columns_nb = max(self.columns_nb, parent.columns_nb)
             self._label = TDF_TagSource.NewChild_s(parent._label)
             self._row = len(parent._childrens)
-            self.name = name
+            self._name = name
             TDataStd_Name.Set_s(self._label, TCollection_ExtendedString(self.name))
         else:
             self._label = TDF_Label()
@@ -72,8 +72,10 @@ class NNode():
         if column >= 0 and column < len(self._data):
             return self._data[column]
 
-    def column_count(self):
-        return self._columncount
+    @property
+    def columns_nb(self):
+        # return 3
+        return self._columns_nb
 
     def child_count(self):
         return len(self._childrens)
@@ -119,7 +121,7 @@ class NNode():
     #     child._parent = self
     #     child._row = len(self._childrens)
     #     self._childrens.append(child)
-    #     self._columncount = max(child.column_count(), self._columncount)
+    #     self._columncount = max(child.columns_nb(), self._columncount)
     #     self._label = TDF_TagSource.NewChild_s(self._parent._label)
     #     TDataStd_Name.Set_s(self._label, TCollection_ExtendedString(self.name))
 
@@ -280,6 +282,9 @@ class Argument(NNode):
             raise ValueError("This argument is not linked to a param")
 
 
+    @property
+    def columns_nb(self):
+        return 3
 
     @property
     def name(self):
@@ -600,8 +605,8 @@ class NModel(QAbstractItemModel):
 
     def columnCount(self, index):
         if index.isValid():
-            return index.internalPointer().column_count()
-        return self._root.column_count()
+            return index.internalPointer().columns_nb
+        return self._root.columns_nb
 
 
     def index(self, row, column, _parent: QModelIndex = QModelIndex()):
@@ -635,13 +640,19 @@ class NModel(QAbstractItemModel):
 
         if isinstance(node, Argument):
             if role == Qt.DisplayRole:
-                if index.column() == 0:
-                    return node._arg_infos[0]
-                else:
-                    if node.is_linked(): # if linked to a param 
-                        return node.linked_param
-                    else :
-                        return node._value
+                if index.column() == 0: # 
+                    if node.is_linked():
+                        return f"{node._arg_infos[0]} = {node.linked_param}"
+                    else:
+                        return f"{node._arg_infos[0]} = {node._value}"
+                # else:
+                #     if node.is_linked(): # if linked to a param 
+                #         return node.linked_param
+                #     else :
+                #         return node._value
+
+
+
             elif role == Qt.FontRole:
                 if node.is_linked(): # if linked to a param , gets overidden by the stylesheet
                     font = QFont()

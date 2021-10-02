@@ -18,7 +18,7 @@ class Dummy():
         return "dummy"
 
 class NNode(object):
-    def __init__(self, data):
+    def __init__(self, data, a= None, b=None):
         self._data = data
         if type(data) == tuple:
             self._data = list(data)
@@ -29,6 +29,9 @@ class NNode(object):
         self._children = []
         self._parent = None
         self._row = 0
+        self.a = a
+        self.b = b
+        
 
     def mdata(self, column):
         if column >= 0 and column < len(self._data):
@@ -106,7 +109,11 @@ class NModel(QtCore.QAbstractItemModel):
             return None
         node = index.internalPointer()
         if role == QtCore.Qt.DisplayRole:
-            return node.mdata(index.column())
+            if index.column() == 0:
+                return node.a
+            elif index.column() == 1:
+                return node.b
+            # return node.mdata(index.column())
         elif role == QtCore.Qt.UserRole:
             print("toto")
         return None
@@ -134,8 +141,8 @@ class MyTree(QtWidgets.QMainWindow):
         # Set some random data:
         for i in 'abc':
             self.items.append(NNode(i))
-            self.items[-1].add_Child(NNode(['d', 'e', 'f']))
-            self.items[-1].add_Child(NNode(['g', 'h', 'i']))
+            self.items[-1].add_Child(NNode(['d', 'e', 'f'], "toto", "tata"))
+            self.items[-1].add_Child(NNode(['g', 'h', 'i'], "riri", "fifi"))
 
         container = QtWidgets.QWidget()
         layout = QtWidgets.QHBoxLayout(container)
