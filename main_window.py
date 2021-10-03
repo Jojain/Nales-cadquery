@@ -91,8 +91,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if command.type == "new_shape":
                 shape = command.obj
                 shape_name = command.var
-                source_data = command.invoked_method
-                self.model.add_shape(shape_name, shape, source_data)     
+                topo_type = command.topo_type
+                method_call = command.method_call
+                self.model.add_shape(shape_name, shape, topo_type, method_call)     
                 self.modeling_ops_tree.expandAll()
 
         

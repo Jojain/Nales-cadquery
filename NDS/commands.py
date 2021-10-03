@@ -38,7 +38,9 @@ class CQAssignAnalyzer(ast.NodeVisitor):
             cmd.operations = self.calls_stack
 
         elif self.call_type == "Shape_assign":
+            cmd.topo_type = self._topo_type
             cmd.type = "new_shape"
+            cmd.method_call = self.calls_stack
         elif self.call_type == "Workplane_edit_assign":
             cmd.type = "part_edit"
             cmd.operations = self.calls_stack
@@ -76,6 +78,8 @@ class CQAssignAnalyzer(ast.NodeVisitor):
 
                 elif node.parent.attr in get_cq_topo_classes():
                     self.call_type = "Shape_assign"
+                    self._topo_type = node.parent.attr
+                    self.calls_stack = self._get_calls_stack(node)
             elif node.id == self._var_name and node.parent.attr in get_Workplane_operations().keys():
                 self.call_type = "Workplane_edit_assign"
                 self.calls_stack = self._get_calls_stack(node)
@@ -93,9 +97,9 @@ class CQAssignAnalyzer(ast.NodeVisitor):
         while node != self._root:
             
             node = node.parent
-            if isinstance(node, Call):
+            if isinstance(node, Call):                
                 calls_stack[node.func.attr] = {"args":[arg.value for arg in node.args],
-                                          "kw_args":[kw_arg.value.value for kw_arg in node.keywords]}
+                                               "kw_args":[kw_arg.value.value for kw_arg in node.keywords]}
         return calls_stack
 
     

@@ -196,7 +196,7 @@ class NPart(NNode):
                 args_list.append(param.value)
                     
             args = f"({','.join(map(str,args_list))})"
-            wp_rebuilt += "."+operation.data(0) + args 
+            wp_rebuilt += "."+operation.data(0) + str(args)
 
         wp = eval(wp_rebuilt)
         self._occt_shape = wp.val().wrapped
