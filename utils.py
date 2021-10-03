@@ -31,6 +31,15 @@ def get_shapes_classes_methods(class_name: String) -> List:
     
     
 
+def get_cq_topo_classes() -> List[str]:
+    """
+    Returns all the cadquery topological classes
+    """
+    classes = []
+    for name, obj in inspect.getmembers(shapes):
+        if inspect.isclass(obj):
+            classes.append(name)
+    return classes
 
 
 if __name__ == "__main__":

@@ -87,7 +87,9 @@ class ParamTableModel(QAbstractTableModel):
         return True
 
     def removeRows(self, rmv_idxs: List[QModelIndex]) -> bool:
-
+        """
+        Removes parameter from the table
+        """
         # we filter the list of indexes to count only 1 row even if param name and value is selected
         if len(rmv_idxs) == 0:
             return False
@@ -122,12 +124,9 @@ class ParamTableModel(QAbstractTableModel):
 
     def flags(self, index):        
         # parameter name and value can always be edited so this is always true
-        node = index.internalPointer()
-        if isinstance(node, NPart):
-            return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsUserCheckable
 
-        return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsUserCheckable
-        # return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
+        return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable 
+
 
 
 
@@ -145,6 +144,9 @@ class ParamTableModel(QAbstractTableModel):
         return self.createIndex(row, column, self._data[row][column])
 
     def setData(self, index, value, role):
+        """
+        setData of TableModel
+        """
         if role == Qt.EditRole:
             self._data[index.row()][index.column()] = value
             self.dataChanged.emit(index,index)
@@ -177,14 +179,30 @@ class NModel(QAbstractItemModel):
         
 
     def add_part(self, name: str, part: Workplane):
-        node = NPart(name, part, self._root.child(0))    
+        """
+        Add a Part to the data model
 
-        self.dataChanged.connect(node.rebuild) # ce genre de truc devra être géré par le model 
-                                                # actuellement le code reconstruirait toutes les parts meme si elles n'ont pas été modifiées
-        parts_idx = self.index(self._root.child(0)._row, 0)
-        self.insertRows(self.rowCount(parts_idx), 0, node, parent=parts_idx)
+        """
+        # ce genre de truc devra être géré par le model 
+        # actuellement le code reconstruirait toutes les parts meme si elles n'ont pas été modifiées
+        parts_idx = self.index(0, 0)
 
+        # We check if the part is already defined
+        if part_node := self._root.find(name):
+            # part_idx = self.index_from_node(part_node)
+            part_idx = self.index(part_node._row-1, 0, parts_idx )
+            self.removeRows([part_idx.child(i,0) for i in range(self.rowCount(part_idx))], part_idx)
+ 
+
+        else:
+            node = NPart(name, part, self._root.child(0))    
+            self.insertRows(self.rowCount(parts_idx), 0, None, parent=parts_idx)
+            self.dataChanged.connect(node.rebuild) 
    
+
+
+
+    
     def add_operations(self, part_name: str, wp: Workplane,  operations: OrderedDict):
         # Implémentation à l'arrache il faudra étudier les TFUNCTIONS et voir comment gérer de l'UNDO REDO
         parts = self._root.child(0).childs
@@ -217,11 +235,23 @@ class NModel(QAbstractItemModel):
                 if isinstance(param_value, tuple):
                     node = NArgument(str(param_value[0]), None, "cq_shape", operation) 
                 else:
-                    node = NArgument(str(param_value), param_value, type(param_value), operation)                    
+                    node = NArgument(str(param_value), param_value, type(param_value), operation) 
+                                       
                 self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
         
         parent_part.rebuild()
 
+
+    def index_from_node(self, node: "NNode") -> QModelIndex:
+        raise NotImplementedError
+        if parent_node := node.parent:
+            parent_idx = self.index_from_node(parent_node)
+        else:
+            parent_idx = QModelIndex()
+    
+        node_idx = self.index(node._row, node._columns_nb, parent_idx)
+
+        return node_idx
 
     def add_shape(self, shape_name, shape, source_data):
         node = NShape(shape_name, shape, source_data, self._root.child(1))    
@@ -384,6 +414,29 @@ class NModel(QAbstractItemModel):
         return QtCore.QModelIndex()
 
 
+    def removeRows(self, rmv_idxs: List[QModelIndex], parent: QModelIndex = QModelIndex()) -> bool:
+        """
+        Removes data from the Nales data model
+        """
+        # we filter the list of indexes to count only 1 row even if param name and value is selected
+        if len(rmv_idxs) == 0:
+            return False
+
+        idx_to_remove = []
+        for idx in rmv_idxs:
+            if idx.isValid():
+                if idx.row() not in [idx.row() for idx in idx_to_remove]:
+                    idx_to_remove.append(idx)
+            else:
+                return False
+        parent_node = parent.internalPointer()
+        kept_childs = [child for child in parent_node.childs if not child in [idx.internalPointer() for idx in idx_to_remove]]
+        self.beginRemoveRows(parent, idx_to_remove[0].row(), idx_to_remove[-1].row()) 
+        parent_node.childs = kept_childs
+        self.endRemoveRows()
+        self.layoutChanged.emit()
+
+        return True
 
     def data(self, index, role = QtCore.Qt.DisplayRole):
         if not index.isValid():
@@ -414,12 +467,15 @@ class NModel(QAbstractItemModel):
                     font.setBold(True)
                     return font         
 
-        elif isinstance(node, NOperation):
+        elif isinstance(node, NPart) or isinstance(node, NShape):
             if role == Qt.DisplayRole:
                 return node.name # display method's name
             
             elif role == Qt.CheckStateRole:
-                return node.visible
+                if node.visible:
+                    return Qt.Checked
+                else:
+                    return Qt.Unchecked
 
         if role == Qt.DisplayRole:
             return node.name
@@ -431,29 +487,50 @@ class NModel(QAbstractItemModel):
 
 
     def flags(self, index):
+        """
+        NModel flags
+        """
         node = index.internalPointer()
         if isinstance(node, NArgument):
             if node.is_linked():
                 return (Qt.ItemIsEnabled | Qt.ItemIsSelectable)
             else:
                 return (Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable)
+
+        if isinstance(node, NPart) or isinstance(node, NShape):
+            return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
+
+
         else:
             return Qt.ItemIsEnabled
 
     def setData(self, index, value, role):
+        """
+        NModel data setter
+        """
         
-        node = self.data(index, role = role)
-        if isinstance(node, NArgument):
-            if isinstance(value, tuple): # we assign a paramerter
-                node._linked_param = value[0]
-                node.value = value[1]
-                node._param_name_pidx = value[2]
-                node._param_value_pidx = value[3]
-                return True
 
-            node.value = value
+        node = index.internalPointer()
+        if role == Qt.EditRole:
+            if isinstance(node, NArgument):
+                if isinstance(value, tuple): # we assign a paramerter
+                    node._linked_param = value[0]
+                    node.value = value[1]
+                    node._param_name_pidx = value[2]
+                    node._param_value_pidx = value[3]
+                else:
+                    node.value = value
+            self.dataChanged.emit(index,index)
+            
+        
+        elif role == Qt.CheckStateRole:
+            if isinstance(node, NPart) or isinstance(node, NShape):
+                if node.visible:
+                    node.hide()
+                else:
+                    node.display(node._occt_shape)
 
-        self.dataChanged.emit(index,index)
+        
         return True
     
     def insertRows(self, row, count, node: NNode, parent = QModelIndex()):

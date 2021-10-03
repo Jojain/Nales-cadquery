@@ -7,7 +7,7 @@ TODO: handle changing data.
 
 import sys
 from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtCore import QModelIndex, QAbstractItemModel
+from PyQt5.QtCore import QModelIndex, QAbstractItemModel, Qt
 from cadquery import Workplane
 
 class Dummy():
@@ -59,7 +59,7 @@ class NNode(object):
         self._children.append(child)
         self._columncount = max(child.column_count(), self._columncount)
 
-
+check = False
 class NModel(QtCore.QAbstractItemModel):
     def __init__(self, nodes):
         QtCore.QAbstractItemModel.__init__(self)
@@ -116,10 +116,18 @@ class NModel(QtCore.QAbstractItemModel):
             # return node.mdata(index.column())
         elif role == QtCore.Qt.UserRole:
             print("toto")
+        elif role == Qt.CheckStateRole:
+            if check:
+                return Qt.Checked
+            else: return Qt.Unchecked
         return None
 
-    def setData(self, index, value):
-        pass
+    def setData(self, index, value, role):
+        global check
+        if role == Qt.CheckStateRole:
+            check = not check 
+            print()
+        return True
 
     def insertRows(self, row, count, data, parent):
         root_idx = self.index(0, 0) if not parent.isValid() else parent
@@ -129,7 +137,8 @@ class NModel(QtCore.QAbstractItemModel):
         self.endInsertRows()
         self.layoutChanged.emit()
 
-
+    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
+        return Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
 
 class MyTree(QtWidgets.QMainWindow):
     """

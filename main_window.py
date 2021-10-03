@@ -70,22 +70,23 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             """
             This function calls the approriate NModel method depending on the command received.
             """
+            
             if command.type == "new_part":
-                wp = command.workplane
+                part = command.part
                 part_name = command.var
                 operations = command.operations
-                self.model.add_part(part_name, wp)
-                if len(operations) != 0 :
-                    self.model.add_operations(part_name, wp, operations)
+                self.model.add_part(part_name, part)
+                if len(operations) != 0:
+                    self.model.add_operations(part_name, part, operations)
                     self.modeling_ops_tree.expandAll()
                     self.viewer.fit()
 
             if command.type == "part_edit":
-                wp = command.workplane
+                part = command.part
                 part_name = command.var
                 operations = command.operations
                 if len(operations) != 0 :
-                    self.model.add_operations(part_name, wp, operations)
+                    self.model.add_operations(part_name, part, operations)
                     self.model.app._pres_viewer.Update()
                     self.modeling_ops_tree.expandAll()
 

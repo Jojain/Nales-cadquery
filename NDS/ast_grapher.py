@@ -2,6 +2,7 @@
 
 # THIS IS FOR DEBUG ONLY, make_graph() creates a pydot graph that can be displayed in the qtconsole
 # printing the AST tree as svg
+from typing import Union
 import graphviz 
 from astmonkey import visitors, transformers
 import ast
@@ -9,8 +10,11 @@ import ast
 
 
 #%%
-def make_graph(code:str):
-    ast_tree = ast.parse(code)
+def make_graph(code: Union[str, any]):
+    if not isinstance(code, str):
+        ast_tree = code 
+    else:
+        ast_tree = ast.parse(code)
     visitor = visitors.GraphNodeVisitor()
 
     node = transformers.ParentChildNodeTransformer().visit(ast_tree)
