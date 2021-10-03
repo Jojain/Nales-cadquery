@@ -188,7 +188,7 @@ class NPart(NNode):
 
         #Il faudrait créer un AST Tree mais pour l'instant on fait ça salement
 
-        wp_rebuilt = "cq.Workplane()"
+        wp_rebuilt = "cq"
 
         for operation in self.childs:
             args_list = []

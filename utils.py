@@ -17,6 +17,7 @@ def get_Workplane_operations() -> Dict[str,Callable]:
     # workplane, transformed, selectors, etc.
 
     operations = dict((func,getattr(Workplane,func)) for func in dir(Workplane) if callable(getattr(Workplane, func)) and not func.startswith("_"))
+    operations["Workplane"] = Workplane.__init__
 
     return operations
 

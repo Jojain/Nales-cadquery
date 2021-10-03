@@ -218,26 +218,23 @@ class NModel(QAbstractItemModel):
         part_idx = self.index(row, 0, parts_idx)
         
         
-        for operation, parameters in reversed(operations.items()):
+        for operation, parameters in operations.items():
             operation = NOperation(operation, operation, wp, parent_part)
             self.insertRows(self.rowCount(), 0, operation, part_idx)
 
             operation_idx = self.index(operation._row, 0, part_idx)
 
-            for param_value in parameters:
-                # pour l'instant j'ai laissé tout les row count à 0 mais il faudrait le modifier
-                # pour pouvoir insérer plusieurs paramètres d'un coup
+            for param_type, param_values in parameters.items():
 
-                # ---------- Il faudra récupérer le vrai ARG name ici et pas passer deux fois le param value comme un sale
-                
-                #si param_value est un tuple c'est qu'on a un param qui est un objet
 
-                if isinstance(param_value, tuple):
-                    node = NArgument(str(param_value[0]), None, "cq_shape", operation) 
-                else:
-                    node = NArgument(str(param_value), param_value, type(param_value), operation) 
-                                       
-                self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+                for param_value in param_values:
+                    #si param_value est un tuple c'est qu'on a un param qui est un objet
+                    if isinstance(param_value, tuple):
+                        node = NArgument(str(param_value[0]), None, "cq_shape", operation) 
+                    else:
+                        node = NArgument(str(param_type), param_value, type(param_value), operation) 
+
+                    self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
         
         parent_part.rebuild()
 

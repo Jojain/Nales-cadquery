@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QApplication, QHBoxLayout, QWidget, QMainWindow
 from PyQt5.QtCore import pyqtSlot, pyqtSignal
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 from qtconsole.inprocess import QtInProcessKernelManager
-from nales_alpha.NDS.commands import Command, CommandAnalyzer
+from nales_alpha.NDS.commands import CQAssignAnalyzer, Command
 import sys, io 
 import ast
 from PyQt5 import QtWidgets
@@ -59,15 +59,16 @@ class ConsoleWidget(RichJupyterWidget):
 
 
 
-        analyzer = CommandAnalyzer(ns, ns_before_cmd)
+        # analyzer = CommandAnalyzer(ns, ns_before_cmd)
+        analyzer = CQAssignAnalyzer(ns, ns_before_cmd)
 
         analyzer.visit(ast.parse(source))
 
         
         cmd = analyzer.get_command()
 
-        if cmd.type != "undefined":
-            cmd.workplane = self.get_workplane(cmd.var)
+        # if cmd.type != "undefined":
+        #     cmd.workplane = self.get_workplane(cmd.var)
 
         
         self.on_command.emit(cmd)   

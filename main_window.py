@@ -70,33 +70,29 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             """
             This function calls the approriate NModel method depending on the command received.
             """
-            
-            if command.type == "new_part":
-                part = command.part
+            if command.type == "undefined":
+                return 
+
+
+            if command.type in ("new_part","part_edit","part_override"):
+                part = command.obj
                 part_name = command.var
                 operations = command.operations
-                self.model.add_part(part_name, part)
+
+                if command.type in ("new_part", "part_override"):
+                    self.model.add_part(part_name, part)
+
                 if len(operations) != 0:
                     self.model.add_operations(part_name, part, operations)
                     self.modeling_ops_tree.expandAll()
                     self.viewer.fit()
 
-            if command.type == "part_edit":
-                part = command.part
-                part_name = command.var
-                operations = command.operations
-                if len(operations) != 0 :
-                    self.model.add_operations(part_name, part, operations)
-                    self.model.app._pres_viewer.Update()
-                    self.modeling_ops_tree.expandAll()
 
             if command.type == "new_shape":
-                shape = command.shape
+                shape = command.obj
                 shape_name = command.var
                 source_data = command.invoked_method
-                self.model.add_shape(shape_name, shape, source_data)
-                # self.model.app._pres_viewer.Update()
-                # self.viewer.fit()
+                self.model.add_shape(shape_name, shape, source_data)     
                 self.modeling_ops_tree.expandAll()
 
         
