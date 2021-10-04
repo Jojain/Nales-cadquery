@@ -4,6 +4,7 @@ from tokenize import String
 from typing import Callable, Dict, List
 from cadquery import Workplane
 from inspect import signature
+import cadquery
 from cadquery.occ_impl import shapes
 
 def get_Workplane_operations() -> Dict[str,Callable]:
@@ -29,7 +30,16 @@ def get_shapes_classes_methods(class_name: String) -> List:
             if class_name == name:
                 methods = [func for func in dir(obj) if callable(getattr(obj,func)) and not func.startswith("_")]
     return methods
-    
+
+def get_cq_types():
+    """
+    Returns all the cadquery available types
+    """ 
+    types = []
+    for _, obj in inspect.getmembers(cadquery):
+        if inspect.isclass(obj):
+            types.append(obj)
+    return types
     
 
 def get_cq_topo_classes() -> List[str]:

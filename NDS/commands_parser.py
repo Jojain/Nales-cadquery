@@ -10,8 +10,8 @@ class Transformer(ast.NodeTransformer):
 
         
         self.generic_visit(node)
-        new_node = Assign([Name("toto", Store())], Constant(0,None))
-
+        new_node = Assign([Name(id="toto", ctx=Store())], Constant(0,None))
+        ast.fix_missing_locations(new_node)
         # Assign([Name(tempvar, Store())], <inner_call>),
 
         #     Expr(Call(
