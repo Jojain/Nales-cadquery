@@ -13,6 +13,43 @@ from graphviz.backend import command
 from nales_alpha.utils import get_Workplane_operations, get_cq_topo_classes, get_shapes_classes_methods
 from nales_alpha.NDS.ast_grapher import make_graph
 
+
+def build_operation_ast(part_name, method_name, args, kwargs):
+    """
+    Creates an abstract syntax tree to generate cadquery Workplane objects 
+    This is stored by the NOperation class, each operation ast defines a working code line that is responsible for
+    creating the cadquery object
+    """
+    #handy functions to unpack a list of a dict into str
+    unpack = lambda args : ",".join(map(str,args))
+    unpack_kw  = lambda kwargs : ",".join([" = ".join((str(kwarg), str(val))) for kwarg, val in [(k,v) for k,v in kwargs.items()]])
+    
+    if len(kwargs) == 0:
+        code = f"{part_name} = {part_name}.end(0).{method_name}({unpack(args)})"
+    else:
+        code = f"{part_name} = {part_name}.end(0).{method_name}({unpack(args)}, {unpack_kw(kwargs)})"
+
+    operation_tree = ast.parse(code)
+    return operation_tree
+    
+
+def update_operation_index(operation_ast, position):
+    """
+    Assuming a operation call is defined as an ast representing the code :
+    `wp_name = wp_name.end(position).operation(args)`
+    This function returns a new ast with `position` updated 
+    """
+    class ReIndexer(ast.NodeTransformer):
+        def visit_Call(self, node):
+            if node.func.attr == "end":
+                new_node = ast.parse(f"end({position})").body[0].value
+
+                assert isinstance(new_node, Call)
+                return new_node         
+    
+    new_op_ast = ReIndexer().visit(operation_ast)   
+    return new_op_ast         
+
 class CQAssignAnalyzer(ast.NodeVisitor):
     def __init__(self, ns, ns_before_cmd) -> None:
         super().__init__()
@@ -256,10 +293,10 @@ if __name__ == "__main__":
     from astmonkey import visitors, transformers
     debug = True
     cmd = "a = Workplane().box(1,1,1).sphere(2)"
-    cmd_analyzer = CommandAnalyzer(globals(), globals(), True) # call this line in the ipython window to view the graph
+    # cmd_analyzer = CommandAnalyzer(globals(), globals(), True) # call this line in the ipython window to view the graph
 
-    cmd_analyzer.visit(ast.parse(cmd))
+    # cmd_analyzer.visit(ast.parse(cmd))
 
-    graph = cmd_analyzer.graph
+    # graph = cmd_analyzer.graph
    
 # %%
