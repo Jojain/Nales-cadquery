@@ -1,11 +1,12 @@
 #%%
 import inspect
 from tokenize import String
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Union
 from cadquery import Workplane
 from inspect import signature
 import cadquery
 from cadquery.occ_impl import shapes
+from collections import OrderedDict
 
 def get_Workplane_operations() -> Dict[str,Callable]:
     """
@@ -19,8 +20,19 @@ def get_Workplane_operations() -> Dict[str,Callable]:
 
     operations = dict((func,getattr(Workplane,func)) for func in dir(Workplane) if callable(getattr(Workplane, func)) and not func.startswith("_"))
     operations["Workplane"] = Workplane.__init__
-
+    
     return operations
+
+def get_method_kwargs(method: Union[str,Callable]):
+    if isinstance(method, str):
+        method = get_Workplane_operations()[method]
+    params = inspect.signature(method).parameters
+    kwargs = OrderedDict()
+    for p in params.values():
+        if not p.default is p.empty: 
+            kwargs[p.name] = p.default
+    return kwargs
+
 
 def get_shapes_classes_methods(class_name: String) -> List:
     

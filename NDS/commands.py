@@ -10,7 +10,7 @@ from cadquery.occ_impl.shapes import Shape
 import cadquery as cq
 from collections import OrderedDict
 from graphviz.backend import command
-from nales_alpha.utils import get_Workplane_operations, get_cq_topo_classes, get_cq_types, get_shapes_classes_methods
+from nales_alpha.utils import get_Workplane_operations, get_cq_topo_classes, get_cq_types, get_method_kwargs, get_shapes_classes_methods
 from nales_alpha.NDS.ast_grapher import make_graph
 
 
@@ -24,6 +24,8 @@ def build_operation_ast(part_name, method_name, args, kwargs):
     unpack = lambda args : ",".join(map(str,args))
     unpack_kw  = lambda kwargs : ",".join([" = ".join((str(kwarg), str(val))) for kwarg, val in [(k,v) for k,v in kwargs.items()]])
     
+    get_Workplane_operations()
+
     if len(kwargs) == 0:
         code = f"{part_name} = {part_name}.end(0).{method_name}({unpack(args)})"
     else:
@@ -171,16 +173,19 @@ class CQAssignAnalyzer(ast.NodeVisitor):
             # The command is not cq related so we stop the parsing
             return 
 
-    def _get_call_stack(self, node):
+    def _get_call_stack(self, node: Call):
+        
 
-        call_stack = OrderedDict()
+        call_stack = OrderedDict()        
 
-        while node != self._top_stack_node:
-            
-            node = node.parent
-            if isinstance(node, Call):                
-                call_stack[node.func.attr] = {"args":[arg.value for arg in node.args],
-                                               "kw_args":[kw_arg.value.value for kw_arg in node.keywords]}
+        for sub_node in ast.walk(node):
+            if isinstance(sub_node, Call):
+                method_name = sub_node.func.attr
+                kwargs = get_method_kwargs(method_name)
+                for invoked_kw in sub_node.keywords:
+                    kwargs[invoked_kw.arg] = invoked_kw.arg.value.value # override defaults kwargs by the ones passed
+                call_stack[method_name] = ([arg.value for arg in sub_node.args], kwargs)
+
         return call_stack
 
 class ParentChildNodeTransformer(object):
@@ -261,7 +266,7 @@ if __name__ == "__main__":
     graph = graphviz.Source(raw_dot)
     cmd_analyzer.visit(node)
     cmd = cmd_analyzer.get_command()
-    print(vars(cmd))
+    print(cmd_analyzer.call_stack)
    
    
 # %%
