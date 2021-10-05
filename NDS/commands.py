@@ -250,7 +250,7 @@ if __name__ == "__main__":
     from cadquery import cq
     from astmonkey import visitors, transformers
     debug = True
-    cmd = "a = b.box(1,1,1).sphere(2)"
+    cmd = "a = b.box(1,1,1).sphere(2)\nu = 50"
     c=cq.Workplane().box(1,1,1).sphere(2)
     ns = {"cq":cadquery, "b":c}
     ns2 = {"a": 5,"cq":cadquery, "b":c}
