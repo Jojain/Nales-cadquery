@@ -122,7 +122,12 @@ class NNode():
             else:
                 return root
 
-
+class NBuildable():
+    """
+    Abstract class the needs to be subclassed
+    It provides utilities to work with the AST nodes each interface classe can holds
+    """
+    cmd_ast = None
 
 class NPart(NNode):
 
@@ -193,6 +198,9 @@ class NPart(NNode):
         for operation in self.childs:
             args_list = []
             for param in operation.childs:
+                if type(param.value) == str:
+                    param.value = f"'{param.value}'"
+
                 args_list.append(param.value)
                     
             args = f"({','.join(map(str,args_list))})"
@@ -245,7 +253,7 @@ class NShape(NNode):
 
         self.visible = True
 
-class NOperation(NNode):
+class NOperation(NNode, NBuildable):
     def __init__(self, method_name: str, name, part: Workplane, parent : NNode):
         super().__init__(method_name, name, parent=parent)
 

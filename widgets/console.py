@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QApplication, QHBoxLayout, QWidget, QMainWindow
 from PyQt5.QtCore import pyqtSlot, pyqtSignal
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 from qtconsole.inprocess import QtInProcessKernelManager
-from nales_alpha.NDS.commands import CQAssignAnalyzer, Command
+from nales_alpha.NDS.commands import CQAssignAnalyzer, Command, prepare_parent_childs
 import sys, io 
 import ast
 from PyQt5 import QtWidgets
@@ -61,8 +61,10 @@ class ConsoleWidget(RichJupyterWidget):
 
         # analyzer = CommandAnalyzer(ns, ns_before_cmd)
         analyzer = CQAssignAnalyzer(ns, ns_before_cmd)
-
-        analyzer.visit(ast.parse(source))
+        cmd_raw_ast = ast.parse(source)
+        # this must be called before the analyzer visit the tree
+        prepare_parent_childs(cmd_raw_ast)
+        analyzer.visit(cmd_raw_ast)
 
         
         cmd = analyzer.get_command()

@@ -10,10 +10,11 @@ from cadquery.occ_impl.shapes import Shape
 import cadquery as cq
 from collections import OrderedDict
 from graphviz.backend import command
-from nales_alpha.utils import get_Workplane_operations, get_cq_topo_classes, get_cq_types, get_method_kwargs, get_shapes_classes_methods
+from nales_alpha.utils import get_Workplane_operations, get_cq_topo_classes, get_cq_types, get_Wp_method_kwargs, get_shapes_classes_methods
 from nales_alpha.NDS.ast_grapher import make_graph
 
 
+# def build_operation_ast(part_name, method_name, args, kwargs):
 def build_operation_ast(part_name, method_name, args, kwargs):
     """
     Creates an abstract syntax tree to generate cadquery Workplane objects 
@@ -35,6 +36,8 @@ def build_operation_ast(part_name, method_name, args, kwargs):
     return operation_tree
     
 
+
+
 def update_operation_index(operation_ast, position):
     """
     Assuming a operation call is defined as an ast representing the code :
@@ -51,6 +54,16 @@ def update_operation_index(operation_ast, position):
     
     new_op_ast = ReIndexer().visit(operation_ast)   
     return new_op_ast         
+
+def prepare_parent_childs(tree):
+    """
+    Adds parent and chils attributes to ast nodes
+    """
+    for node in ast.walk(tree):
+        node.childs = []
+        for child_node in ast.iter_child_nodes(node):
+            node.childs.append(child_node)
+            child_node.parent = node
 
 class CommandAnalyzer(ast.NodeVisitor):
     def __init__(self, ns, ns_before_cmd) -> None:
@@ -73,10 +86,12 @@ class CQAssignAnalyzer(ast.NodeVisitor):
         self._console_ns_before_cmd = ns_before_cmd
         self._top_stack_node = None
         self.call_type = None
+        self.call_stack = None
         self.cmd = Command()
         
-    def _get_cmd_ast(self):
-        pass
+    # def _get_cmd_ast(self):
+
+    #     pass
        
 
     def _get_root_node_from_Call(self, node: Call) -> Name:
@@ -101,23 +116,31 @@ class CQAssignAnalyzer(ast.NodeVisitor):
             return False
         if isinstance(obj_type,Workplane):
             return True
-     
+    
+    def is_cq_obj(self, var_name: str) -> bool:
+        cq_types = get_cq_types()
+        try:
+            obj  = self._console_ns[var_name]          
+        except KeyError:            
+            return False
+        if type(obj) in cq_types:
+            return True
+
+
+            
     def is_cq_assign(self, node: Assign) -> bool:
         """
         Returns if an assignement value is made from a cq object or from cq class
         """
 
-        call_root = self._get_root_node_from_Call(node.value)
-        
-        try:
-            # if we have a call looking like :
-            # part2 = part1
-            # we check if part1 is in the console namespace and is a cadquery object
-            call_root_type = type(self._console_ns[call_root.id])            
-        except KeyError:            
+        if isinstance(node.value, Call):
+            call_root = self._get_root_node_from_Call(node.value)
+        elif isinstance(node.value, Name):
+            call_root = node.value
+        else:
             return False
 
-        if call_root.id == "cq" or call_root_type in get_cq_types():
+        if call_root.id == "cq" or self.is_cq_obj(call_root.id):
             return True 
         else:
             return False
@@ -132,7 +155,7 @@ class CQAssignAnalyzer(ast.NodeVisitor):
                 cmd.obj = self._console_ns[self.cmd.var]
             except KeyError:
                 cmd.type = "undefined"
-
+        cmd.operations = OrderedDict(reversed(list(cmd.operations.items())))
         return cmd 
 
     def visit_Assign(self, node):
@@ -141,12 +164,18 @@ class CQAssignAnalyzer(ast.NodeVisitor):
             # assign is something like :
             # part = cq.Workplane().box(1,1,1)
             # part = cq.Edge.makeEdge(v1,v2)          
-            # part = aCqObj.sphere(5)       
+            # part = aCqObj.sphere(5) 
+             
+             
             self.cmd.var = node.targets[0].id 
+            if isinstance(node.value, Call):    
+                self._top_stack_node = node.value
+                root_node = self._get_root_node_from_Call(node.value)
+                self.cmd.operations = self._get_call_stack(node.value)
+            else:
+                #Node is a Name node referring to a cq object in memory
+                root_node = node                
 
-            self._top_stack_node = node.value
-            root_node = self._get_root_node_from_Call(node.value)
-            self.call_stack = self._get_call_stack(node.value)
             try:    
                 if root_node.id == "cq":
                     if root_node.parent.attr == "Workplane":
@@ -164,6 +193,7 @@ class CQAssignAnalyzer(ast.NodeVisitor):
 
             except AttributeError:
                 pass
+            
 
 
 
@@ -181,7 +211,7 @@ class CQAssignAnalyzer(ast.NodeVisitor):
         for sub_node in ast.walk(node):
             if isinstance(sub_node, Call):
                 method_name = sub_node.func.attr
-                kwargs = get_method_kwargs(method_name)
+                kwargs = get_Wp_method_kwargs(method_name)
                 for invoked_kw in sub_node.keywords:
                     kwargs[invoked_kw.arg] = invoked_kw.arg.value.value # override defaults kwargs by the ones passed
                 call_stack[method_name] = ([arg.value for arg in sub_node.args], kwargs)
@@ -239,7 +269,6 @@ class Command():
     def __init__(self):
         self.type = "undefined"
         self.var = None 
-        self.ast = None 
         self.operations = None
         self.obj = None
 
@@ -250,7 +279,7 @@ if __name__ == "__main__":
     from cadquery import cq
     from astmonkey import visitors, transformers
     debug = True
-    cmd = "a = b.box(1,1,1).sphere(2)\nu = 50"
+    cmd = "a = b.box(1,1,1).sphere(2)\nu = b"
     c=cq.Workplane().box(1,1,1).sphere(2)
     ns = {"cq":cadquery, "b":c}
     ns2 = {"a": 5,"cq":cadquery, "b":c}
@@ -266,7 +295,7 @@ if __name__ == "__main__":
     graph = graphviz.Source(raw_dot)
     cmd_analyzer.visit(node)
     cmd = cmd_analyzer.get_command()
-    print(cmd_analyzer.call_stack)
+    print(cmd_analyzer.call_stack.items())
    
    
 # %%

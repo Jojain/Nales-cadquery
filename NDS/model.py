@@ -31,7 +31,7 @@ from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
 from OCP.TDF import TDF_Label, TDF_TagSource
 from OCP.TCollection import TCollection_ExtendedString
 from OCP.TopoDS import TopoDS_Shape
-from nales_alpha.utils import get_Workplane_operations
+from nales_alpha.utils import get_Workplane_operations, get_Wp_method_args_name
 from nales_alpha.NDS.interfaces import NNode, NPart, NOperation, NArgument, NShape
 
 
@@ -218,24 +218,25 @@ class NModel(QAbstractItemModel):
         part_idx = self.index(row, 0, parts_idx)
         
         
-        for operation, parameters in operations.items():
-            operation = NOperation(operation, operation, wp, parent_part)
+        for method, parameters in operations.items():
+            operation = NOperation(method, method, wp, parent_part)
             self.insertRows(self.rowCount(), 0, operation, part_idx)
 
             operation_idx = self.index(operation._row, 0, part_idx)
 
-            for param_type, param_values in parameters.items():
+            args, kwargs = parameters[0], parameters[1]
+            args_names = get_Wp_method_args_name(method)
+            for pos, arg in enumerate(args):                
+                node = NArgument(args_names[pos], arg, type(arg), operation) 
+                self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
 
-
-                for param_value in param_values:
-                    #si param_value est un tuple c'est qu'on a un param qui est un objet
-                    if isinstance(param_value, tuple):
-                        node = NArgument(str(param_value[0]), None, "cq_shape", operation) 
-                    else:
-                        node = NArgument(str(param_type), param_value, type(param_value), operation) 
-
+            for kwarg_name, kwarg_val in kwargs.items():
+                    node = NArgument(kwarg_name, kwarg_val, type(kwarg_name), operation) 
                     self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
-        
+
+
+
+
         parent_part.rebuild()
 
 

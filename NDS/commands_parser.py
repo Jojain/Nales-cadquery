@@ -2,7 +2,7 @@
 import ast
 from nales_alpha.NDS.ast_grapher import make_graph
 from ast import Assign, Name, Store, Constant
-
+# from ast import unparse
 # %%
 class Transformer(ast.NodeTransformer):
     
@@ -10,8 +10,8 @@ class Transformer(ast.NodeTransformer):
 
         
         self.generic_visit(node)
-        new_node = Assign([Name(id="toto", ctx=Store())], Constant(0,None))
-        ast.fix_missing_locations(new_node)
+        new_node = Assign([Name("toto", Store())], Constant(0,None))
+
         # Assign([Name(tempvar, Store())], <inner_call>),
 
         #     Expr(Call(

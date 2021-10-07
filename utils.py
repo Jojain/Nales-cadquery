@@ -23,7 +23,7 @@ def get_Workplane_operations() -> Dict[str,Callable]:
     
     return operations
 
-def get_method_kwargs(method: Union[str,Callable]):
+def get_Wp_method_kwargs(method: Union[str,Callable]) -> OrderedDict:
     if isinstance(method, str):
         method = get_Workplane_operations()[method]
     params = inspect.signature(method).parameters
@@ -32,6 +32,16 @@ def get_method_kwargs(method: Union[str,Callable]):
         if not p.default is p.empty: 
             kwargs[p.name] = p.default
     return kwargs
+    
+def get_Wp_method_args_name(method: Union[str,Callable]) -> list:
+    if isinstance(method, str):
+        method = get_Workplane_operations()[method]
+    params = inspect.signature(method).parameters
+    args = []
+    for p in params.values():
+        if p.default is p.empty and p.name != "self": 
+            args.append(p.name)
+    return args
 
 
 def get_shapes_classes_methods(class_name: String) -> List:
