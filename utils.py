@@ -7,6 +7,10 @@ from inspect import signature
 import cadquery
 from cadquery.occ_impl import shapes
 from collections import OrderedDict
+import ast
+
+PY_TYPES_TO_AST_NODE = {int : ast.Constant, float: ast.Constant, str: ast.Constant, tuple: ast.Tuple, list: ast.List,
+bool: ast.Constant, set: ast.Set}
 
 def get_Workplane_operations() -> Dict[str,Callable]:
     """

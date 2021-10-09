@@ -1,7 +1,8 @@
 
+import ast
 from inspect import signature
 from typing import Union
-from PyQt5.QtCore import  pyqtSignal
+from PyQt5.QtCore import  QModelIndex, pyqtSignal
 from cadquery import Workplane
 
 from OCP.TDataStd import TDataStd_Name
@@ -14,10 +15,11 @@ from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
 from OCP.TDF import TDF_Label, TDF_TagSource
 from OCP.TCollection import TCollection_ExtendedString
 from OCP.TopoDS import TopoDS_Shape
-from nales_alpha.utils import get_Workplane_operations
+from nales_alpha.utils import PY_TYPES_TO_AST_NODE, get_Workplane_operations
 from OCP.Quantity import Quantity_NameOfColor
 
 import cadquery as cq
+
 
 class NNode():
     error = pyqtSignal(str) # is emitted when an error occurs
@@ -144,7 +146,7 @@ class NPart(NNode):
 
         self._occt_shape = TopoDS_Shape()
 
-        self.display(self._occt_shape)
+        self.display()
 
 
     def hide(self):
@@ -153,7 +155,7 @@ class NPart(NNode):
         self.ais_shape.Erase(remove=True)
         self.root_node._viewer.Update()
 
-    def display(self, shape: TopoDS_Shape, update = False):
+    def display(self, update = False):
         """
         Builds the display object and attach it to the OCAF tree
         """
@@ -165,7 +167,7 @@ class NPart(NNode):
 
 
         self.bldr = TNaming_Builder(self._label) #_label is  TDF_Label
-        self.bldr.Generated(shape)
+        self.bldr.Generated(self._occt_shape)
 
         named_shape = self.bldr.NamedShape()
         self._label.FindAttribute(TNaming_NamedShape.GetID_s(), named_shape)
@@ -175,6 +177,7 @@ class NPart(NNode):
         # self.ais_shape.SetTransparency(0.1)
         self.ais_shape.Display(update=True)
         self.root_node._viewer.Update()
+        # self.root_node._viewer.fit()
 
         self.visible = True
 
@@ -193,24 +196,10 @@ class NPart(NNode):
 
         #Il faudrait créer un AST Tree mais pour l'instant on fait ça salement
 
-        wp_rebuilt = "cq"
-
-        for operation in self.childs:
-            args_list = []
-            for param in operation.childs:
-                if type(param.value) == str:
-                    param.value = f"'{param.value}'"
-
-                args_list.append(param.value)
-                    
-            args = f"({','.join(map(str,args_list))})"
-            wp_rebuilt += "."+operation.data(0) + str(args)
-
-        wp = eval(wp_rebuilt)
-        self._occt_shape = wp.val().wrapped
-
+        obj = self.root_node.console_namespace[self.name]
+        self._occt_shape = obj.val().wrapped
         if self.visible:
-            self.display(self._occt_shape, update=True)
+            self.display()
 
 
 class NShape(NNode):
@@ -254,6 +243,9 @@ class NShape(NNode):
         self.visible = True
 
 class NOperation(NNode, NBuildable):
+
+    updated = pyqtSignal()
+
     def __init__(self, method_name: str, name, part: Workplane, parent : NNode):
         super().__init__(method_name, name, parent=parent)
 
@@ -263,6 +255,58 @@ class NOperation(NNode, NBuildable):
         self.visible = False
         Workplane_methods = get_Workplane_operations()
         self.method = Workplane_methods[method_name]
+        self._ast_node = self._get_ast()
+
+    def __repr__(self) -> str:
+        pass
+
+    def _get_ast(self) -> ast.Call:
+        """
+        Creates an AST node 
+        """
+
+        args_nodes = []
+        kwargs_nodes = []
+        for child in self._childs:
+            if child.is_kwarg:
+                kwargs_nodes.append(child.ast_node)
+            else:
+                args_nodes.append(child.ast_node)
+
+        part_name = ast.Name(self._parent.name, ctx = ast.Store())
+        
+
+        
+
+        assign_val = ast.parse(f"{self._parent.name}.end(0)").body[0].value #it's just easier to let python make the nodes for us
+        method_node = ast.Attribute(assign_val,self.name, ctx = ast.Load())        
+        method_call = ast.Call(func = method_node, args=args_nodes, keywords=kwargs_nodes) 
+
+        assign = ast.Assign(targets = [part_name], value = method_call, type_comment = None)        
+        module = ast.Module([assign], type_ignores = None)        
+        ast.fix_missing_locations(module)
+        return module
+
+
+                
+    def update(self, idx: QModelIndex):
+        if idx.parent().internalPointer() == self:
+            # pos = idx.row()
+            pos = self._row
+            node = self._get_ast()
+            # self._ast_node = node =  update_operation_index(node, pos)
+
+            import pickle
+            with open(r"D:\Projets\Nales\nales_alpha\temp_test\toto", "wb") as out:
+                pickle.dump(node, out)
+
+            code = compile(node,"nales", "exec")
+            exec(code, self.root_node.console_namespace)
+            
+
+            self.updated.emit()       
+                
+
 
 
 
@@ -277,23 +321,57 @@ class NArgument(NNode):
     type: value type : a voir si je garde ca
     If the Argument is linked to a Parameter, the Parameter name is displayed
     """
-    def __init__(self, arg_name:str, value, type,  parent):
+    def __init__(self, arg_name:str, value, parent, kwarg=False):
         super().__init__(None, arg_name, parent=parent)
 
         self._name = arg_name
-        self._value = value
-        self._type = type
-        if type == "cq_shape":
-            self._value = self._get_shape_source()
-
-
+        if type(value) == str and (value in self.root_node.console_namespace.keys()):
+            self._type = type(self.root_node.console_namespace[value])
+            self._value = self.root_node.console_namespace[value]
+        else:
+            self._type = type(value)
+            self._value = value
+            
+        self._kwarg = kwarg # Boolean indicating if the arg is a kwarg or not
+        
 
         self._linked_param = None
 
         self._param_name_pidx = None
         self._param_value_pidx = None
+        
 
         self._get_args_names_and_types()
+
+    # def __repr__(self) -> str:
+    #     return 
+
+
+        
+
+    @property
+    def ast_node(self):
+        #on considère atm que les types builtins 
+        try:
+            raw = ast.literal_eval(str(self._value))
+        except SyntaxError:
+            raise ValueError("Wrong arg value")
+        arg_type = type(raw)
+        
+
+        constant_node = PY_TYPES_TO_AST_NODE[arg_type](value = self._value, kind=None)
+        if self.is_kwarg():
+            kw_node = ast.keyword(arg=self.name, value = constant_node)
+            ast.fix_missing_locations(kw_node)
+            return kw_node
+        else:
+            ast.fix_missing_locations(constant_node)
+            return constant_node
+
+ 
+
+    def is_kwarg(self):
+        return self._kwarg
 
     def is_linked(self):
         if self._linked_param:
@@ -303,6 +381,8 @@ class NArgument(NNode):
     
     def _get_shape_source(self):
         """
+        A SUPPRIMER / NArgument should not be able to go back the tree like that
+
         If the Argument is a cq shape object we retrieve the source code to be able to rebuild everything from scratch        
         """
         var_name = self.name
@@ -311,6 +391,7 @@ class NArgument(NNode):
             if var_name == shape_node.name:
                 return shape_node._source_code
 
+    
 
     def _get_args_names_and_types(self):
         parent_method = self.parent.method

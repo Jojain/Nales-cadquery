@@ -51,8 +51,10 @@ def update_operation_index(operation_ast, position):
 
                 assert isinstance(new_node, Call)
                 return new_node         
-    
+            else:
+                return node
     new_op_ast = ReIndexer().visit(operation_ast)   
+    ast.fix_missing_locations(new_op_ast)
     return new_op_ast         
 
 def prepare_parent_childs(tree):
@@ -155,7 +157,10 @@ class CQAssignAnalyzer(ast.NodeVisitor):
                 cmd.obj = self._console_ns[self.cmd.var]
             except KeyError:
                 cmd.type = "undefined"
-        cmd.operations = OrderedDict(reversed(list(cmd.operations.items())))
+        if cmd.operations:
+            cmd.operations = OrderedDict(reversed(list(cmd.operations.items())))
+        else:
+            cmd.operations = OrderedDict()
         return cmd 
 
     def visit_Assign(self, node):
@@ -214,7 +219,10 @@ class CQAssignAnalyzer(ast.NodeVisitor):
                 kwargs = get_Wp_method_kwargs(method_name)
                 for invoked_kw in sub_node.keywords:
                     kwargs[invoked_kw.arg] = invoked_kw.arg.value.value # override defaults kwargs by the ones passed
-                call_stack[method_name] = ([arg.value for arg in sub_node.args], kwargs)
+                try:
+                    call_stack[method_name] = ([arg.value if hasattr(arg, "value") else arg.id for arg in sub_node.args ], kwargs)
+                except AttributeError:
+                    pass
 
         return call_stack
 

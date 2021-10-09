@@ -42,7 +42,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 
         ctx = self.viewer.context
-        self.model = NModel(ctx = ctx)
+        self.model = NModel(ctx = ctx, console = self._console)
         self.modeling_ops_tree.setModel(self.model)
         self.param_model = ParamTableModel([])
         self.param_table_view.setModel(self.param_model)

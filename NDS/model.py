@@ -159,7 +159,7 @@ class NModel(QAbstractItemModel):
 
     node_edited = pyqtSignal(NNode)
 
-    def __init__(self, ctx, nodes = None):
+    def __init__(self, ctx, nodes = None, console = None):
         """
         ctx: occt viewer context
         """
@@ -169,6 +169,7 @@ class NModel(QAbstractItemModel):
         self._root = NNode(None)
         self._root._viewer = self.app._pres_viewer # attach the viewer to the root node so child interfaces can Update the viewer without the need to send a signal
         self._root._label = self.app.doc.GetData().Root()
+        self._root.console_namespace = console._get_console_namespace()
 
 
         self.insertRows(0,0,NNode(None, "Parts", self._root))
@@ -189,16 +190,16 @@ class NModel(QAbstractItemModel):
 
         # We check if the part is already defined
         if part_node := self._root.find(name):
-            # part_idx = self.index_from_node(part_node)
             part_idx = self.index(part_node._row-1, 0, parts_idx )
             self.removeRows([part_idx.child(i,0) for i in range(self.rowCount(part_idx))], part_idx)
- 
+            
 
-        else:
-            node = NPart(name, part, self._root.child(0))    
-            self.insertRows(self.rowCount(parts_idx), 0, None, parent=parts_idx)
-            self.dataChanged.connect(node.rebuild) 
-   
+        
+        node = NPart(name, part, self._root.child(0))    
+        self.insertRows(self.rowCount(parts_idx), 0, None, parent=parts_idx)
+
+        node.display()
+        self.dataChanged.connect(node.rebuild)
 
 
 
@@ -226,18 +227,31 @@ class NModel(QAbstractItemModel):
 
             args, kwargs = parameters[0], parameters[1]
             args_names = get_Wp_method_args_name(method)
-            for pos, arg in enumerate(args):                
-                node = NArgument(args_names[pos], arg, type(arg), operation) 
-                self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+            if len(args) == len(args_names):
 
-            for kwarg_name, kwarg_val in kwargs.items():
-                    node = NArgument(kwarg_name, kwarg_val, type(kwarg_name), operation) 
+                for pos, arg in enumerate(args):                
+                    node = NArgument(args_names[pos], arg, operation) 
+                    self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+            else: 
+                # Means the user passed an argument without calling the keyword
+                nb_short_call_kwarg = len(args) - len(args_names)
+
+                for pos, arg in enumerate(args[0:nb_short_call_kwarg-1]):                
+                    node = NArgument(args_names[pos], arg, operation) 
                     self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
 
+                kw_names = [kw_name for kw_name in list(kwargs.keys())]
+                for kwarg_name, kwarg_val in zip(kw_names,args[nb_short_call_kwarg - 1:]):
+                    kwargs[kwarg_name] = kwarg_val
+
+            for kwarg_name, kwarg_val in kwargs.items():
+                    node = NArgument(kwarg_name, kwarg_val, operation, kwarg=True) 
+                    self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+
+        self.dataChanged.connect(lambda idx : operation.update(idx)) 
 
 
 
-        parent_part.rebuild()
 
 
     def index_from_node(self, node: "NNode") -> QModelIndex:
