@@ -2,7 +2,7 @@
 import ast
 from inspect import signature
 from typing import Union
-from PyQt5.QtCore import  QModelIndex, pyqtSignal
+from PyQt5.QtCore import  QModelIndex, QObject, pyqtSignal
 from cadquery import Workplane
 
 from OCP.TDataStd import TDataStd_Name
@@ -143,11 +143,13 @@ class NPart(NNode):
         if len(part.objects) != 0:
 
             self._occt_shape = part.val().wrapped
-
-        self._occt_shape = TopoDS_Shape()
+        else:
+            self._occt_shape = TopoDS_Shape()
 
         self.display()
 
+    def _update_occt_shape(self):        
+        self._occt_shape = self.root_node.console_namespace[self.name].val().wrapped
 
     def hide(self):
 
@@ -163,6 +165,7 @@ class NPart(NNode):
 
         if update:
             self.ais_shape.Erase(remove=True)
+            self._update_occt_shape()
             self.root_node._viewer.Update()
 
 
@@ -172,34 +175,15 @@ class NPart(NNode):
         named_shape = self.bldr.NamedShape()
         self._label.FindAttribute(TNaming_NamedShape.GetID_s(), named_shape)
 
-        self.ais_shape = TPrsStd_AISPresentation.Set_s(named_shape)
-        # self.ais_shape = TPrsStd_AISPresentation.Set_s(self._label, TNaming_NamedShape.GetID_s())
+        # self.ais_shape = TPrsStd_AISPresentation.Set_s(named_shape)
+        self.ais_shape = TPrsStd_AISPresentation.Set_s(self._label, TNaming_NamedShape.GetID_s())
         # self.ais_shape.SetTransparency(0.1)
         self.ais_shape.Display(update=True)
         self.root_node._viewer.Update()
-        # self.root_node._viewer.fit()
 
         self.visible = True
 
-    def rebuild(self, param_edited: "Argument" = None) :
-        """
-        Reconstruit le workplane et le réaffiche
-        Il faut voir si je peux faire un truc du style:
 
-        new_wp = old.end(n) avec n la pos de l'opération du param modifié
-        for operations in self.childs:
-            new_wp += operation(args)
-        """
-
-        #Pour l'instant on rebuild tout le Workplane
-        # Mais il faut recup param_edited, localiser la
-
-        #Il faudrait créer un AST Tree mais pour l'instant on fait ça salement
-
-        obj = self.root_node.console_namespace[self.name]
-        self._occt_shape = obj.val().wrapped
-        if self.visible:
-            self.display()
 
 
 class NShape(NNode):
@@ -242,9 +226,8 @@ class NShape(NNode):
 
         self.visible = True
 
-class NOperation(NNode, NBuildable):
+class NOperation(NNode):
 
-    updated = pyqtSignal()
 
     def __init__(self, method_name: str, name, part: Workplane, parent : NNode):
         super().__init__(method_name, name, parent=parent)
@@ -255,57 +238,44 @@ class NOperation(NNode, NBuildable):
         self.visible = False
         Workplane_methods = get_Workplane_operations()
         self.method = Workplane_methods[method_name]
-        self._ast_node = self._get_ast()
+        
+
+        if self.method == "Workplane":
+            self._root_operation = True 
+        else:
+            self._root_operation = False
 
     def __repr__(self) -> str:
         pass
 
-    def _get_ast(self) -> ast.Call:
+    def _get_ast(self, rewind_idx: int = 0) -> ast.Module:
         """
         Creates an AST node 
         """
+        unpack = lambda args : ",".join(args)
 
-        args_nodes = []
-        kwargs_nodes = []
-        for child in self._childs:
-            if child.is_kwarg:
-                kwargs_nodes.append(child.ast_node)
-            else:
-                args_nodes.append(child.ast_node)
+        args = []
+        for child in self._childs:            
+                args.append(repr(child))
 
-        part_name = ast.Name(self._parent.name, ctx = ast.Store())
+
+        if not self._root_operation:            
+            code_line = f"{self.parent.name} = {self.parent.name}.end({rewind_idx}).{self.name}({unpack(args)})"
+        else:
+            code_line = f"{self.parent.name} = {self.parent.name}.{self.name}({unpack(args)})"
         
-
-        
-
-        assign_val = ast.parse(f"{self._parent.name}.end(0)").body[0].value #it's just easier to let python make the nodes for us
-        method_node = ast.Attribute(assign_val,self.name, ctx = ast.Load())        
-        method_call = ast.Call(func = method_node, args=args_nodes, keywords=kwargs_nodes) 
-
-        assign = ast.Assign(targets = [part_name], value = method_call, type_comment = None)        
-        module = ast.Module([assign], type_ignores = None)        
-        ast.fix_missing_locations(module)
-        return module
+        return ast.parse(code_line)
 
 
                 
-    def update(self, idx: QModelIndex):
-        if idx.parent().internalPointer() == self:
-            # pos = idx.row()
-            pos = self._row
-            node = self._get_ast()
-            # self._ast_node = node =  update_operation_index(node, pos)
+    def _update(self, pos):
 
-            import pickle
-            with open(r"D:\Projets\Nales\nales_alpha\temp_test\toto", "wb") as out:
-                pickle.dump(node, out)
+        node = self._get_ast(pos)
 
-            code = compile(node,"nales", "exec")
-            exec(code, self.root_node.console_namespace)
+        code = compile(node,"nales", "exec")
+        exec(code, self.root_node.console_namespace)        
+
             
-
-            self.updated.emit()       
-                
 
 
 
@@ -343,8 +313,8 @@ class NArgument(NNode):
 
         self._get_args_names_and_types()
 
-    # def __repr__(self) -> str:
-    #     return 
+    def __repr__(self) -> str:
+        return str(self._value)
 
 
         

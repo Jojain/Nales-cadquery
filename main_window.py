@@ -110,8 +110,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         
 
 
-
-
     def _setup_param_table_view(self):
         """
         Method for handling all the display settings of the param table view      

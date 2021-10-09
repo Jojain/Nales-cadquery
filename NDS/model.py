@@ -174,6 +174,7 @@ class NModel(QAbstractItemModel):
 
         self.insertRows(0,0,NNode(None, "Parts", self._root))
         self.insertRows(1,0,NNode(None, "Shapes", self._root))
+        self.insertRows(2,0,NNode(None, "Others", self._root))
 
         # Slots connection 
 
@@ -199,7 +200,6 @@ class NModel(QAbstractItemModel):
         self.insertRows(self.rowCount(parts_idx), 0, None, parent=parts_idx)
 
         node.display()
-        self.dataChanged.connect(node.rebuild)
 
 
 
@@ -248,10 +248,17 @@ class NModel(QAbstractItemModel):
                     node = NArgument(kwarg_name, kwarg_val, operation, kwarg=True) 
                     self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
 
-        self.dataChanged.connect(lambda idx : operation.update(idx)) 
+        self.dataChanged.connect(lambda idx : self.update_operation(idx)) 
 
 
 
+    def update_operation(self, idx: QModelIndex) -> None:
+        if isinstance(ptr := idx.internalPointer(), NArgument):
+            operation = ptr.parent
+
+            pos = len(operation.parent.childs) - operation._row
+            operation._update(pos)
+            operation.parent.display(update=True)
 
 
     def index_from_node(self, node: "NNode") -> QModelIndex:
@@ -282,9 +289,6 @@ class NModel(QAbstractItemModel):
         for idx in indexes:
             self.setData(idx, (name_pidx.data(), value_pidx.data(), name_pidx, value_pidx), Qt.EditRole)
 
-    
-        for part_idx in self.childrens(self.index(0,0)):
-            part_idx.internalPointer().rebuild()
 
     def _disconnect_parameter(self, arg_idx: QModelIndex = None, param_idx: QModelIndex = None):
         if arg_idx and not param_idx:
@@ -317,32 +321,13 @@ class NModel(QAbstractItemModel):
                 if node.is_linked():
                     node._linked_param = node._param_name_pidx.data()
                     node.value = node._param_value_pidx.data()
-
-                    node_idx = self.index(node._row, 0)
                     
-                    self.dataChanged.emit(node_idx,node_idx) # here we could modify the behaviour to send only one signal after we modified all the nodes
+                    self.dataChanged.emit(idx,idx) # here we could modify the behaviour to send only one signal after we modified all the nodes
                     
 
                 
-        
-        # for arg in self.arguments:
-        #     if arg.linked_param:
-        #         linked_args.append(arg)
-        
-        # for arg in linked_args:
-        #     if arg
-
-        
 
     
-
-    # def _add_child(self, node, _parent: QModelIndex = QModelIndex()):
-    #     if not _parent or not _parent.isValid():
-    #         parent = self._root
-    #     else:
-    #         parent = _parent.internalPointer()
-    #     parent.add_child(node)
-    #     NNode()
 
 
     def walk(self, index: QModelIndex = QModelIndex()) -> QModelIndex:
@@ -362,37 +347,7 @@ class NModel(QAbstractItemModel):
         else:
             return []
 
-    ##############
-    # Handlers 
-    ##############
-    # def _on_context_menu_request(self, pos: QPoint, selection: List[QModelIndex]):
-    #     for item in selection:
-    #         if isinstance(item.internalPointer(), Argument):
-    #             context_menu = QMenu("Argument selection")
-    #         else:
-    #             return
-
-    # def _on_double_click_item_in_view(self, index: QModelIndex):
-        
-    #     node = index.internalPointer()
-    #     if type(node) == Argument:
-    #         self.setData(index, 100)
-            
-    # def _on_data_changed(self, first_idx, last_idx):
-    #     # handle only the first idx change for now
-
-    ##############
-    # Signals connexions 
-    ##############
-
-    
-
-
-
-
-
-
-
+ 
     ##
     # Redifined functions
     ##
