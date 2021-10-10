@@ -15,7 +15,7 @@ from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
 from OCP.TDF import TDF_Label, TDF_TagSource
 from OCP.TCollection import TCollection_ExtendedString
 from OCP.TopoDS import TopoDS_Shape
-from nales_alpha.utils import PY_TYPES_TO_AST_NODE, get_Workplane_operations
+from nales_alpha.utils import PY_TYPES_TO_AST_NODE, get_Workplane_methods
 from OCP.Quantity import Quantity_NameOfColor
 
 import cadquery as cq
@@ -236,7 +236,7 @@ class NOperation(NNode):
         # Otherwise we will fill the memory with a lot of shapes, but as a start it's ok 
         self.name = method_name
         self.visible = False
-        Workplane_methods = get_Workplane_operations()
+        Workplane_methods = get_Workplane_methods()
         self.method = Workplane_methods[method_name]
         
 

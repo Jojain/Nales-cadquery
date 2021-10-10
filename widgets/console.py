@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QApplication, QHBoxLayout, QWidget, QMainWindow
 from PyQt5.QtCore import pyqtSlot, pyqtSignal
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 from qtconsole.inprocess import QtInProcessKernelManager
-from nales_alpha.NDS.commands import CQAssignAnalyzer, Command, prepare_parent_childs
+from nales_alpha.NDS.commands import CQAssignAnalyzer, Command, SubCommand, prepare_parent_childs
 import sys, io 
 import ast
 from PyQt5 import QtWidgets
@@ -47,17 +47,11 @@ class ConsoleWidget(RichJupyterWidget):
         """   
         ns = self._get_console_namespace()
         ns_before_cmd = ns.copy() # on récupère l'état du namespace avant l'exécution de la cmd
-        # for k,v in ns.items() :
-        #     print(f"{k} = {v}")
-        # else:
-        #     print("------------\n-----------\n")
 
         super()._execute(source, hidden)
         
         # self.exit_requested.connect a voir si je peux gerer les erreurs de la console avec un signal pour pas excecuter la suite du code
         # self.executed.connect
-
-
 
         # analyzer = CommandAnalyzer(ns, ns_before_cmd)
         analyzer = CQAssignAnalyzer(ns, ns_before_cmd)
@@ -68,12 +62,14 @@ class ConsoleWidget(RichJupyterWidget):
 
         
         cmd = analyzer.get_command()
-
-        # if cmd.type != "undefined":
-        #     cmd.workplane = self.get_workplane(cmd.var)
-
         
         self.on_command.emit(cmd)   
+
+        if sub_cmds := analyzer.sub_commands:
+            for sub_cmd in sub_cmds:
+                self.on_command.emit(sub_cmd)
+
+
 
         
     def _get_console_namespace(self):
