@@ -395,6 +395,7 @@ class Command():
     def __init__(self, subcommand = False):
         self.type = "undefined" if subcommand is False else "unbound"
         self.var = None 
+        # type : OrderedDict[str, Tuple(Any, OrderectDict)]
         self.operations = None
         self.obj = None
         self.topo_type = None

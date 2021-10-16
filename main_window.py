@@ -1,7 +1,9 @@
+import inspect
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QAbstractItemView, QHeaderView
+from cadquery.cq import Workplane
 from nales_alpha.uic.mainwindow import Ui_MainWindow
 import qtconsole
 from PyQt5.QtCore import pyqtSlot, pyqtSignal
@@ -15,10 +17,15 @@ import re
 from nales_alpha.NDS.commands import Command
 from nales_alpha.NDS.model import NModel, NNode, ParamTableModel, setup_dummy_model
 
+import nales_alpha.monkey_patcher 
+from nales_alpha.monkey_patcher import OperationHandler
+
 from qt_material import apply_stylesheet
 from nales_alpha.views.tree_views import ModelingOpsView
 #debug related import
 import debugpy
+
+from utils import get_Workplane_methods
 debugpy.debug_this_thread()
 
 
@@ -52,18 +59,33 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Views / Widgets setup
         self._setup_param_table_view()
         self._setup_modeling_ops_view()
+
+        self.m =[]
         
-        self._console.push_vars({"model" : self.model, "mw": self, "save": self.model.app.save_as, "cq" : cq}) 
         
 
+                
+        self.handler = OperationHandler(self._console._get_console_namespace())
         
+        for method in [method for (name, method) in inspect.getmembers(cq.Workplane) if not name.startswith("_")]:
+            method = self.handler.operation_handler(method)
+            setattr(cq.Workplane, method.__name__, method)
+ 
+
+        self._console.push_vars({"model" : self.model, "mw": self, "save": self.model.app.save_as, "cq" : cq}) 
+
+        # self.handler.monkey_patch()
+        # cq.Workplane.add = self.handler.operation_handler(cq.Workplane.add)
+        # cq.Workplane.box = self.handler.operation_handler(cq.Workplane.box)
+        # cq.Workplane.box = self.handler.operation_handler(cq.Workplane.box)
+        # cq.Workplane.sphere = self.handler.operation_handler(cq.Workplane.sphere)
 
 
 
 
         #Connect all the slots to the needed signals
         self._console.on_command.connect(lambda c : handle_command(self, c))
-     
+
 
         @pyqtSlot(Command)
         def handle_command(self, command):
@@ -72,22 +94,24 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             """
             if command.type == "undefined":
                 return 
+            
 
+            operations = self.handler.operations
             if command.type == "other":
                 pass
 
             if command.type in ("new_part","part_edit","part_override"):
                 part = command.obj
                 part_name = command.var
-                operations = command.operations
 
                 if command.type in ("new_part", "part_override"):
                     self.model.add_part(part_name, part)
-
-                if len(operations) != 0:
-                    self.model.add_operations(part_name, part, operations)
-                    self.modeling_ops_tree.expandAll()
-                    self.viewer.fit()
+                
+                for operation in operations:
+                    if len(operation) != 0:
+                        self.model.add_operations(part_name, part, operation)
+                        self.modeling_ops_tree.expandAll()
+                        self.viewer.fit()
 
 
             if command.type == "new_shape":
