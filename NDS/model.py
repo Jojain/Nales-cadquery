@@ -31,7 +31,7 @@ from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
 from OCP.TDF import TDF_Label, TDF_TagSource
 from OCP.TCollection import TCollection_ExtendedString
 from OCP.TopoDS import TopoDS_Shape
-from nales_alpha.utils import get_Workplane_operations
+from nales_alpha.utils import get_Wp_method_args_name
 from nales_alpha.NDS.interfaces import NNode, NPart, NOperation, NArgument, NShape
 
 
@@ -159,7 +159,7 @@ class NModel(QAbstractItemModel):
 
     node_edited = pyqtSignal(NNode)
 
-    def __init__(self, ctx, nodes = None):
+    def __init__(self, ctx, nodes = None, console = None):
         """
         ctx: occt viewer context
         """
@@ -169,10 +169,12 @@ class NModel(QAbstractItemModel):
         self._root = NNode(None)
         self._root._viewer = self.app._pres_viewer # attach the viewer to the root node so child interfaces can Update the viewer without the need to send a signal
         self._root._label = self.app.doc.GetData().Root()
+        self._root.console_namespace = console._get_console_namespace()
 
 
         self.insertRows(0,0,NNode(None, "Parts", self._root))
         self.insertRows(1,0,NNode(None, "Shapes", self._root))
+        self.insertRows(2,0,NNode(None, "Others", self._root))
 
         # Slots connection 
 
@@ -189,16 +191,15 @@ class NModel(QAbstractItemModel):
 
         # We check if the part is already defined
         if part_node := self._root.find(name):
-            # part_idx = self.index_from_node(part_node)
             part_idx = self.index(part_node._row-1, 0, parts_idx )
             self.removeRows([part_idx.child(i,0) for i in range(self.rowCount(part_idx))], part_idx)
- 
+            
 
-        else:
-            node = NPart(name, part, self._root.child(0))    
-            self.insertRows(self.rowCount(parts_idx), 0, None, parent=parts_idx)
-            self.dataChanged.connect(node.rebuild) 
-   
+        
+        node = NPart(name, part, self._root.child(0))    
+        self.insertRows(self.rowCount(parts_idx), 0, None, parent=parts_idx)
+
+        node.display()
 
 
 
@@ -218,25 +219,65 @@ class NModel(QAbstractItemModel):
         part_idx = self.index(row, 0, parts_idx)
         
         
-        for operation, parameters in operations.items():
-            operation = NOperation(operation, operation, wp, parent_part)
+        for method, parameters in operations.items():
+            operation = NOperation(method, method, wp, parent_part)
             self.insertRows(self.rowCount(), 0, operation, part_idx)
 
             operation_idx = self.index(operation._row, 0, part_idx)
 
-            for param_type, param_values in parameters.items():
+            args, kwargs = parameters[0], parameters[1]
+            args_names = get_Wp_method_args_name(method)
+            if len(args) == len(args_names):
 
-
-                for param_value in param_values:
-                    #si param_value est un tuple c'est qu'on a un param qui est un objet
-                    if isinstance(param_value, tuple):
-                        node = NArgument(str(param_value[0]), None, "cq_shape", operation) 
-                    else:
-                        node = NArgument(str(param_type), param_value, type(param_value), operation) 
-
+                for pos, arg in enumerate(args):                
+                    node = NArgument(args_names[pos], arg, operation) 
                     self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+            else: 
+                # Means the user passed an argument without calling the keyword
+                nb_short_call_kwarg = len(args) - len(args_names)
+
+                for pos, arg in enumerate(args[0:nb_short_call_kwarg-1]):                
+                    node = NArgument(args_names[pos], arg, operation) 
+                    self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+
+                kw_names = [kw_name for kw_name in list(kwargs.keys())]
+                for kwarg_name, kwarg_val in zip(kw_names,args[nb_short_call_kwarg - 1:]):
+                    kwargs[kwarg_name] = kwarg_val
+
+            for kwarg_name, kwarg_val in kwargs.items():
+                    node = NArgument(kwarg_name, kwarg_val, operation, kwarg=True) 
+                    self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+
+        self.dataChanged.connect(lambda idx : self.update_operation(idx)) 
+
+
+
+    def update_shape(self, idx: QModelIndex) -> None:
+        pass
+
+
+    def update_operation(self, idx: QModelIndex) -> None:
+        # if isinstance(ptr := idx.internalPointer(), NArgument):
+        #     operation = ptr.parent
+
+        #     pos = len(operation.parent.childs) - operation._row
+        #     operation._update(pos)
+        #     operation.parent.display(update=True)
         
-        parent_part.rebuild()
+        if isinstance(ptr := idx.internalPointer(), NArgument):           
+            starting_op = ptr.parent
+            part = starting_op.parent
+
+            operations = part.childs[starting_op._row-1:]
+
+            for operation in operations:
+                if operation is starting_op:
+                    pos = len(part.childs) - operation._row + 1
+                else:
+                    pos = 0
+                operation._update(pos)
+
+            part.display(update=True)
 
 
     def index_from_node(self, node: "NNode") -> QModelIndex:
@@ -251,13 +292,11 @@ class NModel(QAbstractItemModel):
         return node_idx
 
     def add_shape(self, shape_name, shape, topo_type, method_call):
-        (method_name, args), = method_call.items()      
+        (method_name, args), = method_call.items() #weird unpacking necessary for 1 element dict
 
-        # invoked_method = f"cq.{topo_type}.{method_name}{tuple(list(args.values())[0])}"
-        invoked_method = {'class_name': topo_type, 'method_name': method_name, 'args': list(args.values())[0]}
+        invoked_method = {'class_name': topo_type, 'method_name': method_name, 'args': args[0], 'kwargs' : args[1] }
         node = NShape(shape_name, shape, invoked_method, self._root.child(1))    
-        # self.dataChanged.connect(node.rebuild) # ce genre de truc devra être géré par le model 
-                                                # actuellement le code reconstruirait toutes les parts meme si elles n'ont pas été modifiées
+
         shapes_idx = self.index(self._root.child(1)._row, 0)
         self.insertRows(self.rowCount(shapes_idx), 0, node, parent=shapes_idx)
        
@@ -267,9 +306,6 @@ class NModel(QAbstractItemModel):
         for idx in indexes:
             self.setData(idx, (name_pidx.data(), value_pidx.data(), name_pidx, value_pidx), Qt.EditRole)
 
-    
-        for part_idx in self.childrens(self.index(0,0)):
-            part_idx.internalPointer().rebuild()
 
     def _disconnect_parameter(self, arg_idx: QModelIndex = None, param_idx: QModelIndex = None):
         if arg_idx and not param_idx:
@@ -302,32 +338,13 @@ class NModel(QAbstractItemModel):
                 if node.is_linked():
                     node._linked_param = node._param_name_pidx.data()
                     node.value = node._param_value_pidx.data()
-
-                    node_idx = self.index(node._row, 0)
                     
-                    self.dataChanged.emit(node_idx,node_idx) # here we could modify the behaviour to send only one signal after we modified all the nodes
+                    self.dataChanged.emit(idx,idx) # here we could modify the behaviour to send only one signal after we modified all the nodes
                     
 
                 
-        
-        # for arg in self.arguments:
-        #     if arg.linked_param:
-        #         linked_args.append(arg)
-        
-        # for arg in linked_args:
-        #     if arg
-
-        
 
     
-
-    # def _add_child(self, node, _parent: QModelIndex = QModelIndex()):
-    #     if not _parent or not _parent.isValid():
-    #         parent = self._root
-    #     else:
-    #         parent = _parent.internalPointer()
-    #     parent.add_child(node)
-    #     NNode()
 
 
     def walk(self, index: QModelIndex = QModelIndex()) -> QModelIndex:
@@ -347,37 +364,7 @@ class NModel(QAbstractItemModel):
         else:
             return []
 
-    ##############
-    # Handlers 
-    ##############
-    # def _on_context_menu_request(self, pos: QPoint, selection: List[QModelIndex]):
-    #     for item in selection:
-    #         if isinstance(item.internalPointer(), Argument):
-    #             context_menu = QMenu("Argument selection")
-    #         else:
-    #             return
-
-    # def _on_double_click_item_in_view(self, index: QModelIndex):
-        
-    #     node = index.internalPointer()
-    #     if type(node) == Argument:
-    #         self.setData(index, 100)
-            
-    # def _on_data_changed(self, first_idx, last_idx):
-    #     # handle only the first idx change for now
-
-    ##############
-    # Signals connexions 
-    ##############
-
-    
-
-
-
-
-
-
-
+ 
     ##
     # Redifined functions
     ##

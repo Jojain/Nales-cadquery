@@ -1,7 +1,8 @@
 
+import ast
 from inspect import signature
 from typing import Union
-from PyQt5.QtCore import  pyqtSignal
+from PyQt5.QtCore import  QModelIndex, QObject, pyqtSignal
 from cadquery import Workplane
 
 from OCP.TDataStd import TDataStd_Name
@@ -14,10 +15,11 @@ from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
 from OCP.TDF import TDF_Label, TDF_TagSource
 from OCP.TCollection import TCollection_ExtendedString
 from OCP.TopoDS import TopoDS_Shape
-from nales_alpha.utils import get_Workplane_operations
+from nales_alpha.utils import PY_TYPES_TO_AST_NODE, get_Workplane_methods
 from OCP.Quantity import Quantity_NameOfColor
 
 import cadquery as cq
+
 
 class NNode():
     error = pyqtSignal(str) # is emitted when an error occurs
@@ -122,8 +124,6 @@ class NNode():
             else:
                 return root
 
-
-
 class NPart(NNode):
 
     # viewer_updated = pyqtSignal()
@@ -136,11 +136,13 @@ class NPart(NNode):
         if len(part.objects) != 0:
 
             self._occt_shape = part.val().wrapped
+        else:
+            self._occt_shape = TopoDS_Shape()
 
-        self._occt_shape = TopoDS_Shape()
+        self.display()
 
-        self.display(self._occt_shape)
-
+    def _update_occt_shape(self):        
+        self._occt_shape = self.root_node.console_namespace[self.name].val().wrapped
 
     def hide(self):
 
@@ -148,7 +150,7 @@ class NPart(NNode):
         self.ais_shape.Erase(remove=True)
         self.root_node._viewer.Update()
 
-    def display(self, shape: TopoDS_Shape, update = False):
+    def display(self, update = False):
         """
         Builds the display object and attach it to the OCAF tree
         """
@@ -156,53 +158,25 @@ class NPart(NNode):
 
         if update:
             self.ais_shape.Erase(remove=True)
+            self._update_occt_shape()
             self.root_node._viewer.Update()
 
 
         self.bldr = TNaming_Builder(self._label) #_label is  TDF_Label
-        self.bldr.Generated(shape)
+        self.bldr.Generated(self._occt_shape)
 
         named_shape = self.bldr.NamedShape()
         self._label.FindAttribute(TNaming_NamedShape.GetID_s(), named_shape)
 
-        self.ais_shape = TPrsStd_AISPresentation.Set_s(named_shape)
-        # self.ais_shape = TPrsStd_AISPresentation.Set_s(self._label, TNaming_NamedShape.GetID_s())
+        # self.ais_shape = TPrsStd_AISPresentation.Set_s(named_shape)
+        self.ais_shape = TPrsStd_AISPresentation.Set_s(self._label, TNaming_NamedShape.GetID_s())
         # self.ais_shape.SetTransparency(0.1)
         self.ais_shape.Display(update=True)
         self.root_node._viewer.Update()
 
         self.visible = True
 
-    def rebuild(self, param_edited: "Argument" = None) :
-        """
-        Reconstruit le workplane et le réaffiche
-        Il faut voir si je peux faire un truc du style:
 
-        new_wp = old.end(n) avec n la pos de l'opération du param modifié
-        for operations in self.childs:
-            new_wp += operation(args)
-        """
-
-        #Pour l'instant on rebuild tout le Workplane
-        # Mais il faut recup param_edited, localiser la
-
-        #Il faudrait créer un AST Tree mais pour l'instant on fait ça salement
-
-        wp_rebuilt = "cq"
-
-        for operation in self.childs:
-            args_list = []
-            for param in operation.childs:
-                args_list.append(param.value)
-                    
-            args = f"({','.join(map(str,args_list))})"
-            wp_rebuilt += "."+operation.data(0) + str(args)
-
-        wp = eval(wp_rebuilt)
-        self._occt_shape = wp.val().wrapped
-
-        if self.visible:
-            self.display(self._occt_shape, update=True)
 
 
 class NShape(NNode):
@@ -245,16 +219,60 @@ class NShape(NNode):
 
         self.visible = True
 
+    def _update(self):
+
+        code = self.source_code
+        exec(code, self.root_node.console_namespace)    
+
 class NOperation(NNode):
+
+
     def __init__(self, method_name: str, name, part: Workplane, parent : NNode):
         super().__init__(method_name, name, parent=parent)
 
-        # Here we should modify the parent 'Part' shape with the help of TFunctions
-        # Otherwise we will fill the memory with a lot of shapes, but as a start it's ok 
         self.name = method_name
         self.visible = False
-        Workplane_methods = get_Workplane_operations()
+        Workplane_methods = get_Workplane_methods()
         self.method = Workplane_methods[method_name]
+        
+
+        if method_name == "Workplane":
+            self._root_operation = True 
+        else:
+            self._root_operation = False
+
+    def __repr__(self) -> str:
+        pass
+
+    def _get_ast(self, rewind_idx: int = 0) -> ast.Module:
+        """
+        Creates an AST node 
+        """
+        unpack = lambda args : ",".join(args)
+
+        args = []
+        for child in self._childs:            
+                args.append(repr(child))
+
+
+        if not self._root_operation:            
+            code_line = f"{self.parent.name} = {self.parent.name}.end({rewind_idx}).{self.name}({unpack(args)})"
+        else:
+            code_line = f"{self.parent.name} = cq.{self.name}({unpack(args)})"
+        
+        return ast.parse(code_line)
+
+
+                
+    def _update(self, pos):
+
+        node = self._get_ast(pos)
+
+        code = compile(node,"nales", "exec")
+        exec(code, self.root_node.console_namespace)        
+
+            
+
 
 
 
@@ -269,23 +287,57 @@ class NArgument(NNode):
     type: value type : a voir si je garde ca
     If the Argument is linked to a Parameter, the Parameter name is displayed
     """
-    def __init__(self, arg_name:str, value, type,  parent):
+    def __init__(self, arg_name:str, value, parent, kwarg=False):
         super().__init__(None, arg_name, parent=parent)
 
         self._name = arg_name
-        self._value = value
-        self._type = type
-        if type == "cq_shape":
-            self._value = self._get_shape_source()
-
-
+        if type(value) == str and (value in self.root_node.console_namespace.keys()):
+            self._type = type(self.root_node.console_namespace[value])
+            self._value = self.root_node.console_namespace[value]
+        else:
+            self._type = type(value)
+            self._value = value
+            
+        self._kwarg = kwarg # Boolean indicating if the arg is a kwarg or not
+        
 
         self._linked_param = None
 
         self._param_name_pidx = None
         self._param_value_pidx = None
+        
 
         self._get_args_names_and_types()
+
+    def __repr__(self) -> str:
+        return f"{self._value}"
+
+
+        
+
+    # @property
+    # def ast_node(self):
+    #     #on considère atm que les types builtins 
+    #     try:
+    #         raw = ast.literal_eval(str(self._value))
+    #     except SyntaxError:
+    #         raise ValueError("Wrong arg value")
+    #     arg_type = type(raw)
+        
+
+    #     constant_node = PY_TYPES_TO_AST_NODE[arg_type](value = self._value, kind=None)
+    #     if self.is_kwarg():
+    #         kw_node = ast.keyword(arg=self.name, value = constant_node)
+    #         ast.fix_missing_locations(kw_node)
+    #         return kw_node
+    #     else:
+    #         ast.fix_missing_locations(constant_node)
+    #         return constant_node
+
+ 
+
+    def is_kwarg(self):
+        return self._kwarg
 
     def is_linked(self):
         if self._linked_param:
@@ -293,16 +345,19 @@ class NArgument(NNode):
         else:
             return False
     
-    def _get_shape_source(self):
-        """
-        If the Argument is a cq shape object we retrieve the source code to be able to rebuild everything from scratch        
-        """
-        var_name = self.name
+    # def _get_shape_source(self):
+    #     """
+    #     A SUPPRIMER / NArgument should not be able to go back the tree like that
 
-        for shape_node in self.walk(self.root_node.child(1)):
-            if var_name == shape_node.name:
-                return shape_node._source_code
+    #     If the Argument is a cq shape object we retrieve the source code to be able to rebuild everything from scratch        
+    #     """
+    #     var_name = self.name
 
+    #     for shape_node in self.walk(self.root_node.child(1)):
+    #         if var_name == shape_node.name:
+    #             return shape_node._source_code
+
+    
 
     def _get_args_names_and_types(self):
         parent_method = self.parent.method

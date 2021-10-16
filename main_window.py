@@ -42,7 +42,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 
         ctx = self.viewer.context
-        self.model = NModel(ctx = ctx)
+        self.model = NModel(ctx = ctx, console = self._console)
         self.modeling_ops_tree.setModel(self.model)
         self.param_model = ParamTableModel([])
         self.param_table_view.setModel(self.param_model)
@@ -73,6 +73,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if command.type == "undefined":
                 return 
 
+            if command.type == "other":
+                pass
 
             if command.type in ("new_part","part_edit","part_override"):
                 part = command.obj
@@ -92,7 +94,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 shape = command.obj
                 shape_name = command.var
                 topo_type = command.topo_type
-                method_call = command.method_call
+                method_call = command.operations
                 self.model.add_shape(shape_name, shape, topo_type, method_call)     
                 self.modeling_ops_tree.expandAll()
 
@@ -108,8 +110,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         tree.customContextMenuRequested.connect(lambda pos: tree._on_context_menu_request(pos, tree.selectionModel().selectedRows(), self.param_model, self.model)) 
         # connecting slots
         
-
-
 
 
     def _setup_param_table_view(self):
