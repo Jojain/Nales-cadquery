@@ -73,6 +73,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if command.type == "undefined":
                 return 
 
+            if command.type == "other":
+                pass
 
             if command.type in ("new_part","part_edit","part_override"):
                 part = command.obj
@@ -92,7 +94,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 shape = command.obj
                 shape_name = command.var
                 topo_type = command.topo_type
-                method_call = command.method_call
+                method_call = command.operations
                 self.model.add_shape(shape_name, shape, topo_type, method_call)     
                 self.modeling_ops_tree.expandAll()
 

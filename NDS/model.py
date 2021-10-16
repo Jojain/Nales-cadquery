@@ -252,13 +252,32 @@ class NModel(QAbstractItemModel):
 
 
 
-    def update_operation(self, idx: QModelIndex) -> None:
-        if isinstance(ptr := idx.internalPointer(), NArgument):
-            operation = ptr.parent
+    def update_shape(self, idx: QModelIndex) -> None:
+        pass
 
-            pos = len(operation.parent.childs) - operation._row
-            operation._update(pos)
-            operation.parent.display(update=True)
+
+    def update_operation(self, idx: QModelIndex) -> None:
+        # if isinstance(ptr := idx.internalPointer(), NArgument):
+        #     operation = ptr.parent
+
+        #     pos = len(operation.parent.childs) - operation._row
+        #     operation._update(pos)
+        #     operation.parent.display(update=True)
+        
+        if isinstance(ptr := idx.internalPointer(), NArgument):           
+            starting_op = ptr.parent
+            part = starting_op.parent
+
+            operations = part.childs[starting_op._row-1:]
+
+            for operation in operations:
+                if operation is starting_op:
+                    pos = len(part.childs) - operation._row + 1
+                else:
+                    pos = 0
+                operation._update(pos)
+
+            part.display(update=True)
 
 
     def index_from_node(self, node: "NNode") -> QModelIndex:
@@ -273,13 +292,11 @@ class NModel(QAbstractItemModel):
         return node_idx
 
     def add_shape(self, shape_name, shape, topo_type, method_call):
-        (method_name, args), = method_call.items()      
+        (method_name, args), = method_call.items() #weird unpacking necessary for 1 element dict
 
-        # invoked_method = f"cq.{topo_type}.{method_name}{tuple(list(args.values())[0])}"
-        invoked_method = {'class_name': topo_type, 'method_name': method_name, 'args': list(args.values())[0]}
+        invoked_method = {'class_name': topo_type, 'method_name': method_name, 'args': args[0], 'kwargs' : args[1] }
         node = NShape(shape_name, shape, invoked_method, self._root.child(1))    
-        # self.dataChanged.connect(node.rebuild) # ce genre de truc devra être géré par le model 
-                                                # actuellement le code reconstruirait toutes les parts meme si elles n'ont pas été modifiées
+
         shapes_idx = self.index(self._root.child(1)._row, 0)
         self.insertRows(self.rowCount(shapes_idx), 0, node, parent=shapes_idx)
        

@@ -1,9 +1,9 @@
 #%%
-from typing import Any
+from typing import Any, List, Tuple, Union
 from PyQt5.QtCore import QObject
 import ast
 # import astpretty
-from ast import Expr, Assign, Name, Call, Store, Attribute, Load, Constant, Expression, Module, Del, iter_child_nodes, walk
+from ast import Expr,keyword, Assign, Name, Call, Store, Attribute, Load, Constant, Expression, Module, Del, iter_child_nodes, walk
 import cadquery.cqgi
 from cadquery import Workplane
 from cadquery.occ_impl.shapes import Shape
@@ -26,17 +26,17 @@ def prepare_parent_childs(tree):
             node.childs.append(child_node)
             child_node.parent = node
 
-class CQCallAnalyze(ast.NodeVisitor):
-    def __init__(self) -> None:
-        super().__init__()
-        self.sub_cmd = Command()
+# class CQCallAnalyze(ast.NodeVisitor):
+#     def __init__(self) -> None:
+#         super().__init__()
+#         self.sub_cmd = Command()
 
 
-    def visit_Call(self, node: Call) -> None:
+#     def visit_Call(self, node: Call) -> None:
         
         
 
-        self.generic_visit(node)
+#         self.generic_visit(node)
 
 class CommandAnalyzer(ast.NodeVisitor):
     def __init__(self, ns, ns_before_cmd) -> None:
@@ -50,7 +50,7 @@ class CommandAnalyzer(ast.NodeVisitor):
             if isinstance(node, Assign):
                 analyzer = CQAssignAnalyzer(self._console_ns, self._console_ns_before_cmd)        
                 analyzer.visit(node)
-                self.commands.append(analyzer.get_command())
+                self.commands.append(analyzer.get_commands())
 
 class CQAssignAnalyzer(ast.NodeVisitor):
     def __init__(self, ns, ns_before_cmd) -> None:
@@ -60,8 +60,7 @@ class CQAssignAnalyzer(ast.NodeVisitor):
         self._cq_assign_type = None
         self._assigned_node = None
         self._root_call_node = None
-        self._cmd = Command()
-        self.sub_commands = []
+        self._cmds = [Command()]
         
         
 
@@ -120,6 +119,12 @@ class CQAssignAnalyzer(ast.NodeVisitor):
 
 
     def _cq_call_type(self, node: Call) -> str:
+        """
+        Returns the cadquery call type, valid types are :
+        - Shape
+        - Workplane
+        - Other
+        """
 
         call_root = self._get_root_node_from_Call(node)
         if call_root.id == "cq":
@@ -140,7 +145,24 @@ class CQAssignAnalyzer(ast.NodeVisitor):
 
         return call_type
 
-    def is_cq_assign(self, node: Assign) -> bool:
+
+    def _is_cq_call(self, node: Call) -> bool:
+        """
+        Returns if a Call node is a cadquery call (i.e it calls a cadquery fonction / method)
+        """     
+
+        call_root = self._get_root_node_from_Call(node)
+
+        if call_root.id == "cq" or self._is_cq_obj(call_root.id):
+            return True 
+        else:
+            return False       
+
+
+
+
+
+    def _is_cq_assign(self, node: Assign) -> bool:
         """
         Returns if an assignement value is made from a cq object or from cq class
 
@@ -177,30 +199,46 @@ class CQAssignAnalyzer(ast.NodeVisitor):
             
             
     def _is_from_main_call_stack(self, node: Any) -> None:
+        """
+        Returns if the `node` considered is from the main call stack of the assignment or expresion
+        Example :
+        a = b.c.d(u.v.p())
+        - Will return True if the node considered is the node linked to "c" 
+        - Will return False if the node considered is the node linked to "v"
+        """
 
         looked_node = self._root_call_node
-        while looked_node != self._assigned_node:
-            if looked_node is node:
+        while True:
+            if looked_node is node or looked_node is self._assigned_node:
                 return True
             looked_node = looked_node.parent
-        return False
+
+            if not hasattr(looked_node.parent, "parent"):
+                return False
+
+
+            
+
         
-    def get_command(self) -> "Command":
-        cmd = self._cmd
-        if cmd.type != "undefined":
-            try:
-                cmd.obj = self._console_ns[self._cmd.var]
-            except KeyError:
-                cmd.type = "undefined"
-        if cmd.operations:
-            cmd.operations = OrderedDict(reversed(list(cmd.operations.items())))
-        else:
-            cmd.operations = OrderedDict()
-        return cmd 
+    def get_commands(self) -> "Command":
+        cmds = self._cmds
+        for cmd in cmds:
+            if cmd.type != "undefined":
+                try:
+                    cmd.obj = self._console_ns[cmd.var]
+                except KeyError:
+                    if cmd.type != "unbound":
+                        cmd.type = "undefined"
+            if cmd.operations:
+                cmd.operations = OrderedDict(reversed(list(cmd.operations.items())))
+            else:
+                cmd.operations = OrderedDict()
+
+        return cmds 
 
 
 
-    def _get_operations(self, node: Call):
+    def _get_operations(self, node: Call) -> OrderedDict:
 
         assert isinstance(node, Call)
         call_type = self._cq_call_type(node)
@@ -210,90 +248,63 @@ class CQAssignAnalyzer(ast.NodeVisitor):
         else:
             return self._get_call(node)
 
+
     def visit_Call(self, node: Call) -> Any:
 
         if not self._is_from_main_call_stack(node):
 
-            call_type = self._cq_call_type(node)
-            cmd = SubCommand
-            self.sub_commands.append(cmd)
+            if self._is_cq_call(node):
+                cmd = Command(subcommand=True)
+                cmd.operations = self._get_operations(node)
+                call_type = self._cq_call_type(node)
 
-            if call_type == "Workplane":
-                cmd.type = "new_part"
-                    
-            elif call_type == "Shape":
-                cmd.type = "new_shape"
-                cmd.topo_type = node.parent.attr
-            else:
-                cmd.type = "other"
+                if call_type == "Workplane":
+                    cmd.type = "new_part"
+                        
+                elif call_type == "Shape":
+                    cmd.type = "new_shape"
+                    cmd.topo_type = node.parent.attr
+                else:
+                    cmd.type = "other"
 
-            cmd.operations = self._get_operations(node)
-            
+                cmd.operations = self._get_operations(node)
+
+                self._cmds.append(cmd)
 
         self.generic_visit(node)
 
 
     def visit_Assign(self, node):
 
-        if self.is_cq_assign(node):
+        if self._is_cq_assign(node):
             # assign is something like :
             # part = cq.Workplane().box(1,1,1)
             # part = cq.Edge.makeEdge(v1,v2)          
             # part = aCqObj.sphere(5) 
             # vector = cq.Vector(0,0,1) 
 
-            self._cmd.var = node.targets[0].id
+            main_cmd = Command()
+            self._cmds.append(main_cmd)
+            main_cmd.var = node.targets[0].id
             
             if isinstance(node.value, Call):
                 self._root_call_node = root_node = self._get_root_node_from_Call(node.value)
 
             assign_type = self._cq_assign_type
 
-            cmd = self._cmd 
             if assign_type == "Workplane":      
                 if root_node.parent.attr == "Workplane" or self._is_Workplane(root_node.id):
-                    cmd.type = "new_part"
+                    main_cmd.type = "new_part"
                 else:
-                    cmd.type = "part_edit"
+                    main_cmd.type = "part_edit"
                     
             elif assign_type == "Shape":
-                cmd.type = "new_shape"
-                cmd.topo_type = root_node.parent.attr
+                main_cmd.type = "new_shape"
+                main_cmd.topo_type = root_node.parent.attr
             else:
-                cmd.type = "other"
+                main_cmd.type = "other"
 
-            cmd.operations = self._get_operations(node.value)
-
-
-            # if self._cq_assign_type in ["Workplane, Shape"]:                 
-            #     if isinstance(node.value, Call):    
-            #         root_node = self._get_root_node_from_Call(node.value)
-            #         self._cmd.operations = self._get_call_stack(node.value)
-            #     else:
-            #         #Node is a Name node referring to a cq object in memory
-            #         root_node = node                
-
-            #     try:    
-            #         if root_node.id == "cq":
-            #             if root_node.parent.attr == "Workplane":
-            #                 self._cmd.type = "new_part"
-
-            #             elif root_node.parent.attr in get_cq_topo_classes():
-            #                 self._cmd.type = "new_shape"
-            #                 self._cmd.topo_type = node.parent.attr
-                            
-            #         elif root_node.id == self._cmd.var:
-            #             self._cmd.type = "part_edit"
-
-            #         elif self._is_Workplane(root_node.id):                    
-            #             self._cmd.type = "new_part"
-
-            #     except AttributeError:
-            #         pass
-
-            # elif self._cq_assign_type == "Others":
-            #     pass
-
+            main_cmd.operations = self._get_operations(node.value)
 
             self.generic_visit(node)
 
@@ -303,7 +314,7 @@ class CQAssignAnalyzer(ast.NodeVisitor):
 
     def _get_call(self, node: Call) -> OrderedDict:
         """
-        Retrieve the the call of a cq function, and return it as an Ordered dict associating the function to its params
+        Retrieve the call of a cq function, and return it as an Ordered dict associating the function to its params
         """
         root = self._get_root_node_from_Call(node)
         
@@ -318,10 +329,33 @@ class CQAssignAnalyzer(ast.NodeVisitor):
 
         for invoked_kw in node.keywords:
             kwargs[invoked_kw.arg] = invoked_kw.arg.value.value # override defaults kwargs by the ones passed
-    
-        call[method_name] = ([arg.value if hasattr(arg, "value") else arg.id for arg in node.args ], kwargs)
+
+
+        args = [ arg.value if hasattr(arg, "value") else (arg.func.attr if hasattr(arg, "func") else arg.id) for arg in node.args ]
+        call[method_name] = (args, kwargs)
 
         return call
+
+
+    def _get_kwargs_values(self, node: keyword) -> Any:
+        """
+        Returns kwargs value, handling different types of values
+        """
+        value_node = node.value
+        if isinstance(value_node, Constant):
+            value = value_node.value
+
+        elif isinstance(value_node, (ast.Tuple,ast.List)):
+            values = []
+            for item in value_node.elts:
+                if isinstance(item, Constant):
+                    values.append(item.value)
+                elif isinstance(item, Name):
+                    values.append(item.id)
+
+            value = ",".join([str(val) for val in values])
+        
+        return value
 
     def _get_call_stack(self, node: Call) -> OrderedDict:
         """
@@ -335,7 +369,7 @@ class CQAssignAnalyzer(ast.NodeVisitor):
                 method_name = sub_node.func.attr                
                 kwargs = get_Wp_method_kwargs(method_name)
                 for invoked_kw in sub_node.keywords:
-                    kwargs[invoked_kw.arg] = invoked_kw.arg.value.value # override defaults kwargs by the ones passed
+                    kwargs[invoked_kw.arg] = self._get_kwargs_values(invoked_kw) # override defaults kwargs by the ones passed
                 
                 call_stack[method_name] = ([arg.value if hasattr(arg, "value") else arg.id for arg in sub_node.args ], kwargs)
 
@@ -358,19 +392,13 @@ class Command():
      - new_shape
     """
 
-    def __init__(self):
-        self.type = "undefined"
+    def __init__(self, subcommand = False):
+        self.type = "undefined" if subcommand is False else "unbound"
         self.var = None 
         self.operations = None
         self.obj = None
         self.topo_type = None
 
-class SubCommand():
-    def __init__(self):
-        self.type = "unbound"
-        self.operations = None
-        self.obj = None
-        self.topo_type = None
 
 
 if __name__ == "__main__":
@@ -394,7 +422,7 @@ if __name__ == "__main__":
     raw_dot = visitor.graph.to_string()
     graph = graphviz.Source(raw_dot)
     cmd_analyzer.visit(node)
-    cmd = cmd_analyzer.get_command()
+    cmd = cmd_analyzer.get_commands()
     print(cmd_analyzer.call_stack.items())
    
    

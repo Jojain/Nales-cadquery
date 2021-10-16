@@ -124,13 +124,6 @@ class NNode():
             else:
                 return root
 
-class NBuildable():
-    """
-    Abstract class the needs to be subclassed
-    It provides utilities to work with the AST nodes each interface classe can holds
-    """
-    cmd_ast = None
-
 class NPart(NNode):
 
     # viewer_updated = pyqtSignal()
@@ -226,21 +219,24 @@ class NShape(NNode):
 
         self.visible = True
 
+    def _update(self):
+
+        code = self.source_code
+        exec(code, self.root_node.console_namespace)    
+
 class NOperation(NNode):
 
 
     def __init__(self, method_name: str, name, part: Workplane, parent : NNode):
         super().__init__(method_name, name, parent=parent)
 
-        # Here we should modify the parent 'Part' shape with the help of TFunctions
-        # Otherwise we will fill the memory with a lot of shapes, but as a start it's ok 
         self.name = method_name
         self.visible = False
         Workplane_methods = get_Workplane_methods()
         self.method = Workplane_methods[method_name]
         
 
-        if self.method == "Workplane":
+        if method_name == "Workplane":
             self._root_operation = True 
         else:
             self._root_operation = False
@@ -262,7 +258,7 @@ class NOperation(NNode):
         if not self._root_operation:            
             code_line = f"{self.parent.name} = {self.parent.name}.end({rewind_idx}).{self.name}({unpack(args)})"
         else:
-            code_line = f"{self.parent.name} = {self.parent.name}.{self.name}({unpack(args)})"
+            code_line = f"{self.parent.name} = cq.{self.name}({unpack(args)})"
         
         return ast.parse(code_line)
 
@@ -314,29 +310,29 @@ class NArgument(NNode):
         self._get_args_names_and_types()
 
     def __repr__(self) -> str:
-        return str(self._value)
+        return f"{self._value}"
 
 
         
 
-    @property
-    def ast_node(self):
-        #on considère atm que les types builtins 
-        try:
-            raw = ast.literal_eval(str(self._value))
-        except SyntaxError:
-            raise ValueError("Wrong arg value")
-        arg_type = type(raw)
+    # @property
+    # def ast_node(self):
+    #     #on considère atm que les types builtins 
+    #     try:
+    #         raw = ast.literal_eval(str(self._value))
+    #     except SyntaxError:
+    #         raise ValueError("Wrong arg value")
+    #     arg_type = type(raw)
         
 
-        constant_node = PY_TYPES_TO_AST_NODE[arg_type](value = self._value, kind=None)
-        if self.is_kwarg():
-            kw_node = ast.keyword(arg=self.name, value = constant_node)
-            ast.fix_missing_locations(kw_node)
-            return kw_node
-        else:
-            ast.fix_missing_locations(constant_node)
-            return constant_node
+    #     constant_node = PY_TYPES_TO_AST_NODE[arg_type](value = self._value, kind=None)
+    #     if self.is_kwarg():
+    #         kw_node = ast.keyword(arg=self.name, value = constant_node)
+    #         ast.fix_missing_locations(kw_node)
+    #         return kw_node
+    #     else:
+    #         ast.fix_missing_locations(constant_node)
+    #         return constant_node
 
  
 
@@ -349,17 +345,17 @@ class NArgument(NNode):
         else:
             return False
     
-    def _get_shape_source(self):
-        """
-        A SUPPRIMER / NArgument should not be able to go back the tree like that
+    # def _get_shape_source(self):
+    #     """
+    #     A SUPPRIMER / NArgument should not be able to go back the tree like that
 
-        If the Argument is a cq shape object we retrieve the source code to be able to rebuild everything from scratch        
-        """
-        var_name = self.name
+    #     If the Argument is a cq shape object we retrieve the source code to be able to rebuild everything from scratch        
+    #     """
+    #     var_name = self.name
 
-        for shape_node in self.walk(self.root_node.child(1)):
-            if var_name == shape_node.name:
-                return shape_node._source_code
+    #     for shape_node in self.walk(self.root_node.child(1)):
+    #         if var_name == shape_node.name:
+    #             return shape_node._source_code
 
     
 

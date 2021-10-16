@@ -73,7 +73,7 @@ def get_topo_class_args_name(class_name: str, method: str) -> list:
 
 def get_topo_class_kwargs_name(class_name: str, method: str) -> OrderedDict:
     if isinstance(method, str):
-        method = get_Workplane_methods(class_name)[method]
+        method = get_topo_class_methods(class_name)[method]
     params = inspect.signature(method).parameters
     kwargs = OrderedDict()
     for p in params.values():
@@ -109,4 +109,4 @@ def get_cq_types():
 
 if __name__ == "__main__":
     # print(get_Workplane_operations())
-    print(get_shapes_classes_methods("Edge"))
+    pass
