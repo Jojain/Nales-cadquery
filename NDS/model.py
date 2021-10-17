@@ -14,7 +14,7 @@ from PyQt5.QtGui import QColor, QFont
 from collections import OrderedDict
 from inspect import signature
 from tokenize import any
-from typing import Iterable, List, Tuple
+from typing import Any, Iterable, List, Tuple
 import sys
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QMenu
@@ -231,6 +231,10 @@ class NModel(QAbstractItemModel):
 
                 for pos, arg in enumerate(args):                
                     node = NArgument(args_names[pos], arg, operation) 
+                    if (obj := self._get_object(arg)):
+                        node._linked_obj = obj
+                        node.value = arg 
+
                     self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
             else: 
                 # Means the user passed an argument without calling the keyword
@@ -238,6 +242,9 @@ class NModel(QAbstractItemModel):
 
                 for pos, arg in enumerate(args[0:nb_short_call_kwarg-1]):                
                     node = NArgument(args_names[pos], arg, operation) 
+                    if (obj := self._get_object(arg)):
+                        node._linked_obj = obj
+                        node.value = arg 
                     self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
 
                 kw_names = [kw_name for kw_name in list(kwargs.keys())]
@@ -246,6 +253,10 @@ class NModel(QAbstractItemModel):
 
             for kwarg_name, kwarg_val in kwargs.items():
                     node = NArgument(kwarg_name, kwarg_val, operation, kwarg=True) 
+                    if (obj := self._get_object(kwarg_val)):
+                        node._linked_obj = obj
+                        node.value = arg 
+
                     self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
 
         self.dataChanged.connect(lambda idx : self.update_operation(idx)) 
@@ -344,7 +355,16 @@ class NModel(QAbstractItemModel):
 
                 
 
-    
+    def _get_object(self, var_name: str) -> Any :
+        """
+        Retrieve an object from the console namespace
+        """
+        try:
+            obj = self._root.console_namespace[var_name]
+            return obj
+        except KeyError:
+            return None
+        
 
 
     def walk(self, index: QModelIndex = QModelIndex()) -> QModelIndex:
@@ -495,8 +515,7 @@ class NModel(QAbstractItemModel):
     def setData(self, index, value, role):
         """
         NModel data setter
-        """
-        
+        """        
 
         node = index.internalPointer()
         if role == Qt.EditRole:
@@ -506,6 +525,13 @@ class NModel(QAbstractItemModel):
                     node.value = value[1]
                     node._param_name_pidx = value[2]
                     node._param_value_pidx = value[3]
+
+                if (obj := self._get_object(value)):
+                    node._linked_obj = obj 
+                    node.name = value
+                    node.value = value 
+
+
                 else:
                     node.value = value
             self.dataChanged.emit(index,index)

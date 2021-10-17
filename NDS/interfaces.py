@@ -302,6 +302,7 @@ class NArgument(NNode):
         
 
         self._linked_param = None
+        self._linked_obj = None
 
         self._param_name_pidx = None
         self._param_value_pidx = None
@@ -313,50 +314,14 @@ class NArgument(NNode):
         return f"{self._value}"
 
 
-        
-
-    # @property
-    # def ast_node(self):
-    #     #on considère atm que les types builtins 
-    #     try:
-    #         raw = ast.literal_eval(str(self._value))
-    #     except SyntaxError:
-    #         raise ValueError("Wrong arg value")
-    #     arg_type = type(raw)
-        
-
-    #     constant_node = PY_TYPES_TO_AST_NODE[arg_type](value = self._value, kind=None)
-    #     if self.is_kwarg():
-    #         kw_node = ast.keyword(arg=self.name, value = constant_node)
-    #         ast.fix_missing_locations(kw_node)
-    #         return kw_node
-    #     else:
-    #         ast.fix_missing_locations(constant_node)
-    #         return constant_node
-
- 
-
     def is_kwarg(self):
         return self._kwarg
 
     def is_linked(self):
-        if self._linked_param:
+        if self._linked_param or self._linked_obj:
             return True 
         else:
             return False
-    
-    # def _get_shape_source(self):
-    #     """
-    #     A SUPPRIMER / NArgument should not be able to go back the tree like that
-
-    #     If the Argument is a cq shape object we retrieve the source code to be able to rebuild everything from scratch        
-    #     """
-    #     var_name = self.name
-
-    #     for shape_node in self.walk(self.root_node.child(1)):
-    #         if var_name == shape_node.name:
-    #             return shape_node._source_code
-
     
 
     def _get_args_names_and_types(self):
@@ -374,6 +339,12 @@ class NArgument(NNode):
         else:
             raise ValueError("This argument is not linked to a param")
 
+    @property
+    def linked_obj(self):
+        if self.is_linked():
+            return self._linked_obj
+        else:
+            raise ValueError("This argument is not linked to an object")
 
     @property
     def columns_nb(self):
@@ -393,12 +364,16 @@ class NArgument(NNode):
         return self._value
     @value.setter
     def value(self, value):
-        try:
-            self._value = self._type(value)
-        except (ValueError , TypeError) as exp:
-            if exp == ValueError:
-                error_msg = f"Expected arguments if of type: {self._type} you specified argument of type {type(value)}"
-                self.error.emit(error_msg)
+        if self.is_linked():
+            self._value = value 
+        else:
+            try:    
+                self._value = self._type(value)
+            except (ValueError , TypeError, AttributeError) as exp:
+                if exp == ValueError or exp == AttributeError:
+                    error_msg = f"Expected arguments if of type: {self._type} you specified argument of type {type(value)}"
+                    print(error_msg)
+                    self.error.emit(error_msg)
 
     @property 
     def linked_param(self):

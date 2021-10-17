@@ -74,7 +74,7 @@ class CQAssignAnalyzer(ast.NodeVisitor):
 
         call_root = None
 
-        for sub_node in walk(node):
+        for sub_node in walk(node.func):
             if isinstance(sub_node, Name):
                 # This is needed if we have nested calls, for example :
                 # u = cq.Edge.makeLine(cq.Vector(1,1,1), cq.Vector(1,1,2))
@@ -192,7 +192,8 @@ class CQAssignAnalyzer(ast.NodeVisitor):
             elif self._is_Shape(call_root.id):            
                 self._cq_assign_type = "Shape"
             else:
-                self._cq_assign_type = "Other"
+                self._cq_assign_type = "Other"                
+            return True
 
         else:
             return False
@@ -337,6 +338,29 @@ class CQAssignAnalyzer(ast.NodeVisitor):
         return call
 
 
+
+    def _get_args_values(self, node: Call) -> list:
+        """
+        Returns args value, handling different types of values
+        """
+        args_node = node.args
+        values = []
+        for arg_node in args_node:            
+            if isinstance(arg_node, Constant):
+                values.append(arg_node.value)
+
+            elif isinstance(arg_node, (ast.Tuple,ast.List)):
+                
+                for item in arg_node.elts:
+                    if isinstance(item, Constant):
+                        values.append(item.value)
+                    elif isinstance(item, Name):
+                        values.append(item.id)
+
+                # values = ",".join([str(val) for val in values])
+        
+        return values
+
     def _get_kwargs_values(self, node: keyword) -> Any:
         """
         Returns kwargs value, handling different types of values
@@ -370,8 +394,12 @@ class CQAssignAnalyzer(ast.NodeVisitor):
                 kwargs = get_Wp_method_kwargs(method_name)
                 for invoked_kw in sub_node.keywords:
                     kwargs[invoked_kw.arg] = self._get_kwargs_values(invoked_kw) # override defaults kwargs by the ones passed
-                
-                call_stack[method_name] = ([arg.value if hasattr(arg, "value") else arg.id for arg in sub_node.args ], kwargs)
+
+
+                # call_stack[method_name] = ([arg.value if hasattr(arg, "value") else arg.id for arg in sub_node.args ], kwargs)
+
+                args = self._get_args_values(sub_node)
+                call_stack[method_name] = (args, kwargs) 
 
         return call_stack
 
