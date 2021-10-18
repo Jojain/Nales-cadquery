@@ -55,9 +55,7 @@ class ConsoleWidget(RichJupyterWidget):
 
         # analyzer = CommandAnalyzer(ns, ns_before_cmd)
         analyzer = CQAssignAnalyzer(ns, ns_before_cmd)
-        cmd_raw_ast = ast.parse(source)
-        # this must be called before the analyzer visit the tree
-        prepare_parent_childs(cmd_raw_ast)
+        cmd_raw_ast = ast.parse(source)              
         analyzer.visit(cmd_raw_ast)
 
         

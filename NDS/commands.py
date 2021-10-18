@@ -2,16 +2,12 @@
 from typing import Any, List, Tuple, Union
 from PyQt5.QtCore import QObject
 import ast
-# import astpretty
 from ast import Expr,keyword, Assign, Name, Call, Store, Attribute, Load, Constant, Expression, Module, Del, iter_child_nodes, walk
-import cadquery.cqgi
 from cadquery import Workplane
 from cadquery.occ_impl.shapes import Shape
 import cadquery as cq
 from collections import OrderedDict
-from graphviz.backend import command
 from nales_alpha.utils import get_cq_class_kwargs_name, get_cq_topo_classes, get_cq_types, get_Wp_method_kwargs, get_topo_class_kwargs_name
-from nales_alpha.NDS.ast_grapher import make_graph
 
 
      
@@ -60,7 +56,7 @@ class CQAssignAnalyzer(ast.NodeVisitor):
         self._cq_assign_type = None
         self._assigned_node = None
         self._root_call_node = None
-        self._cmds = [Command()]
+        self._cmds = []
         
         
 
@@ -313,6 +309,10 @@ class CQAssignAnalyzer(ast.NodeVisitor):
             # The command is not cq related so we stop the parsing
             return 
 
+    def visit(self, node):
+        prepare_parent_childs(node)
+        super().visit(node)
+
     def _get_call(self, node: Call) -> OrderedDict:
         """
         Retrieve the call of a cq function, and return it as an Ordered dict associating the function to its params
@@ -430,28 +430,17 @@ class Command():
 
 
 if __name__ == "__main__":
-    import astpretty
-    import cadquery as cq
-    from cadquery import cq
-    from astmonkey import visitors, transformers
-    debug = True
-    cmd = "a = b.box(1,1,1).sphere(2)\nu = b"
-    c=cq.Workplane().box(1,1,1).sphere(2)
-    ns = {"cq":cadquery, "b":c}
-    ns2 = {"a": 5,"cq":cadquery, "b":c}
-    cmd_analyzer = CQAssignAnalyzer(ns2, ns) # call this line in the ipython window to view the graph
+    from PyQt5 import QtWidgets
+    from nales_alpha.widgets.console import ConsoleWidget
 
-    ast_tree = ast.parse(cmd)
-    from astmonkey import transformers, visitors
-    import graphviz
-    visitor = visitors.GraphNodeVisitor()
-    node = ParentChildNodeTransformer().visit(ast_tree)
-    visitor.visit(node)
-    raw_dot = visitor.graph.to_string()
-    graph = graphviz.Source(raw_dot)
-    cmd_analyzer.visit(node)
-    cmd = cmd_analyzer.get_commands()
-    print(cmd_analyzer.call_stack.items())
-   
+    app = QtWidgets.QApplication([])
+    window = ConsoleWidget()
+    
+
+
+    window.show()
+
+
+    app.exec_()
    
 # %%
