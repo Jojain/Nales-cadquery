@@ -39,11 +39,11 @@ def get_Wp_method_args_name(method: Union[str,Callable]) -> list:
             args.append(p.name)
     return args
 
-def get_Wp_method_kwargs(method: Union[str,Callable]) -> OrderedDict:
+def get_Wp_method_kwargs(method: Union[str,Callable]) -> dict:
     if isinstance(method, str):
         method = get_Workplane_methods()[method]
     params = inspect.signature(method).parameters
-    kwargs = OrderedDict()
+    kwargs = dict()
     for p in params.values():
         if not p.default is p.empty: 
             kwargs[p.name] = p.default
