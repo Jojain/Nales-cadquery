@@ -55,21 +55,21 @@ def prepare_parent_childs(tree):
 #         self.generic_visit(node)
 
 
-class CommandAnalyzer(ast.NodeVisitor):
-    def __init__(self, ns, ns_before_cmd) -> None:
-        super().__init__()
-        self._console_ns = ns
-        self._console_ns_before_cmd = ns_before_cmd
-        self.commands = []
+# class CommandAnalyzer(ast.NodeVisitor):
+#     def __init__(self, ns, ns_before_cmd) -> None:
+#         super().__init__()
+#         self._console_ns = ns
+#         self._console_ns_before_cmd = ns_before_cmd
+#         self.commands = []
 
-    def visit_Module(self, mnode: Module) -> Any:
-        for node in mnode.body:
-            if isinstance(node, Assign):
-                analyzer = CQAssignAnalyzer(
-                    self._console_ns, self._console_ns_before_cmd
-                )
-                analyzer.visit(node)
-                self.commands.append(analyzer.get_commands())
+#     def visit_Module(self, mnode: Module) -> Any:
+#         for node in mnode.body:
+#             if isinstance(node, Assign):
+#                 analyzer = CQAssignAnalyzer(
+#                     self._console_ns, self._console_ns_before_cmd
+#                 )
+#                 analyzer.visit(node)
+#                 self.commands.append(analyzer.get_commands())
 
 
 class CQAssignAnalyzer(ast.NodeVisitor):
@@ -81,14 +81,13 @@ class CQAssignAnalyzer(ast.NodeVisitor):
         self._assigned_node = None
         self._root_call_node = None
         self._cmds = []
+        self._prepared = False
 
     def _get_root_node_from_Call(self, node: Call) -> Name:
         """
         Gets the root of a chain call
         for example 'p = a.b.c.d()' would isolate the Name node linked to 'a'
         """
-        assert isinstance(node, Call)
-
         call_root = None
 
         for sub_node in walk(node.func):
@@ -226,7 +225,7 @@ class CQAssignAnalyzer(ast.NodeVisitor):
 
     def _is_from_main_call_stack(self, node: Any) -> None:
         """
-        Returns if the `node` considered is from the main call stack of the assignment or expresion
+        Returns if the `node` considered is from the main call stack of the assignment or expression
         Example :
         a = b.c.d(u.v.p())
         - Will return True if the node considered is the node linked to "c" 
@@ -235,12 +234,14 @@ class CQAssignAnalyzer(ast.NodeVisitor):
 
         looked_node = self._root_call_node
         while True:
-            if looked_node is node or looked_node is self._assigned_node:
+            if looked_node is node:
                 return True
-            looked_node = looked_node.parent
-
-            if not hasattr(looked_node.parent, "parent"):
-                return False
+            try:
+                looked_node = looked_node.parent
+            except AttributeError:
+                break
+        if looked_node is self._assigned_node:
+            return False
 
     def get_commands(self) -> "Command":
         cmds = self._cmds
@@ -269,7 +270,6 @@ class CQAssignAnalyzer(ast.NodeVisitor):
             return self._get_call(node)
 
     def visit_Call(self, node: Call) -> Any:
-
         if not self._is_from_main_call_stack(node):
 
             if self._is_cq_call(node):
@@ -321,12 +321,14 @@ class CQAssignAnalyzer(ast.NodeVisitor):
             return
 
     def visit(self, node):
-        prepare_parent_childs(node)
+        if not self._prepared:
+            prepare_parent_childs(node)
+            self._prepared = True
         super().visit(node)
 
     def _get_call(self, node: Call) -> dict:
         """
-        Retrieve the call of a cq function, and return it as an Ordered dict associating the function to its params
+        Retrieve the call of a cq function, and return it as an dict associating the function to its params
         """
         root = self._get_root_node_from_Call(node)
 

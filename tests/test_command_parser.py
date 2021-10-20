@@ -1,7 +1,7 @@
 #%%
 import ast
 from unittest import TestCase
-from nales_alpha.NDS.commands import CQAssignAnalyzer
+from nales_alpha.NDS.commands import CQAssignAnalyzer, prepare_parent_childs
 import pytest
 import cadquery as cq
 from collections import OrderedDict
@@ -14,8 +14,33 @@ def get_analyzer_cmds(namespace, code):
     an.visit(ast.parse(code))
     return an.get_commands()
 
+def get_analyzer(namespace, code):
+    ns_before = namespace.copy()
+    exec(code, namespace)
+    an = CQAssignAnalyzer(namespace, ns_before)
+    an.visit(ast.parse(code))
+    return an 
+
 
 class TestCommandParser(TestCase):
+
+    # Tests CQAssignAnalyzer methods
+
+    # def test__is_from_main_call_stack(self):
+    #     code = "part = cq.Workplane().sphere(1).union(cq.Workplane().box(1,1,1))"
+    #     ns = {"cq": cq}    
+    #     analyzer = get_analyzer(ns, code)
+
+    #     ast_code = ast.parse(code).body[0]
+    #     main_call = ast_code.value
+    #     sphere_node = ast_code.value.func.value.func
+    #     secondary_call = ast_code.value.args[0].func
+
+    #     self.assertTrue(analyzer._is_from_main_call_stack(main_call))
+    #     self.assertTrue(analyzer._is_from_main_call_stack(sphere_node))
+    #     self.assertFalse(analyzer._is_from_main_call_stack(secondary_call))
+
+
     def test_Workplane_creation_cmd(self):
         code = "part = cq.Workplane()"
         ns = {"cq": cq}
@@ -87,21 +112,30 @@ class TestCommandParser(TestCase):
     def test_shape_override(self):
         pass
 
+    
+
+
+
+
+
 if __name__ == "__main__":
     from pprint import pprint
+    import astpretty
     # import
-    cmd = "part = cq.Workplane().sphere(1).union(cq.Workplane().box(1,1,1))"
-
+    code = "part = cq.Workplane()"
     ns = {"cq": cq}
-    ns_before = ns.copy()
-    exec(cmd, ns)
-    an = CQAssignAnalyzer(ns, ns_before)
-    an.visit(ast.parse(cmd))
-    c = an.get_commands()
-    op = c[0].operations
-    pprint(op,width=1)
-    op = c[1].operations
-    pprint(op,width=1)
+
+    cmds = get_analyzer_cmds(ns, code)  
+
+
+    # prepare_parent_childs(secondary_call)
+    # analyzer = get_analyzer(ns, code)
+    # print(analyzer._is_from_main_call_stack(sphere_node))
+
+    # op = c[0].operations
+    # pprint(op,width=1)
+    # op = c[1].operations
+    # pprint(op,width=1)
 
 
 # %%
