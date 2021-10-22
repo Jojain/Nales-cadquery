@@ -169,7 +169,7 @@ class NModel(QAbstractItemModel):
         self._root = NNode(None)
         self._root._viewer = self.app._pres_viewer # attach the viewer to the root node so child interfaces can Update the viewer without the need to send a signal
         self._root._label = self.app.doc.GetData().Root()
-        self._root.console_namespace = console._get_console_namespace()
+        self._root.console_namespace = console.namespace
 
 
         self.insertRows(0,0,NNode(None, "Parts", self._root))

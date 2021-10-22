@@ -389,16 +389,27 @@ class Command():
      - new_part
      - part_edit
      - part_override
-     - new_shape
+    #  - new_shape
     """
 
-    def __init__(self, subcommand = False):
-        self.type = "undefined" if subcommand is False else "unbound"
-        self.var = None 
-        # type : OrderedDict[str, Tuple(Any, OrderectDict)]
-        self.operations = None
-        self.obj = None
+    def __init__(self, var: str, operations: List[dict], obj: Any ):
+        self.var = var 
+        self.operations = operations
+        self.obj = obj
+
+        self.type = self._get_cmd_type()
         self.topo_type = None
+    
+    def _get_cmd_type(self):
+        if list(self.operations[0].keys())[0] == "Workplane" and self.var :
+            return "part_override"
+        elif list(self.operations[0].keys())[0] == "Workplane"and not self.var:
+            return "new_part"
+        elif list(self.operations[0].keys())[0] != "Workplane"and self.var:
+            return "part_edit"
+        else:
+            return "unbound"
+
 
 
 

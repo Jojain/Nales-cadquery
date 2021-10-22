@@ -59,28 +59,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Views / Widgets setup
         self._setup_param_table_view()
         self._setup_modeling_ops_view()
-
-        self.m =[]
-        
-        
-
                 
-        self.handler = OperationHandler(self._console._get_console_namespace())
-        
-        for method in [method for (name, method) in inspect.getmembers(cq.Workplane) if not name.startswith("_")]:
-            method = self.handler.operation_handler(method)
-            setattr(cq.Workplane, method.__name__, method)
- 
+
 
         self._console.push_vars({"model" : self.model, "mw": self, "save": self.model.app.save_as, "cq" : cq}) 
-
-        # self.handler.monkey_patch()
-        # cq.Workplane.add = self.handler.operation_handler(cq.Workplane.add)
-        # cq.Workplane.box = self.handler.operation_handler(cq.Workplane.box)
-        # cq.Workplane.box = self.handler.operation_handler(cq.Workplane.box)
-        # cq.Workplane.sphere = self.handler.operation_handler(cq.Workplane.sphere)
-
-
 
 
         #Connect all the slots to the needed signals
@@ -88,37 +70,35 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 
         @pyqtSlot(Command)
-        def handle_command(self, command):
+        def handle_command(self, cmd):
             """
             This function calls the approriate NModel method depending on the command received.
             """
-            if command.type == "undefined":
+            if cmd.type == "undefined":
                 return 
             
-
-            operations = self.handler.operations
-            if command.type == "other":
+            if cmd.type == "other":
                 pass
 
-            if command.type in ("new_part","part_edit","part_override"):
-                part = command.obj
-                part_name = command.var
+            if cmd.type in ("new_part","part_edit","part_override"):
+                part = cmd .obj
+                part_name = cmd .var
 
-                if command.type in ("new_part", "part_override"):
+                if cmd.type in ("new_part", "part_override"):
                     self.model.add_part(part_name, part)
                 
-                for operation in operations:
+                for operation in cmd.operations:
                     if len(operation) != 0:
                         self.model.add_operations(part_name, part, operation)
                         self.modeling_ops_tree.expandAll()
                         self.viewer.fit()
 
 
-            if command.type == "new_shape":
-                shape = command.obj
-                shape_name = command.var
-                topo_type = command.topo_type
-                method_call = command.operations
+            if cmd.type == "new_shape":
+                shape = cmd.obj
+                shape_name = cmd.var
+                topo_type = cmd.topo_type
+                method_call = cmd.operations
                 self.model.add_shape(shape_name, shape, topo_type, method_call)     
                 self.modeling_ops_tree.expandAll()
 
