@@ -204,7 +204,7 @@ class NModel(QAbstractItemModel):
 
 
     
-    def add_operations(self, part_name: str, wp: Workplane,  operations: OrderedDict):
+    def add_operations(self, part_name: str, wp: Workplane,  operations: dict):
         # Implémentation à l'arrache il faudra étudier les TFUNCTIONS et voir comment gérer de l'UNDO REDO
         parts = self._root.child(0).childs
         parts_idx = self.index(0,0) # the Parts container index
@@ -231,10 +231,6 @@ class NModel(QAbstractItemModel):
 
                 for pos, arg in enumerate(args):                
                     node = NArgument(args_names[pos], arg, operation) 
-                    if (obj := self._get_object(arg)):
-                        node._linked_obj = obj
-                        node.value = arg 
-
                     self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
             else: 
                 # Means the user passed an argument without calling the keyword
@@ -242,20 +238,11 @@ class NModel(QAbstractItemModel):
 
                 for pos, arg in enumerate(args[0:nb_short_call_kwarg-1]):                
                     node = NArgument(args_names[pos], arg, operation) 
-                    if (obj := self._get_object(arg)):
-                        node._linked_obj = obj
-                        node.value = arg 
                     self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
 
                 kw_names = [kw_name for kw_name in list(kwargs.keys())]
                 for kwarg_name, kwarg_val in zip(kw_names,args[nb_short_call_kwarg - 1:]):
                     kwargs[kwarg_name] = kwarg_val
-
-            for kwarg_name, kwarg_val in kwargs.items():
-                    node = NArgument(kwarg_name, kwarg_val, operation, kwarg=True) 
-                    if (obj := self._get_object(kwarg_val)):
-                        node._linked_obj = obj
-                        node.value = arg 
 
             for kwarg_name, kwarg_val in kwargs.items():
                     node = NArgument(kwarg_name, kwarg_val, operation, kwarg=True) 
@@ -270,12 +257,7 @@ class NModel(QAbstractItemModel):
 
 
     def update_operation(self, idx: QModelIndex) -> None:
-        # if isinstance(ptr := idx.internalPointer(), NArgument):
-        #     operation = ptr.parent
 
-        #     pos = len(operation.parent.childs) - operation._row
-        #     operation._update(pos)
-        #     operation.parent.display(update=True)
         
         if isinstance(ptr := idx.internalPointer(), NArgument):           
             starting_op = ptr.parent

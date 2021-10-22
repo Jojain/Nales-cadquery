@@ -429,20 +429,21 @@ class Command:
     #  - new_shape
     """
 
-    def __init__(self, var: str, operations: List[dict], obj: Any ):
+    def __init__(self, var: str, operations: List[dict], obj: Any, new_var: bool):
         self.var = var 
         self.operations = operations
         self.obj = obj
+        self.new_var = new_var
 
         self.type = self._get_cmd_type()
         self.topo_type = None
     
     def _get_cmd_type(self):
-        if list(self.operations[0].keys())[0] == "Workplane" and self.var :
+        if list(self.operations[0].keys())[0] == "Workplane" and not self.new_var:
             return "part_override"
-        elif list(self.operations[0].keys())[0] == "Workplane"and not self.var:
+        elif list(self.operations[0].keys())[0] == "Workplane"and self.new_var:
             return "new_part"
-        elif list(self.operations[0].keys())[0] != "Workplane"and self.var:
+        elif list(self.operations[0].keys())[0] != "Workplane"and not self.new_var:
             return "part_edit"
         else:
             return "unbound"

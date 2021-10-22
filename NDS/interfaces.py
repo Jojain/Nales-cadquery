@@ -142,7 +142,8 @@ class NPart(NNode):
         self.display()
 
     def _update_occt_shape(self):        
-        self._occt_shape = self.root_node.console_namespace[self.name].val().wrapped
+        cq_Wp = self.root_node.console_namespace[self.name]
+        self._occt_shape = cq_Wp.val().wrapped
 
     def hide(self):
 

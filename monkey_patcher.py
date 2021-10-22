@@ -11,7 +11,7 @@ from nales_alpha.utils import get_Workplane_methods, get_Wp_method_kwargs, get_t
 class OperationHandler():
     def __init__(self):
         super().__init__()
-        self.operations = []
+        self._operations = []
         self.part_id = None
         self.recursive_calls_id = 0
         self.main_call_id = 1
@@ -19,13 +19,16 @@ class OperationHandler():
 
     def reset(self):
         self.part_id = None 
-        self.operations = []
+        self._operations = []
 
     def has_seen_cq_cmd(self):
-        if self.part_id is None and len(self.operations) == 0:
+        if self.part_id is None and len(self._operations) == 0:
             return False 
         else:
             return True
+
+    def get_operations(self):
+        return self._operations.copy()
 
     def _operation_handler(self, cq_method):
         @wraps(cq_method)
@@ -51,7 +54,7 @@ class OperationHandler():
                 
                 operations[method_name] = ([arg for arg in args[1:]], default_kwargs)
 
-                self.operations.append(operations)
+                self._operations.append(operations)
 
             self.recursive_calls_id -= 1 
 
@@ -75,7 +78,7 @@ if __name__ == "__main__":
     test = cq.Workplane().sphere(2).box(1,1,1).union(cq.Workplane().sphere(3))
     print("test part_id", oh.part_id)
     print(id(globals()["test"]))
-    pprint.pprint(oh.operations)
+    pprint.pprint(oh._operations)
 
     oh.reset()
 
@@ -83,7 +86,7 @@ if __name__ == "__main__":
     print("toto part_id", oh.part_id)
     print(id(globals()["toto"]))
 
-    pprint.pprint(oh.operations)
+    pprint.pprint(oh._operations)
 
     
 
