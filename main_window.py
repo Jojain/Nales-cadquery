@@ -2,7 +2,7 @@ import inspect
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QAbstractItemView, QHeaderView
+from PyQt5.QtWidgets import QAbstractItemView, QHeaderView, QMessageBox
 from cadquery.cq import Workplane
 from nales_alpha.uic.mainwindow import Ui_MainWindow
 import qtconsole
@@ -26,6 +26,7 @@ from nales_alpha.views.tree_views import ModelingOpsView
 import debugpy
 
 from utils import get_Workplane_methods
+from widgets.msg_boxs import WrongArgMsgBox
 debugpy.debug_this_thread()
 
 
@@ -67,6 +68,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         #Connect all the slots to the needed signals
         self._console.on_command.connect(lambda c : handle_command(self, c))
+        self.model.on_arg_error.connect(lambda exp_typ, rcv_typ: WrongArgMsgBox(exp_typ,rcv_typ, self))
 
 
         @pyqtSlot(Command)

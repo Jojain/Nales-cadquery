@@ -5,7 +5,8 @@ from cadquery import Workplane
 from functools import wraps
 import cadquery as cq
 from nales_alpha.utils import get_Workplane_methods, get_Wp_method_kwargs, get_topo_class_methods
-
+import traceback
+import sys
 
 
 class OperationHandler():
@@ -15,11 +16,14 @@ class OperationHandler():
         self.part_id = None
         self.recursive_calls_id = 0
         self.main_call_id = 1
+        self.error_traceback = None
         self._monkey_patch_Workplane()
+        self._parts = []
 
     def reset(self):
         self.part_id = None 
         self._operations = []
+        self.error_traceback = None
 
     def has_seen_cq_cmd(self):
         if self.part_id is None and len(self._operations) == 0:
@@ -43,7 +47,14 @@ class OperationHandler():
             self.recursive_calls_id += 1
 
             # Since a cq_method can have internals calls to other cq_methods, cq_wrapper is called recursively here
-            obj = cq_method(*args, **kwargs)        
+            try:
+                obj = cq_method(*args, **kwargs)  
+            except Exception as exc:
+                splitter = "---------------------------------------------------------------------------"
+                error_tb = f"{splitter}\nError in method Workplane.{cq_method.__name__}\n {repr(exc)}\n"
+                self.error_traceback = error_tb
+                self.recursive_calls_id -= 1 
+                return parent_wp_obj      
 
             if self.main_call_id == self.recursive_calls_id:
                 operations = {}                    

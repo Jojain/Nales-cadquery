@@ -31,9 +31,9 @@ from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
 from OCP.TDF import TDF_Label, TDF_TagSource
 from OCP.TCollection import TCollection_ExtendedString
 from OCP.TopoDS import TopoDS_Shape
-from nales_alpha.utils import get_Wp_method_args_name
+from nales_alpha.utils import determine_type_from_str, get_Wp_method_args_name
 from nales_alpha.NDS.interfaces import NNode, NPart, NOperation, NArgument, NShape
-
+from nales_alpha.widgets.msg_boxs import WrongArgMsgBox
 
 import cadquery as cq
 
@@ -156,7 +156,7 @@ class ParamTableModel(QAbstractTableModel):
 
 class NModel(QAbstractItemModel):
 
-
+    on_arg_error = pyqtSignal(object,object)
     node_edited = pyqtSignal(NNode)
 
     def __init__(self, ctx, nodes = None, console = None):
@@ -214,8 +214,7 @@ class NModel(QAbstractItemModel):
         for part in parts:
             if part.name == part_name:
                 row = part._row
-                parent_part = part
-                
+                parent_part = part                
                 break 
 
         part_idx = self.index(row, 0, parts_idx)
@@ -502,24 +501,29 @@ class NModel(QAbstractItemModel):
         """
         NModel data setter
         """        
-
+        
         node = index.internalPointer()
         if role == Qt.EditRole:
             if isinstance(node, NArgument):
-                if isinstance(value, tuple): # we assign a paramerter
+                if isinstance(value, tuple): # we assign a parameter
                     node._linked_param = value[0]
                     node.value = value[1]
                     node._param_name_pidx = value[2]
                     node._param_value_pidx = value[3]
 
-                if (obj := self._get_object(value)):
+                elif (obj := self._get_object(value)):
                     node._linked_obj = obj 
                     node.name = value
                     node.value = value 
 
 
                 else:
-                    node.value = value
+                    value_type = determine_type_from_str(value)
+                    if node._type == value_type:
+                        node.value = value
+                    else:
+                        self.on_arg_error.emit(node._type, value_type)
+
             self.dataChanged.emit(index,index)
             
         

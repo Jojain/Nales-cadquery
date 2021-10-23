@@ -314,8 +314,10 @@ class NArgument(NNode):
     def __repr__(self) -> str:
        
         if self._linked_param:
-            value = self._param_name_pidx.data()
+            value = self._param_value_pidx.data()
 
+        elif self._type is str:
+            value = f'"{self._value}"'
         else:
             value = self._value
             
@@ -366,22 +368,22 @@ class NArgument(NNode):
     def name(self, value):
         self._name = value    
 
-
     @property 
     def value(self):
         return self._value
     @value.setter
     def value(self, value):
-        if self.is_linked():
-            self._value = value 
-        else:
-            try:    
-                self._value = self._type(value)
-            except (ValueError , TypeError, AttributeError) as exp:
-                if exp == ValueError or exp == AttributeError:
-                    error_msg = f"Expected arguments if of type: {self._type} you specified argument of type {type(value)}"
-                    print(error_msg)
-                    self.error.emit(error_msg)
+        self._value = value
+        # if self.is_linked():
+        #     self._value = value 
+        # else:
+        #     try:    
+        #         self._value = self._type(value)
+        #     except (ValueError , TypeError, AttributeError) as exp:
+        #         if exp == ValueError or exp == AttributeError:
+        #             error_msg = f"Expected arguments if of type: {self._type} you specified argument of type {type(value)}"
+        #             print(error_msg)
+
 
     @property 
     def linked_param(self):

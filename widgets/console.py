@@ -65,21 +65,23 @@ class ConsoleWidget(RichJupyterWidget):
         ns_before_cmd = self.namespace.copy()
         super()._execute(source, hidden)
 
-        if self.cmd_handler.has_seen_cq_cmd():
+        if self.cmd_handler.has_seen_cq_cmd():            
             part_name = self._get_part_varname(self.cmd_handler.part_id)
             ops = self.cmd_handler.get_operations()
-            obj = self._get_cq_obj(part_name)
+            obj = self._get_cq_obj(part_name)    
 
             if part_name in ns_before_cmd.keys():
                 new_var = False 
             else:
-                new_var = True
-        
-            cmd = Command(part_name, ops, obj, new_var = new_var)      
+                new_var = True     
 
-            self.on_command.emit(cmd)
-
-            
+            if not self.cmd_handler.error_traceback:
+                cmd = Command(part_name, ops, obj, new_var = new_var)      
+                self.on_command.emit(cmd)
+            else:
+                if not new_var:
+                    self.namespace[part_name] = ns_before_cmd[part_name] #We restore the state of the part before the error
+                self._append_plain_text(self.cmd_handler.error_traceback, True)    
 
 
 
