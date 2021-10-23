@@ -15,7 +15,7 @@ from nales_alpha.NDS import NOCAF
 # from nales_alpha.NDS.NOCAF import Feature, Part
 import re
 from nales_alpha.NDS.commands import Command
-from nales_alpha.NDS.model import NModel, NNode, ParamTableModel, setup_dummy_model
+from nales_alpha.NDS.model import NModel, NNode, ParamTableModel
 
 import nales_alpha.monkey_patcher 
 from nales_alpha.monkey_patcher import OperationHandler
@@ -81,8 +81,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 pass
 
             if cmd.type in ("new_part","part_edit","part_override"):
-                part = cmd .obj
-                part_name = cmd .var
+                part = cmd.obj
+                part_name = cmd.var
 
                 if cmd.type in ("new_part", "part_override"):
                     self.model.add_part(part_name, part)
@@ -90,7 +90,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 for operation in cmd.operations:
                     if len(operation) != 0:
                         self.model.add_operations(part_name, part, operation)
-                        self.modeling_ops_tree.expandAll()
+                        # self.modeling_ops_tree.expandAll()
+
+                        self.modeling_ops_tree.expand(self.model.childrens()[0])
+                        self.modeling_ops_tree.expand(self.model.childrens(self.model.childrens()[0])[0])
                         self.viewer.fit()
 
 

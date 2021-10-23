@@ -312,7 +312,14 @@ class NArgument(NNode):
         self._get_args_names_and_types()
 
     def __repr__(self) -> str:
-        return f"{self._value}"
+       
+        if self._linked_param:
+            value = self._param_name_pidx.data()
+
+        else:
+            value = self._value
+            
+        return str(value)
 
 
     def is_kwarg(self):

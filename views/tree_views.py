@@ -37,7 +37,7 @@ class ModelingOpsView(QTreeView):
                 context_menu = QMenu("Parameter selection", self)
                 submenu = context_menu.addMenu("Set parameter")
                 
-                if node._linked_param:
+                if node.is_linked():
                     rmv_param_action = context_menu.addAction("Remove parameter")
                     rmv_param_action.triggered.connect(lambda : modeling_ops_model._disconnect_parameter(item))
 

@@ -15,7 +15,7 @@ class OperationHandler():
         self.part_id = None
         self.recursive_calls_id = 0
         self.main_call_id = 1
-        self._monkey_patch()
+        self._monkey_patch_Workplane()
 
     def reset(self):
         self.part_id = None 
@@ -64,11 +64,19 @@ class OperationHandler():
         return cq_wrapper
 
 
-    def _monkey_patch(self):                
+    def _monkey_patch_Workplane(self):                
         # Monkey patch every method of Workplane class to retrieve info from calls
         for method in [method for (name, method) in inspect.getmembers(cq.Workplane) if not (name.startswith("_") and name != "__init__")]:
             method = self._operation_handler(method)
             setattr(cq.Workplane, method.__name__, method)
+
+    def _monkey_patch_Topo_classes(self):                
+        # Monkey patch every method of Shapes classes to retrieve info from calls
+        topo_classes = [cq.Shape, cq.Compound, cq.CompSolid, cq.Solid, cq.Face, cq.Wire, cq.Edge, cq.Vertex]
+        for topo_class in topo_classes:
+            for method in [method for (name, method) in inspect.getmembers(topo_class) if not (name.startswith("_") and name != "__init__")]:
+                method = self._operation_handler(method)
+                setattr(cq.Workplane, method.__name__, method)
 
 
 

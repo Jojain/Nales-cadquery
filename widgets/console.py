@@ -61,6 +61,7 @@ class ConsoleWidget(RichJupyterWidget):
         """
         Execute codes in the IKernel, 
         """   
+        self.cmd_handler.reset()
         ns_before_cmd = self.namespace.copy()
         super()._execute(source, hidden)
 
@@ -78,7 +79,7 @@ class ConsoleWidget(RichJupyterWidget):
 
             self.on_command.emit(cmd)
 
-            self.cmd_handler.reset()
+            
 
 
 

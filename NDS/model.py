@@ -176,7 +176,9 @@ class NModel(QAbstractItemModel):
         self.insertRows(1,0,NNode(None, "Shapes", self._root))
         self.insertRows(2,0,NNode(None, "Others", self._root))
 
+        
         # Slots connection 
+        self.dataChanged.connect(lambda idx : self.update_operation(idx)) 
 
         
 
@@ -192,7 +194,7 @@ class NModel(QAbstractItemModel):
         # We check if the part is already defined
         if part_node := self._root.find(name):
             part_idx = self.index(part_node._row-1, 0, parts_idx )
-            self.removeRows([part_idx.child(i,0) for i in range(self.rowCount(part_idx))], part_idx)
+            self.removeRows([part_idx], part_idx.parent())
             
 
         
@@ -248,7 +250,7 @@ class NModel(QAbstractItemModel):
                     node = NArgument(kwarg_name, kwarg_val, operation, kwarg=True) 
                     self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
 
-        self.dataChanged.connect(lambda idx : self.update_operation(idx)) 
+        part.display(update=True)
 
 
 
@@ -461,7 +463,7 @@ class NModel(QAbstractItemModel):
 
         elif isinstance(node, NPart) or isinstance(node, NShape):
             if role == Qt.DisplayRole:
-                return node.name # display method's name
+                return node.name # display part or shape var name
             
             elif role == Qt.CheckStateRole:
                 if node.visible:
@@ -526,7 +528,7 @@ class NModel(QAbstractItemModel):
                 if node.visible:
                     node.hide()
                 else:
-                    node.display(node._occt_shape)
+                    node.display(update=True)
 
         
         return True
@@ -538,17 +540,6 @@ class NModel(QAbstractItemModel):
         self.layoutChanged.emit()
 
         
-
-    # def insertColumns(self, column, count):
-    #     pass
-
-
-def setup_dummy_model():
-    nodes = [NNode("part"+str(i)) for i in range(5)]
-    nodes[-1].add_child(NNode(["operation"]))
-    model = NModel(nodes)
-
-    return model
 
 
 
