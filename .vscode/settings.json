@@ -4,5 +4,6 @@
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
-    "qtForPython.designer.path": "d:\\Qt\\Tools\\QtCreator\\bin\\qtcreator.exe"
+    "qtForPython.designer.path": "d:\\Qt\\Tools\\QtCreator\\bin\\qtcreator.exe",
+    "python.pythonPath": "C:\\Users\\rferru\\Anaconda3\\envs\\nales\\python.exe"
 }
