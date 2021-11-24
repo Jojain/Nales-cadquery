@@ -443,14 +443,13 @@ class NModel(QAbstractItemModel):
                         return f"{node._arg_infos[0]} = {node.linked_param}"
                     else:
                         return f"{node._arg_infos[0]} = {node._value}"
-                # else:
-                #     if node.is_linked(): # if linked to a param 
-                #         return node.linked_param
-                #     else :
-                #         return node._value
+
 
             elif role == Qt.EditRole:
-                return node
+                if node.is_linked():
+                    return str(node.linked_param)
+                else:
+                    return str(node._value)
 
 
             elif role == Qt.FontRole:
