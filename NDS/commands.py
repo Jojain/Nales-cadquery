@@ -9,9 +9,9 @@ from cadquery import Workplane
 from cadquery.occ_impl.shapes import Shape
 import cadquery as cq
 from collections import OrderedDict
-from graphviz.backend import command
+# from graphviz.backend import command
 from nales_alpha.utils import get_cq_class_kwargs_name, get_cq_topo_classes, get_cq_types, get_Wp_method_kwargs, get_topo_class_kwargs_name
-from nales_alpha.NDS.ast_grapher import make_graph
+# from nales_alpha.NDS.ast_grapher import make_graph
 
 # from collections import OrderedDict
 from nales_alpha.utils import (

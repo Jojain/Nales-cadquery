@@ -23,11 +23,13 @@ from nales_alpha.monkey_patcher import OperationHandler
 from qt_material import apply_stylesheet
 from nales_alpha.views.tree_views import ModelingOpsView
 #debug related import
-import debugpy
+# import debugpy
 
-from utils import get_Workplane_methods
-from widgets.msg_boxs import WrongArgMsgBox
-debugpy.debug_this_thread()
+from nales_alpha.utils import get_Workplane_methods
+from nales_alpha.widgets.msg_boxs import WrongArgMsgBox, StdErrorMsgBox
+
+from nales_cq_impl import Part
+# debugpy.debug_this_thread()
 
 
 console_theme ="""QPlainTextEdit, QTextEdit { background-color: yellow;
@@ -136,7 +138,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
+def main():
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
     extra = {

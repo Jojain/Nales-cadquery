@@ -9,7 +9,7 @@ import ast
 from PyQt5 import QtWidgets
 import cadquery as cq
 
-from monkey_patcher import OperationHandler
+from nales_alpha.monkey_patcher import OperationHandler
 # sys.stdout = sys.stderr = io.StringIO() # QtInProcessKernelManager related see https://github.com/ipython/ipython/issues/10658#issuecomment-307757082
 
 
