@@ -69,7 +69,7 @@ class Application(TDocStd_Application):
             raise Exception("The document could not be saved !")
 
     def close(self):
-        self.Close(self.document)
+        self.Close(self.doc)
 
 
 
