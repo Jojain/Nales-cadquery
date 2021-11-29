@@ -6,20 +6,39 @@ from PyQt5.QtCore import QObject, pyqtSignal
 from cadquery import Workplane
 from utils import get_Wp_method_kwargs
 
-class Part(Workplane, QObject):
+class SignalHandler(QObject):
+    on_part_edit = pyqtSignal(dict) #dict format : name, operation_dict
+    on_name_error = pyqtSignal(str)
+    def __init__(self) -> None:
+        super().__init__()
+
+class Part(Workplane, SignalHandler):
     """
     Nales wrapped Workplane object, this store additionnal data needed for the GUI
     """
     _names = []
 
-    on_part_edit = pyqtSignal(dict) #dict format : name, operation_dict
-    on_name_error = pyqtSignal(str)
+    # on_part_edit = pyqtSignal(dict) #dict format : name, operation_dict
+    # on_name_error = pyqtSignal(str)
+
+
 
     def __init__(self, *args, name = None,**kwargs):
+        
+
+        self._operations = []
+        self.part_id = None
+        self.recursive_calls_id = 0
+        self.main_call_id = 1
+        self.error_traceback = None
+        SignalHandler.__init__(self)
+
         if name:
             if name not in Part._names:
                 Part._names.append(name)
             else:
+                print("emitted")
+                raise ValueError("toto")
                 self.on_name_error.emit("This part name is already taken, delete it or use another name.")
             self._name = name
 
@@ -30,8 +49,8 @@ class Part(Workplane, QObject):
                 index+=1
             Part._names.append(auto_name)
             self._name = name
-
-        super().__init__(*args, **kwargs)
+        
+        Workplane.__init__(self,*args, **kwargs)
         self._monkey_patch_Workplane()
 
     def _operation_handler(self, cq_method):
@@ -85,14 +104,14 @@ class Part(Workplane, QObject):
 
 
 
-p = Part()
-print(Part._names)
-p = Part()
-print(Part._names)
-p = Part(name="Part10")
-print(Part._names)
-p = Part(name="Part10")
-print(Part._names)
-p = Part(inPlane="ZY",name="Wheel")
-print(Part._names)
+# p = Part()
+# print(Part._names)
+# p = Part()
+# print(Part._names)
+# p = Part(name="Part10")
+# print(Part._names)
+# p = Part(name="Part10")
+# print(Part._names)
+# p = Part(inPlane="ZY",name="Wheel")
+# print(Part._names)
 

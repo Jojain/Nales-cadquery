@@ -28,7 +28,7 @@ from nales_alpha.views.tree_views import ModelingOpsView
 from nales_alpha.utils import get_Workplane_methods
 from nales_alpha.widgets.msg_boxs import WrongArgMsgBox, StdErrorMsgBox
 
-from nales_cq_impl import Part
+from nales_cq_impl import Part, SignalHandler
 # debugpy.debug_this_thread()
 
 
@@ -65,19 +65,22 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 
 
 
-        self._console.push_vars({"model" : self.model, "mw": self, "save": self.model.app.save_as, "cq" : cq}) 
+        self._console.push_vars({"model" : self.model, "mw": self, "save": self.model.app.save_as, "Part":Part}) 
 
 
         #Connect all the slots to the needed signals
         self._console.on_command.connect(lambda c : handle_command(self, c))
         self.model.on_arg_error.connect(lambda exp_typ, rcv_typ: WrongArgMsgBox(exp_typ,rcv_typ, self))
-
+        
+        self.sh = SignalHandler()
+        self.sh.on_name_error.connect(lambda error_msg: StdErrorMsgBox(error_msg))
 
         @pyqtSlot(Command)
         def handle_command(self, cmd):
             """
             This function calls the approriate NModel method depending on the command received.
             """
+            return
             if cmd.type == "undefined":
                 return 
             
