@@ -28,7 +28,7 @@ from nales_alpha.views.tree_views import ModelingOpsView
 from nales_alpha.utils import get_Workplane_methods
 from nales_alpha.widgets.msg_boxs import WrongArgMsgBox, StdErrorMsgBox
 
-from nales_cq_impl import Part, SignalHandler
+from nales_cq_impl import Part
 # debugpy.debug_this_thread()
 
 
@@ -45,8 +45,12 @@ console_theme ="""QPlainTextEdit, QTextEdit { background-color: yellow;
 """
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
+
+    instance = None
+
     def __init__(self):
         super().__init__()
+        MainWindow.instance = self
         self.setupUi(self)
         self._console.setStyleSheet(console_theme)
 
@@ -72,8 +76,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self._console.on_command.connect(lambda c : handle_command(self, c))
         self.model.on_arg_error.connect(lambda exp_typ, rcv_typ: WrongArgMsgBox(exp_typ,rcv_typ, self))
         
-        self.sh = SignalHandler()
-        self.sh.on_name_error.connect(lambda error_msg: StdErrorMsgBox(error_msg))
+        # self.sh = SignalHandler()
+        # self.sh.on_name_error.connect(lambda error_msg: StdErrorMsgBox(error_msg, self))
 
         @pyqtSlot(Command)
         def handle_command(self, cmd):
