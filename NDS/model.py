@@ -205,7 +205,50 @@ class NModel(QAbstractItemModel):
 
 
 
-    
+    def add_operation(self, part_name: str, part_obj: Workplane,  operation: dict):
+        # Implémentation à l'arrache il faudra étudier les TFUNCTIONS et voir comment gérer de l'UNDO REDO
+        parts = self._root.child(0).childs
+        parts_idx = self.index(0,0) # the Parts container index
+        
+        for part in parts:
+            if part.name == part_name:
+                row = part._row
+                parent_part = part                
+                break 
+
+        part_idx = self.index(row, 0, parts_idx)        
+        
+        method_name = operation["name"]
+        noperation = NOperation(method_name, method_name, part_obj, parent_part)
+        self.insertRows(self.rowCount(), 0, operation, part_idx)
+
+        operation_idx = self.index(noperation._row, 0, part_idx)
+
+        args, kwargs = operation["parameters"][0], operation["parameters"][1]
+        args_names = get_Wp_method_args_name(method_name)
+        if len(args) == len(args_names):
+
+            for pos, arg in enumerate(args):                
+                node = NArgument(args_names[pos], arg, noperation) 
+                self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+        else: 
+            # Means the user passed an argument without calling the keyword
+            nb_short_call_kwarg = len(args) - len(args_names)
+
+            for pos, arg in enumerate(args[0:nb_short_call_kwarg-1]):                
+                node = NArgument(args_names[pos], arg, noperation) 
+                self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+
+            kw_names = [kw_name for kw_name in list(kwargs.keys())]
+            for kwarg_name, kwarg_val in zip(kw_names,args[nb_short_call_kwarg - 1:]):
+                kwargs[kwarg_name] = kwarg_val
+
+        for kwarg_name, kwarg_val in kwargs.items():
+                node = NArgument(kwarg_name, kwarg_val, noperation, kwarg=True) 
+                self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+
+        part.display(update=True)
+
     def add_operations(self, part_name: str, wp: Workplane,  operations: dict):
         # Implémentation à l'arrache il faudra étudier les TFUNCTIONS et voir comment gérer de l'UNDO REDO
         parts = self._root.child(0).childs

@@ -5,10 +5,25 @@ from functools import wraps
 from PyQt5.QtCore import QObject, pyqtSignal
 from cadquery import Workplane
 from utils import get_Wp_method_kwargs
+from copy import copy
 
 
 from widgets.msg_boxs import StdErrorMsgBox
-        
+
+
+class PatchedWorkplane(Workplane):
+    _name = None
+    def __init__(self,*args, **kwargs):
+        super().__init__(*args,**kwargs)
+
+    def newObject(self, objlist):
+        # patching the transmitting of _name attribute, could be changed directly in cq file since, we need to modify the cq
+        # class anyway due to name clash between QObject and Workplane classes.
+        new_wp = super().newObject(objlist)
+        new_wp._name = self._name
+        return new_wp
+
+
 class PartSignalsHandler(type(QObject)):
     def __new__(cls, name, bases, dct):  
         dct['on_method_call'] = pyqtSignal(dict)
@@ -17,25 +32,21 @@ class PartSignalsHandler(type(QObject)):
         return super().__new__(cls, name, bases, dct)
 
 class PartWrapper(PartSignalsHandler):
-
-    recursive = False
-
     @staticmethod
-    def _create_cmd(*args):
-        return {}
+    def _create_cmd(part_name, obj, operations):
+        cmd={"type":"part_edit", "obj_name":part_name, "operations":operations, "obj":obj}
+        return cmd
 
     @staticmethod
     def _operation_handler(cq_method):
         @wraps(cq_method)
         def cq_wrapper(*args, **kwargs):  
             # Since a cq_method can have internals calls to other cq_methods, cq_wrapper is called recursively here
-            obj = args[0]
-            parent_obj = obj.parent if obj.parent is not None else obj
-            
-            if not PartWrapper.recursive:
-                PartWrapper.recursive = True
+            parent_obj = args[0]
+
+            Part._recursion_nb += 1
             try:
-                obj = cq_method(obj, *args[1:], **kwargs)  
+                new_obj = cq_method(parent_obj, *args[1:], **kwargs)  
                 
             except Exception as exc:
                 splitter = "---------------------------------------------------------------------------"
@@ -43,28 +54,28 @@ class PartWrapper(PartSignalsHandler):
                 print(error_tb)
                 return parent_obj     
 
-            if not PartWrapper.recursive: # we are in the top level method call
+            if Part._recursion_nb == 1: # we are in the top level method call
                 operations = {}                    
                 default_kwargs = get_Wp_method_kwargs(cq_method.__name__)
                 if kwargs:                
                     for kwarg, val in kwargs.items():
                         default_kwargs[kwarg] = val
                 
-                operations[cq_method.__name__] = ([arg for arg in args[1:]], default_kwargs)
-                cmd = PartWrapper._create_cmd(cq_method.__name__, obj, operations)
-                obj.on_method_call.emit(cmd)
+                operations["name"] = cq_method.__name__
+                operations["parameters"] = ([arg for arg in args[1:]], default_kwargs)
+                cmd = PartWrapper._create_cmd(new_obj._name, new_obj, operations)
+                new_obj.on_method_call.emit(cmd)
 
-                print("emitted")
-
-            PartWrapper.recursive = False
-            return obj
+            Part._recursion_nb -= 1
+            return new_obj
 
         return cq_wrapper
 
     @staticmethod
     def _wrap_Workplane(dct):                
         # Monkey patch every method of Workplane class to retrieve info from calls
-        for method in [method for (name, method) in inspect.getmembers(Workplane) if not name.startswith("_") ]:
+        # for method in [method for (name, method) in inspect.getmembers(Workplane) if not (name.startswith("_") or name =="newObject") ]:
+        for method in [method for (name, method) in inspect.getmembers(PatchedWorkplane) if not (name.startswith("_") and (name != "val" or name !="vals")) ]:
             method = PartWrapper._operation_handler(method)
             dct[method.__name__] = method
 
@@ -74,26 +85,28 @@ class PartWrapper(PartSignalsHandler):
         PartWrapper._wrap_Workplane(dct)
         return super().__new__(cls, name, bases, dct) 
 
-class Part(Workplane,QObject,metaclass=PartWrapper):
+class Part(PatchedWorkplane,QObject,metaclass=PartWrapper):
+
     
-    mw_instance = None # this fields holds the mainwindow instance and is initialized in the main_window __init__ function
+    _recursion_nb = 0
+    _mw_instance = None # this fields holds the mainwindow instance and is initialized in the main_window __init__ function
     _names = []
+    # _name = None 
 
     def __init__(self, *args, name = None,**kwargs): 
-        Workplane.__init__(self, *args, **kwargs)  
-        parent = self.parent
         QObject.__init__(self)
-        
+        PatchedWorkplane.__init__(self, *args, **kwargs)          
 
-        self.on_name_error.connect(lambda msg: StdErrorMsgBox(msg, self.mw_instance))
-        self.on_method_call.connect(lambda ops: self.mw_instance.handle_command(ops))
+        self.on_name_error.connect(lambda msg: StdErrorMsgBox(msg, self._mw_instance))
+        self.on_method_call.connect(lambda ops: self._mw_instance.handle_command(ops))
 
-        if self.parent is None:
+        if self._recursion_nb == 0:
             if name:
                 if name not in Part._names:
                     Part._names.append(name)
                 else:
                     self.on_name_error.emit("This part name is already taken,\ndelete it or use another name.")
+                    return
                 self._name = name
 
             else:
@@ -104,9 +117,6 @@ class Part(Workplane,QObject,metaclass=PartWrapper):
                 self._name = auto_name
             cmd={"type":"new_part", "obj_name":self._name, "operations":{}, "obj":self}
             self.on_method_call.emit(cmd)
-        else:
-            self._name = self.parent._name
-
 
 
 if __name__ == "__main__":

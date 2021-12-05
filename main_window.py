@@ -47,7 +47,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def __init__(self):
         super().__init__()
-        Part.mw_instance = self #give a reference to the main_window to the Part class, for connecting signals and slots
+        Part._mw_instance = self #give a reference to the main_window to the Part class, for connecting signals and slots
 
         self.setupUi(self)
         self._console.setStyleSheet(console_theme)
@@ -91,55 +91,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if cmd["type"]in ("new_part", "part_override"):
                 self.model.add_part(part_name, part)
             
-            for operation in cmd["operations"]:
-                if len(operation) != 0:
-                    self.model.add_operations(part_name, part, operation)
-                    # self.modeling_ops_tree.expandAll()
+            operation = cmd["operations"]
+            if len(operation) != 0:
+                # self.model.add_operations(part_name, part, operation)
+                self.model.add_operation(part_name, part, operation)
+                # self.modeling_ops_tree.expandAll()
 
-                    self.modeling_ops_tree.expand(self.model.childrens()[0])
-                    self.modeling_ops_tree.expand(self.model.childrens(self.model.childrens()[0])[0])
-                    self.viewer.fit()
+                self.modeling_ops_tree.expand(self.model.childrens()[0])
+                self.modeling_ops_tree.expand(self.model.childrens(self.model.childrens()[0])[0])
+                self.viewer.fit()
 
-
-
-
-
-        # @pyqtSlot(Command)
-        # def handle_command(self, cmd):
-        #     """
-        #     This function calls the approriate NModel method depending on the command received.
-        #     """
-        #     return
-        #     if cmd.type == "undefined":
-        #         return 
-            
-        #     if cmd.type == "other":
-        #         pass
-
-        #     if cmd.type in ("new_part","part_edit","part_override"):
-        #         part = cmd.obj
-        #         part_name = cmd.var
-
-        #         if cmd.type in ("new_part", "part_override"):
-        #             self.model.add_part(part_name, part)
-                
-        #         for operation in cmd.operations:
-        #             if len(operation) != 0:
-        #                 self.model.add_operations(part_name, part, operation)
-        #                 # self.modeling_ops_tree.expandAll()
-
-        #                 self.modeling_ops_tree.expand(self.model.childrens()[0])
-        #                 self.modeling_ops_tree.expand(self.model.childrens(self.model.childrens()[0])[0])
-        #                 self.viewer.fit()
-
-
-        #     if cmd.type == "new_shape":
-        #         shape = cmd.obj
-        #         shape_name = cmd.var
-        #         topo_type = cmd.topo_type
-        #         method_call = cmd.operations
-        #         self.model.add_shape(shape_name, shape, topo_type, method_call)     
-        #         self.modeling_ops_tree.expandAll()
 
         
 

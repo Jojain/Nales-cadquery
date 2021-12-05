@@ -22,7 +22,7 @@ import cadquery as cq
 
 
 class NNode():
-    error = pyqtSignal(str) # is emitted when an error occurs
+    # error = pyqtSignal(str) # is emitted when an error occurs
     def __init__(self, data, name = None, parent = None):
         self._data = data
         self._parent = parent
@@ -130,7 +130,8 @@ class NPart(NNode):
 
     def __init__(self, name: str, part: Workplane, parent):
         super().__init__(part, name, parent=parent)
-        
+        self.part = part
+
         self.visible = True 
 
         if len(part.objects) != 0:
@@ -142,8 +143,7 @@ class NPart(NNode):
         self.display()
 
     def _update_occt_shape(self):        
-        cq_Wp = self.root_node.console_namespace[self.name]
-        self._occt_shape = cq_Wp.val().wrapped
+        self._occt_shape = self.part.val().wrapped
 
     def hide(self):
 
@@ -230,7 +230,8 @@ class NOperation(NNode):
 
     def __init__(self, method_name: str, name, part: Workplane, parent : NNode):
         super().__init__(method_name, name, parent=parent)
-
+        parent.part = part
+        
         self.name = method_name
         self.visible = False
         Workplane_methods = get_Workplane_methods()
