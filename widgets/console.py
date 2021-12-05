@@ -3,20 +3,14 @@ from PyQt5.QtWidgets import QApplication, QHBoxLayout, QWidget, QMainWindow
 from PyQt5.QtCore import pyqtSlot, pyqtSignal
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 from qtconsole.inprocess import QtInProcessKernelManager
-from nales_alpha.NDS.commands import CQAssignAnalyzer, Command, prepare_parent_childs
-import sys, io 
-import ast
-from PyQt5 import QtWidgets
-import cadquery as cq
+import sys
 
-from nales_alpha.monkey_patcher import OperationHandler
 # sys.stdout = sys.stderr = io.StringIO() # QtInProcessKernelManager related see https://github.com/ipython/ipython/issues/10658#issuecomment-307757082
 
 
 class ConsoleWidget(RichJupyterWidget):
     
     name = 'Console'
-    on_command = pyqtSignal(Command)
     def __init__(self, customBanner=None, namespace=dict(), *args, **kwargs):
         super(ConsoleWidget, self).__init__(*args, **kwargs)
 
@@ -32,7 +26,6 @@ class ConsoleWidget(RichJupyterWidget):
         self.kernel_client = kernel_client = self._kernel_manager.client()
         kernel_client.start_channels()
 
-        self.cmd_handler = OperationHandler()
         
         self.namespace = self.kernel_manager.kernel.shell.user_global_ns
 
@@ -61,27 +54,8 @@ class ConsoleWidget(RichJupyterWidget):
         """
         Execute codes in the IKernel, 
         """   
-        self.cmd_handler.reset()
-        ns_before_cmd = self.namespace.copy()
         super()._execute(source, hidden)
 
-        if self.cmd_handler.has_seen_cq_cmd():            
-            part_name = self._get_part_varname(self.cmd_handler.part_id)
-            ops = self.cmd_handler.get_operations()
-            obj = self._get_cq_obj(part_name)    
-
-            if part_name in ns_before_cmd.keys():
-                new_var = False 
-            else:
-                new_var = True     
-
-            if not self.cmd_handler.error_traceback:
-                cmd = Command(part_name, ops, obj, new_var = new_var)      
-                self.on_command.emit(cmd)
-            else:
-                if not new_var:
-                    self.namespace[part_name] = ns_before_cmd[part_name] #We restore the state of the part before the error
-                self._append_plain_text(self.cmd_handler.error_traceback, True)    
 
 
 

@@ -17,9 +17,6 @@ import re
 from nales_alpha.NDS.commands import Command
 from nales_alpha.NDS.model import NModel, NNode, ParamTableModel
 
-import nales_alpha.monkey_patcher 
-from nales_alpha.monkey_patcher import OperationHandler
-
 from qt_material import apply_stylesheet
 from nales_alpha.views.tree_views import ModelingOpsView
 #debug related import
@@ -50,7 +47,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def __init__(self):
         super().__init__()
-        MainWindow.instance = self
+        Part.mw_instance = self #give a reference to the main_window to the Part class, for connecting signals and slots
+
         self.setupUi(self)
         self._console.setStyleSheet(console_theme)
 
@@ -66,55 +64,82 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Views / Widgets setup
         self._setup_param_table_view()
         self._setup_modeling_ops_view()
-                
-
-
+        
         self._console.push_vars({"model" : self.model, "mw": self, "save": self.model.app.save_as, "Part":Part}) 
 
 
         #Connect all the slots to the needed signals
-        self._console.on_command.connect(lambda c : handle_command(self, c))
         self.model.on_arg_error.connect(lambda exp_typ, rcv_typ: WrongArgMsgBox(exp_typ,rcv_typ, self))
+    
+
+    @pyqtSlot(dict)
+    def handle_command(self, cmd):
+        """
+        This function calls the approriate NModel method depending on the command received.
+        """
         
-        # self.sh = SignalHandler()
-        # self.sh.on_name_error.connect(lambda error_msg: StdErrorMsgBox(error_msg, self))
+        if cmd["type"] == "undefined":
+            return 
+        
+        if cmd["type"] == "other":
+            pass
 
-        @pyqtSlot(Command)
-        def handle_command(self, cmd):
-            """
-            This function calls the approriate NModel method depending on the command received.
-            """
-            return
-            if cmd.type == "undefined":
-                return 
+        if cmd["type"] in ("new_part","part_edit","part_override"):
+            part = cmd["obj"]
+            part_name = cmd["obj_name"]
+
+            if cmd["type"]in ("new_part", "part_override"):
+                self.model.add_part(part_name, part)
             
-            if cmd.type == "other":
-                pass
+            for operation in cmd["operations"]:
+                if len(operation) != 0:
+                    self.model.add_operations(part_name, part, operation)
+                    # self.modeling_ops_tree.expandAll()
 
-            if cmd.type in ("new_part","part_edit","part_override"):
-                part = cmd.obj
-                part_name = cmd.var
+                    self.modeling_ops_tree.expand(self.model.childrens()[0])
+                    self.modeling_ops_tree.expand(self.model.childrens(self.model.childrens()[0])[0])
+                    self.viewer.fit()
 
-                if cmd.type in ("new_part", "part_override"):
-                    self.model.add_part(part_name, part)
+
+
+
+
+        # @pyqtSlot(Command)
+        # def handle_command(self, cmd):
+        #     """
+        #     This function calls the approriate NModel method depending on the command received.
+        #     """
+        #     return
+        #     if cmd.type == "undefined":
+        #         return 
+            
+        #     if cmd.type == "other":
+        #         pass
+
+        #     if cmd.type in ("new_part","part_edit","part_override"):
+        #         part = cmd.obj
+        #         part_name = cmd.var
+
+        #         if cmd.type in ("new_part", "part_override"):
+        #             self.model.add_part(part_name, part)
                 
-                for operation in cmd.operations:
-                    if len(operation) != 0:
-                        self.model.add_operations(part_name, part, operation)
-                        # self.modeling_ops_tree.expandAll()
+        #         for operation in cmd.operations:
+        #             if len(operation) != 0:
+        #                 self.model.add_operations(part_name, part, operation)
+        #                 # self.modeling_ops_tree.expandAll()
 
-                        self.modeling_ops_tree.expand(self.model.childrens()[0])
-                        self.modeling_ops_tree.expand(self.model.childrens(self.model.childrens()[0])[0])
-                        self.viewer.fit()
+        #                 self.modeling_ops_tree.expand(self.model.childrens()[0])
+        #                 self.modeling_ops_tree.expand(self.model.childrens(self.model.childrens()[0])[0])
+        #                 self.viewer.fit()
 
 
-            if cmd.type == "new_shape":
-                shape = cmd.obj
-                shape_name = cmd.var
-                topo_type = cmd.topo_type
-                method_call = cmd.operations
-                self.model.add_shape(shape_name, shape, topo_type, method_call)     
-                self.modeling_ops_tree.expandAll()
+        #     if cmd.type == "new_shape":
+        #         shape = cmd.obj
+        #         shape_name = cmd.var
+        #         topo_type = cmd.topo_type
+        #         method_call = cmd.operations
+        #         self.model.add_shape(shape_name, shape, topo_type, method_call)     
+        #         self.modeling_ops_tree.expandAll()
 
         
 
