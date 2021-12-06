@@ -21,6 +21,8 @@ from OCP.Quantity import Quantity_NameOfColor
 import cadquery as cq
 
 import debugpy
+
+from widgets.msg_boxs import StdErrorMsgBox
 debugpy.debug_this_thread()
 
 class NNode():
@@ -256,16 +258,33 @@ class NOperation(NNode):
 
                
     def _update(self, pos):
-        part = self.parent.part 
-        part = part.end(pos, internal_call=True)
+        parent_part = self.parent.part 
+        part = parent_part.end(pos, internal_call=True)
         args = [child.value for child in self.childs]      
-        part = self.method(part,*args, internal_call = True)  
-        # part = self.method(internal_call = True)  
-        self.parent.part = part
-        # self.parent.part = self.method(*args, internal_call = True)
+
+        try:
+            part = self.method(part,*args, internal_call = True)  
+        except ValueError as exc:
+            if exc.args[0] == "No pending wires present":
+                self._restore_pending_wires()
+                parent_part = self.parent.part 
+                part = parent_part.end(pos, internal_call=True)
+                part = self.method(part,*args, internal_call = True)  
+                self.parent.part = part
+            else:
+                self.parent.part = parent_part
+                StdErrorMsgBox(repr(exc))
+                
 
             
 
+    def _restore_pending_wires(self):
+        index = 2
+        previous_ops = self.parent.childs[:self._row]
+        while len(self.parent.part.ctx.pendingWires) == 0:
+            op = previous_ops[-index]
+            op._update(op._row)
+            index += 1
 
 
 

@@ -24,6 +24,8 @@ class PatchedWorkplane(Workplane):
         return new_wp
 
 
+
+
 class PartSignalsHandler(type(QObject)):
     def __new__(cls, name, bases, dct):  
         dct['on_method_call'] = pyqtSignal(dict)
@@ -50,14 +52,17 @@ class PartWrapper(PartSignalsHandler):
                 internal_call = False
 
             Part._recursion_nb += 1
-            try:
-                new_obj = cq_method(parent_obj, *args[1:], **kwargs)  
+
+            new_obj = cq_method(parent_obj, *args[1:], **kwargs) 
+
+            # try:
+            #     new_obj = cq_method(parent_obj, *args[1:], **kwargs)  
                 
-            except Exception as exc:
-                splitter = "---------------------------------------------------------------------------"
-                error_tb = f"{splitter}\nError in method Workplane.{cq_method.__name__}\n {repr(exc)}\n"
-                print(error_tb)
-                return parent_obj     
+            # except Exception as exc:
+            #     splitter = "---------------------------------------------------------------------------"
+            #     error_tb = f"{splitter}\nError in method Workplane.{cq_method.__name__}\n {repr(exc)}\n"
+            #     print(error_tb) 
+            #     return repr(exc)     
 
             if Part._recursion_nb == 1 and not internal_call: # we are in the top level method call
                 operations = {}                    
