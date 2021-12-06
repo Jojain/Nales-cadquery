@@ -38,7 +38,8 @@ from nales_alpha.widgets.msg_boxs import WrongArgMsgBox
 import cadquery as cq
 
 
-
+import debugpy
+debugpy.debug_this_thread()
 
 
 
@@ -321,14 +322,7 @@ class NModel(QAbstractItemModel):
 
     def index_from_node(self, node: "NNode") -> QModelIndex:
         raise NotImplementedError
-        if parent_node := node.parent:
-            parent_idx = self.index_from_node(parent_node)
-        else:
-            parent_idx = QModelIndex()
-    
-        node_idx = self.index(node._row, node._columns_nb, parent_idx)
 
-        return node_idx
 
     def add_shape(self, shape_name, shape, topo_type, method_call):
         (method_name, args), = method_call.items() #weird unpacking necessary for 1 element dict

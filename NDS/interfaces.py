@@ -20,6 +20,8 @@ from OCP.Quantity import Quantity_NameOfColor
 
 import cadquery as cq
 
+import debugpy
+debugpy.debug_this_thread()
 
 class NNode():
     # error = pyqtSignal(str) # is emitted when an error occurs
@@ -131,19 +133,30 @@ class NPart(NNode):
     def __init__(self, name: str, part: Workplane, parent):
         super().__init__(part, name, parent=parent)
         self.part = part
-
         self.visible = True 
+        self._solid = TopoDS_Shape()
+        self._active_shape = None
 
-        if len(part.objects) != 0:
+        # if len(part.objects) != 0:
 
-            self._occt_shape = part.val().wrapped
-        else:
-            self._occt_shape = TopoDS_Shape()
+        #     self._occt_shape = part.val().wrapped
+        # else:
+        #     self._occt_shape = TopoDS_Shape()
 
         self.display()
 
-    def _update_occt_shape(self):        
-        self._occt_shape = self.part.val().wrapped
+
+    
+    def update_display_shapes(self):
+        solid = self.part.findSolid(internal_call = True).wrapped
+        self._solid = solid
+       
+        if active_shape := self.part.val(internal_call = True).wrapped is solid:
+            self._active_shape = None 
+        else:
+            self._active_shape = active_shape
+
+
 
     def hide(self):
 
@@ -159,12 +172,12 @@ class NPart(NNode):
 
         if update:
             self.ais_shape.Erase(remove=True)
-            self._update_occt_shape()
+            self.update_display_shapes()
             self.root_node._viewer.Update()
 
 
         self.bldr = TNaming_Builder(self._label) #_label is  TDF_Label
-        self.bldr.Generated(self._occt_shape)
+        self.bldr.Generated(self._solid)
 
         named_shape = self.bldr.NamedShape()
         self._label.FindAttribute(TNaming_NamedShape.GetID_s(), named_shape)
@@ -230,12 +243,10 @@ class NOperation(NNode):
 
     def __init__(self, method_name: str, name, part: Workplane, parent : NNode):
         super().__init__(method_name, name, parent=parent)
-        parent.part = part
+        self.parent.part = part
         
         self.name = method_name
-        self.visible = False
-        Workplane_methods = get_Workplane_methods()
-        self.method = Workplane_methods[method_name]
+        self.method = getattr(part,method_name).__func__
         
 
         if method_name == "Workplane":
@@ -243,35 +254,15 @@ class NOperation(NNode):
         else:
             self._root_operation = False
 
-    def __repr__(self) -> str:
-        pass
-
-    def _get_ast(self, rewind_idx: int = 0) -> ast.Module:
-        """
-        Creates an AST node 
-        """
-        unpack = lambda args : ",".join(args)
-
-        args = []
-        for child in self._childs:            
-                args.append(repr(child))
-
-
-        if not self._root_operation:            
-            code_line = f"{self.parent.name} = {self.parent.name}.end({rewind_idx}).{self.name}({unpack(args)})"
-        else:
-            code_line = f"{self.parent.name} = cq.{self.name}({unpack(args)})"
-        
-        return ast.parse(code_line)
-
-
-                
+               
     def _update(self, pos):
-
-        node = self._get_ast(pos)
-
-        code = compile(node,"nales", "exec")
-        exec(code, self.root_node.console_namespace)        
+        part = self.parent.part 
+        part = part.end(pos, internal_call=True)
+        args = [child.value for child in self.childs]      
+        part = self.method(part,*args, internal_call = True)  
+        # part = self.method(internal_call = True)  
+        self.parent.part = part
+        # self.parent.part = self.method(*args, internal_call = True)
 
             
 
@@ -311,18 +302,6 @@ class NArgument(NNode):
         
 
         self._get_args_names_and_types()
-
-    def __repr__(self) -> str:
-       
-        if self._linked_param:
-            value = self._param_value_pidx.data()
-
-        elif self._type is str:
-            value = f'"{self._value}"'
-        else:
-            value = self._value
-            
-        return str(value)
 
 
     def is_kwarg(self):
@@ -371,7 +350,13 @@ class NArgument(NNode):
 
     @property 
     def value(self):
-        return self._value
+        if self._type is type(None):
+            return None
+        if self.is_linked():
+            return self._type(self._param_value_pidx.data())
+        else:            
+            return self._type(self._value)
+
     @value.setter
     def value(self, value):
         self._value = value

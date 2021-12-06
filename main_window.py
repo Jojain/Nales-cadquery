@@ -19,14 +19,15 @@ from nales_alpha.NDS.model import NModel, NNode, ParamTableModel
 
 from qt_material import apply_stylesheet
 from nales_alpha.views.tree_views import ModelingOpsView
+
 #debug related import
-# import debugpy
+import debugpy
+debugpy.debug_this_thread()
 
 from nales_alpha.utils import get_Workplane_methods
 from nales_alpha.widgets.msg_boxs import WrongArgMsgBox, StdErrorMsgBox
 
 from nales_cq_impl import Part
-# debugpy.debug_this_thread()
 
 
 console_theme ="""QPlainTextEdit, QTextEdit { background-color: yellow;

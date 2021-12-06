@@ -44,6 +44,11 @@ class PartWrapper(PartSignalsHandler):
             # Since a cq_method can have internals calls to other cq_methods, cq_wrapper is called recursively here
             parent_obj = args[0]
 
+            try:
+                internal_call = kwargs.pop("internal_call")             
+            except KeyError:
+                internal_call = False
+
             Part._recursion_nb += 1
             try:
                 new_obj = cq_method(parent_obj, *args[1:], **kwargs)  
@@ -54,7 +59,7 @@ class PartWrapper(PartSignalsHandler):
                 print(error_tb)
                 return parent_obj     
 
-            if Part._recursion_nb == 1: # we are in the top level method call
+            if Part._recursion_nb == 1 and not internal_call: # we are in the top level method call
                 operations = {}                    
                 default_kwargs = get_Wp_method_kwargs(cq_method.__name__)
                 if kwargs:                
