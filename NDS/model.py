@@ -40,10 +40,11 @@ import cadquery as cq
 
 
 import debugpy
+
+from nales_cq_impl import Part
 debugpy.debug_this_thread()
 
 
-UNDERLYING_DATA = 10
 
 
 class ParamTableModel(QAbstractTableModel):
@@ -227,11 +228,18 @@ class NModel(QAbstractItemModel):
         operation_idx = self.index(noperation._row, 0, part_idx)
 
         args, kwargs = operation["parameters"][0], operation["parameters"][1]
+        args = [arg._name if isinstance(arg,Part) else arg for arg in args] 
+
         args_names = get_Wp_method_args_name(method_name)
         if len(args) == len(args_names):
 
             for pos, arg in enumerate(args):                
                 node = NArgument(args_names[pos], arg, noperation) 
+                if (obj_node := self._root.find(arg)): # the argument is a object stored in the model data structure
+                    idx = self.index_from_node(obj_node)
+                    node._linked_obj_idx = QPersistentModelIndex(idx)               
+                    node.name = arg
+
                 self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
         else: 
             # Means the user passed an argument without calling the keyword
@@ -251,50 +259,50 @@ class NModel(QAbstractItemModel):
 
         part.display(update=True)
 
-    def add_operations(self, part_name: str, wp: Workplane,  operations: dict):
-        # Implémentation à l'arrache il faudra étudier les TFUNCTIONS et voir comment gérer de l'UNDO REDO
-        parts = self._root.child(0).childs
-        parts_idx = self.index(0,0) # the Parts container index
+    # def add_operations(self, part_name: str, wp: Workplane,  operations: dict):
+    #     # Implémentation à l'arrache il faudra étudier les TFUNCTIONS et voir comment gérer de l'UNDO REDO
+    #     parts = self._root.child(0).childs
+    #     parts_idx = self.index(0,0) # the Parts container index
         
-        for part in parts:
-            if part.name == part_name:
-                row = part._row
-                parent_part = part                
-                break 
+    #     for part in parts:
+    #         if part.name == part_name:
+    #             row = part._row
+    #             parent_part = part                
+    #             break 
 
-        part_idx = self.index(row, 0, parts_idx)
+    #     part_idx = self.index(row, 0, parts_idx)
         
         
-        for method, parameters in operations.items():
-            operation = NOperation(method, method, wp, parent_part)
-            self.insertRows(self.rowCount(), 0, operation, part_idx)
+    #     for method, parameters in operations.items():
+    #         operation = NOperation(method, method, wp, parent_part)
+    #         self.insertRows(self.rowCount(), 0, operation, part_idx)
 
-            operation_idx = self.index(operation._row, 0, part_idx)
+    #         operation_idx = self.index(operation._row, 0, part_idx)
 
-            args, kwargs = parameters[0], parameters[1]
-            args_names = get_Wp_method_args_name(method)
-            if len(args) == len(args_names):
+    #         args, kwargs = parameters[0], parameters[1]
+    #         args_names = get_Wp_method_args_name(method)
+    #         if len(args) == len(args_names):
 
-                for pos, arg in enumerate(args):                
-                    node = NArgument(args_names[pos], arg, operation) 
-                    self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
-            else: 
-                # Means the user passed an argument without calling the keyword
-                nb_short_call_kwarg = len(args) - len(args_names)
+    #             for pos, arg in enumerate(args):                
+    #                 node = NArgument(args_names[pos], arg, operation) 
+    #                 self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+    #         else: 
+    #             # Means the user passed an argument without calling the keyword
+    #             nb_short_call_kwarg = len(args) - len(args_names)
 
-                for pos, arg in enumerate(args[0:nb_short_call_kwarg-1]):                
-                    node = NArgument(args_names[pos], arg, operation) 
-                    self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+    #             for pos, arg in enumerate(args[0:nb_short_call_kwarg-1]):                
+    #                 node = NArgument(args_names[pos], arg, operation) 
+    #                 self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
 
-                kw_names = [kw_name for kw_name in list(kwargs.keys())]
-                for kwarg_name, kwarg_val in zip(kw_names,args[nb_short_call_kwarg - 1:]):
-                    kwargs[kwarg_name] = kwarg_val
+    #             kw_names = [kw_name for kw_name in list(kwargs.keys())]
+    #             for kwarg_name, kwarg_val in zip(kw_names,args[nb_short_call_kwarg - 1:]):
+    #                 kwargs[kwarg_name] = kwarg_val
 
-            for kwarg_name, kwarg_val in kwargs.items():
-                    node = NArgument(kwarg_name, kwarg_val, operation, kwarg=True) 
-                    self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+    #         for kwarg_name, kwarg_val in kwargs.items():
+    #                 node = NArgument(kwarg_name, kwarg_val, operation, kwarg=True) 
+    #                 self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
 
-        part.display(update=True)
+    #     part.display(update=True)
 
 
 
@@ -316,7 +324,7 @@ class NModel(QAbstractItemModel):
                     pos = len(part.childs) - operation._row + 1
                 else:
                     pos = 0
-                operation._update(pos)
+                operation.update(pos)
 
             part.display(update=True)
 

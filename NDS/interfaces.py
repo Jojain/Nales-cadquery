@@ -17,13 +17,13 @@ from OCP.TCollection import TCollection_ExtendedString
 from OCP.TopoDS import TopoDS_Shape
 from nales_alpha.utils import PY_TYPES_TO_AST_NODE, get_Workplane_methods
 from OCP.Quantity import Quantity_NameOfColor
+from nales_cq_impl import Part
 
-import cadquery as cq
 
 import debugpy
+debugpy.debug_this_thread()
 
 from widgets.msg_boxs import StdErrorMsgBox
-debugpy.debug_this_thread()
 
 class NNode():
     # error = pyqtSignal(str) # is emitted when an error occurs
@@ -134,7 +134,6 @@ class NNode():
 
 class NPart(NNode):
 
-    # viewer_updated = pyqtSignal()
 
     def __init__(self, name: str, part: Workplane, parent):
         super().__init__(part, name, parent=parent)
@@ -143,25 +142,19 @@ class NPart(NNode):
         self._solid = TopoDS_Shape()
         self._active_shape = None
 
-        # if len(part.objects) != 0:
-
-        #     self._occt_shape = part.val().wrapped
-        # else:
-        #     self._occt_shape = TopoDS_Shape()
-
         self.display()
 
 
     
     def update_display_shapes(self):
         try:
-            solid = self.part.findSolid(internal_call = True).wrapped
+            solid = self.part._findSolid().wrapped
         except ValueError:
             solid = TopoDS_Shape()
        
         self._solid = solid
        
-        if active_shape := self.part.val(internal_call = True).wrapped is solid:
+        if active_shape := self.part._val().wrapped is solid:
             self._active_shape = None 
         else:
             self._active_shape = active_shape
@@ -265,33 +258,31 @@ class NOperation(NNode):
             self._root_operation = False
 
                
-    def _update(self, pos):
+    def update(self, pos):
         parent_part = self.parent.part 
-        part = parent_part.end(pos, internal_call=True)
+        part = parent_part._end(pos)
         args = [child.value for child in self.childs]      
 
         try:
             part = self.method(part,*args, internal_call = True)  
             self.parent.part = part
         except ValueError as exc:
-            if exc.args[0] == "No pending wires present":
-                self._restore_pending_wires()
-                parent_part = self.parent.part 
-                part = parent_part.end(pos, internal_call=True)
-                part = self.method(part,*args, internal_call = True)  
-                self.parent.part = part
+            if exc.args[0] == "No pending wires present":                                  
+                previous_op = self.parent.childs[self._row-2]  
+                previous_op.update(pos+1)        
+                self.update(pos)
+                
+                
+
             else:
                 StdErrorMsgBox(repr(exc))
                 
-
-            
-
     def _restore_pending_wires(self):
         index = 2
-        previous_ops = self.parent.childs[:self._row]
+        previous_ops = self.parent.childs[:self._row]  
         while len(self.parent.part.ctx.pendingWires) == 0:
             op = previous_ops[-index]
-            op._update(op._row)
+            op.update(len(previous_ops)-op._row)
             index += 1
 
 

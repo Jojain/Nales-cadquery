@@ -11,17 +11,7 @@ from copy import copy
 from widgets.msg_boxs import StdErrorMsgBox
 
 
-class PatchedWorkplane(Workplane):
-    _name = None
-    def __init__(self,*args, **kwargs):
-        super().__init__(*args,**kwargs)
 
-    def newObject(self, objlist):
-        # patching the transmitting of _name attribute, could be changed directly in cq file since, we need to modify the cq
-        # class anyway due to name clash between QObject and Workplane classes.
-        new_wp = super().newObject(objlist)
-        new_wp._name = self._name
-        return new_wp
 
 
 
@@ -55,16 +45,7 @@ class PartWrapper(PartSignalsHandler):
 
             new_obj = cq_method(parent_obj, *args[1:], **kwargs) 
 
-            # try:
-            #     new_obj = cq_method(parent_obj, *args[1:], **kwargs)  
-                
-            # except Exception as exc:
-            #     splitter = "---------------------------------------------------------------------------"
-            #     error_tb = f"{splitter}\nError in method Workplane.{cq_method.__name__}\n {repr(exc)}\n"
-            #     print(error_tb) 
-            #     return repr(exc)     
-
-            if Part._recursion_nb == 1 and not internal_call: # we are in the top level method call
+            if Part._recursion_nb == 1 and not internal_call: # we are in the top level method call and the method is used by the user through the console
                 operations = {}                    
                 default_kwargs = get_Wp_method_kwargs(cq_method.__name__)
                 if kwargs:                
@@ -76,6 +57,7 @@ class PartWrapper(PartSignalsHandler):
                 cmd = PartWrapper._create_cmd(new_obj._name, new_obj, operations)
                 new_obj.on_method_call.emit(cmd)
 
+       
             Part._recursion_nb -= 1
             return new_obj
 
@@ -95,13 +77,34 @@ class PartWrapper(PartSignalsHandler):
         PartWrapper._wrap_Workplane(dct)
         return super().__new__(cls, name, bases, dct) 
 
+class PatchedWorkplane(Workplane):
+    _name = None
+    def __init__(self,*args, **kwargs):
+        super().__init__(*args,**kwargs)
+
+    def newObject(self, objlist):
+        # patching the transmitting of _name attribute, could be changed directly in cq file since, we need to modify the cq
+        # class anyway due to name clash between QObject and Workplane classes.
+        new_wp = super().newObject(objlist)
+        new_wp._name = self._name
+        return new_wp
+
+
+    def _val(self):
+        return super().val()
+
+    def _findSolid(self):
+        return super().findSolid()
+    def _end(self,pos):
+        return super().end(pos)
+
+
 class Part(PatchedWorkplane,QObject,metaclass=PartWrapper):
 
     
     _recursion_nb = 0
     _mw_instance = None # this fields holds the mainwindow instance and is initialized in the main_window __init__ function
     _names = []
-    # _name = None 
 
     def __init__(self, *args, name = None,**kwargs): 
         QObject.__init__(self)
