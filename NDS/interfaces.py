@@ -2,7 +2,7 @@
 import ast
 from inspect import signature
 from typing import Union
-from PyQt5.QtCore import  QModelIndex, QObject, pyqtSignal
+from PyQt5.QtCore import  QPersistentModelIndex, Qt
 from cadquery import Workplane
 
 from OCP.TDataStd import TDataStd_Name
@@ -51,11 +51,15 @@ class NNode():
 
         
 
-    def __str__(self):
-            return f"{self.name}"
+    # def __str__(self):
+    #         return f"{self.name}"
 
 
     def walk(self, node: "NNode" = None) -> "NNode":
+        """
+        Walks all the node starting from 'node'
+        If 'node' is None, starts from the called node
+        """
         base_node = node if node else self       
     
         yield base_node
@@ -150,7 +154,11 @@ class NPart(NNode):
 
     
     def update_display_shapes(self):
-        solid = self.part.findSolid(internal_call = True).wrapped
+        try:
+            solid = self.part.findSolid(internal_call = True).wrapped
+        except ValueError:
+            solid = TopoDS_Shape()
+       
         self._solid = solid
        
         if active_shape := self.part.val(internal_call = True).wrapped is solid:
@@ -264,6 +272,7 @@ class NOperation(NNode):
 
         try:
             part = self.method(part,*args, internal_call = True)  
+            self.parent.part = part
         except ValueError as exc:
             if exc.args[0] == "No pending wires present":
                 self._restore_pending_wires()
@@ -272,7 +281,6 @@ class NOperation(NNode):
                 part = self.method(part,*args, internal_call = True)  
                 self.parent.part = part
             else:
-                self.parent.part = parent_part
                 StdErrorMsgBox(repr(exc))
                 
 
@@ -314,7 +322,7 @@ class NArgument(NNode):
         
 
         self._linked_param = None
-        self._linked_obj = None
+        self._linked_obj_idx: QPersistentModelIndex = None
 
         self._param_name_pidx = None
         self._param_value_pidx = None
@@ -326,12 +334,20 @@ class NArgument(NNode):
     def is_kwarg(self):
         return self._kwarg
 
-    def is_linked(self):
-        if self._linked_param or self._linked_obj:
-            return True 
+    def is_linked(self, by:str = None):
+        if by == "obj":
+            return True if self._linked_obj_idx else False 
+        elif by == "param":
+            return True if self._linked_param else False 
+
+        elif by is None:
+            # if self._linked_param or self._linked_obj_idx:
+            if self._linked_param:
+                return True 
+            else:
+                return False
         else:
-            return False
-    
+            raise ValueError("Argument 'by' must be either 'obj' or 'param'")
 
     def _get_args_names_and_types(self):
         parent_method = self.parent.method
@@ -350,8 +366,8 @@ class NArgument(NNode):
 
     @property
     def linked_obj(self):
-        if self.is_linked():
-            return self._linked_obj
+        if self.is_linked(by = "obj"):
+            return self._linked_obj_idx.data(Qt.EditRole).part
         else:
             raise ValueError("This argument is not linked to an object")
 
@@ -371,8 +387,10 @@ class NArgument(NNode):
     def value(self):
         if self._type is type(None):
             return None
-        if self.is_linked():
+        if self.is_linked(by = "param"):
             return self._type(self._param_value_pidx.data())
+        elif self.is_linked(by = "obj"):
+            return self.linked_obj
         else:            
             return self._type(self._value)
 

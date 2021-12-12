@@ -20,7 +20,7 @@ class StdErrorMsgBox(QMessageBox):
         self.setWindowTitle("Error")
         self.setText(error_msg)
         self.setStandardButtons(QMessageBox.Ok)
-        self.setStyleSheet("QLabel{min-width:250 px}")
+        self.setStyleSheet("QLabel{min-width:500 px}")
         self.exec_()
 
 

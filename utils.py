@@ -11,7 +11,7 @@ import ast
 PY_TYPES_TO_AST_NODE = {int : ast.Constant, float: ast.Constant, str: ast.Constant, tuple: ast.Tuple, list: ast.List,
 bool: ast.Constant, set: ast.Set}
 
-
+# class Number(type)
 
 
 def determine_type_from_str(string: str):

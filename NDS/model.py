@@ -18,22 +18,23 @@ from typing import Any, Iterable, List, Tuple
 import sys
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QMenu
-from PyQt5.QtCore import QModelIndex, QAbstractItemModel, QAbstractTableModel,QItemSelectionModel, QPersistentModelIndex, QPoint, QVariant, Qt, pyqtSignal
+from PyQt5.QtCore import QModelIndex, QAbstractItemModel, QAbstractTableModel, QPersistentModelIndex, Qt, pyqtSignal
 from cadquery import Workplane
 
-from OCP.TDataStd import TDataStd_Name
-from OCP.TPrsStd import TPrsStd_AISPresentation
+# from OCP.TDataStd import TDataStd_Name
+# from OCP.TPrsStd import TPrsStd_AISPresentation
 from cadquery.occ_impl.shapes import Shape
-from OCP.AIS import AIS_InteractiveObject, AIS_ColoredShape
-from OCP.TNaming import TNaming_Builder, TNaming_NamedShape
+# from OCP.AIS import AIS_InteractiveObject, AIS_ColoredShape
+# from OCP.TNaming import TNaming_Builder, TNaming_NamedShape
 from nales_alpha.NDS.NOCAF import Application
-from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
-from OCP.TDF import TDF_Label, TDF_TagSource
-from OCP.TCollection import TCollection_ExtendedString
-from OCP.TopoDS import TopoDS_Shape
+# from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
+# from OCP.TDF import TDF_Label, TDF_TagSource
+# from OCP.TCollection import TCollection_ExtendedString
+# from OCP.TopoDS import TopoDS_Shape
 from nales_alpha.utils import determine_type_from_str, get_Wp_method_args_name
 from nales_alpha.NDS.interfaces import NNode, NPart, NOperation, NArgument, NShape
 from nales_alpha.widgets.msg_boxs import WrongArgMsgBox
+import ast 
 
 import cadquery as cq
 
@@ -42,7 +43,7 @@ import debugpy
 debugpy.debug_this_thread()
 
 
-
+UNDERLYING_DATA = 10
 
 
 class ParamTableModel(QAbstractTableModel):
@@ -321,7 +322,11 @@ class NModel(QAbstractItemModel):
 
 
     def index_from_node(self, node: "NNode") -> QModelIndex:
-        raise NotImplementedError
+        for idx in self.walk():
+            if idx.internalPointer() == node:
+                return idx
+        raise ValueError(f"The node {node} is not in the NModel")
+
 
 
     def add_shape(self, shape_name, shape, topo_type, method_call):
@@ -333,6 +338,7 @@ class NModel(QAbstractItemModel):
         shapes_idx = self.index(self._root.child(1)._row, 0)
         self.insertRows(self.rowCount(shapes_idx), 0, node, parent=shapes_idx)
        
+
 
     def _link_parameters(self, indexes: List[QModelIndex], name_pidx:QPersistentModelIndex, value_pidx:QPersistentModelIndex):
         
@@ -375,29 +381,20 @@ class NModel(QAbstractItemModel):
                     self.dataChanged.emit(idx,idx) # here we could modify the behaviour to send only one signal after we modified all the nodes
                     
 
-                
-
-    def _get_object(self, var_name: str) -> Any :
-        """
-        Retrieve an object from the console namespace
-        """
-        try:
-            obj = self._root.console_namespace[var_name]
-            return obj
-        except KeyError:
-            return None
-        
+       
 
 
     def walk(self, index: QModelIndex = QModelIndex()) -> QModelIndex:
-        
-        for idx in self.childrens(index):
-            if self.hasChildren(idx):
-                yield from self.walk(idx)
-            else:
-                yield idx
 
-        
+        yield index 
+
+        for child in self.childrens(index):
+            if self.hasChildren(child):
+                yield from self.walk(child)
+
+
+
+           
 
     def childrens(self, index: QModelIndex = QModelIndex()):
         if self.hasChildren(index):
@@ -476,19 +473,15 @@ class NModel(QAbstractItemModel):
         if isinstance(node, NArgument):
             if role == Qt.DisplayRole:
                 if index.column() == 0: # 
-                    if node.is_linked():
+                    if node.is_linked(by = "param"):
                         return f"{node._arg_infos[0]} = {node.linked_param}"
+                    if node.is_linked(by = "obj"):
+                        return f"{node.name}"
                     else:
                         return f"{node._arg_infos[0]} = {node._value}"
-                # else:
-                #     if node.is_linked(): # if linked to a param 
-                #         return node.linked_param
-                #     else :
-                #         return node._value
 
             elif role == Qt.EditRole:
                 return node
-
 
             elif role == Qt.FontRole:
                 if node.is_linked(): # if linked to a param , gets overidden by the stylesheet
@@ -496,6 +489,8 @@ class NModel(QAbstractItemModel):
                     font.setItalic(True)
                     font.setBold(True)
                     return font         
+
+
 
         elif isinstance(node, NPart) or isinstance(node, NShape):
             if role == Qt.DisplayRole:
@@ -548,10 +543,13 @@ class NModel(QAbstractItemModel):
                     node._param_name_pidx = value[2]
                     node._param_value_pidx = value[3]
 
-                elif (obj := self._get_object(value)):
-                    node._linked_obj = obj 
+                elif (obj_node := self._root.find(value)): # the argument is a object stored in the model data structure
+                    idx = self.index_from_node(obj_node)
+                    node._linked_obj_idx = QPersistentModelIndex(idx)               
                     node.name = value
-                    node.value = value 
+
+
+
 
 
                 else:
