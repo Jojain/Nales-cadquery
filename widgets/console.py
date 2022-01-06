@@ -4,6 +4,8 @@ from PyQt5.QtCore import pyqtSlot, pyqtSignal
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 from qtconsole.inprocess import QtInProcessKernelManager
 import sys
+from nales_alpha.nales_cq_impl import Part
+from pprint import pprint
 
 # sys.stdout = sys.stderr = io.StringIO() # QtInProcessKernelManager related see https://github.com/ipython/ipython/issues/10658#issuecomment-307757082
 
@@ -99,10 +101,22 @@ class ConsoleWidget(RichJupyterWidget):
         Execute a command in the frame of the console widget
         """
         self._execute(command, False)
+
         
     def _banner_default(self):
         
         return ''
+
+    def update_part(self, name: str, updated_part: "Part"):
+        """
+        Update all instances of a part in the console when it's modified in the GUI
+        """
+        for var,part in [(var,part) for var,part in self.namespace.items() if isinstance(part, Part)]:
+            if part._name == name:
+                self.namespace[var] = updated_part
+
+
+
 
 
 

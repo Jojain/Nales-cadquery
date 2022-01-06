@@ -17,7 +17,7 @@ from OCP.TCollection import TCollection_ExtendedString
 from OCP.TopoDS import TopoDS_Shape
 from nales_alpha.utils import PY_TYPES_TO_AST_NODE, get_Workplane_methods
 from OCP.Quantity import Quantity_NameOfColor
-from nales_cq_impl import Part
+
 
 
 import debugpy

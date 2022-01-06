@@ -10,6 +10,7 @@ from PyQt5.QtCore import pyqtSlot, pyqtSignal
 import cadquery as cq
 import OCP
 from OCP.TDocStd import TDocStd_Application, TDocStd_Document
+from data_user_interface import NalesDIF
 
 from nales_alpha.NDS import NOCAF
 # from nales_alpha.NDS.NOCAF import Feature, Part
@@ -27,7 +28,7 @@ debugpy.debug_this_thread()
 from nales_alpha.utils import get_Workplane_methods
 from nales_alpha.widgets.msg_boxs import WrongArgMsgBox, StdErrorMsgBox
 
-from nales_cq_impl import Part
+from nales_alpha.nales_cq_impl import Part
 
 
 console_theme ="""QPlainTextEdit, QTextEdit { background-color: yellow;
@@ -61,12 +62,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.param_table_view.setModel(self.param_model)
         self.param_model.dataChanged.connect(self.model._update_parameters)
         self.param_model.rowsRemoved.connect(lambda first : self.model._disconnect_parameter(param_idx = first))
+        self.nalesdif = NalesDIF(self)
 
         # Views / Widgets setup
         self._setup_param_table_view()
         self._setup_modeling_ops_view()
         
-        self._console.push_vars({"model" : self.model, "mw": self, "save": self.model.app.save_as, "Part":Part}) 
+        self._console.push_vars({"nales": self.nalesdif, "Part":Part}) 
 
 
         #Connect all the slots to the needed signals

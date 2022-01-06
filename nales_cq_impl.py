@@ -89,7 +89,7 @@ class PatchedWorkplane(Workplane):
         new_wp._name = self._name
         return new_wp
 
-
+    # redefines some methods that are used by the app but that shouldn't trigger signals
     def _val(self):
         return super().val()
 

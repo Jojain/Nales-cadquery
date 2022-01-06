@@ -15,6 +15,10 @@ bool: ast.Constant, set: ast.Set}
 
 
 def determine_type_from_str(string: str):
+
+    if len(string) == 0:
+        return None
+
     
     node = ast.parse(string).body[0].value
 

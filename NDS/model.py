@@ -63,7 +63,7 @@ class ParamTableModel(QAbstractTableModel):
             return False
 
     @property
-    def parameters(self):
+    def parameters(self) -> dict:
         return {name: value for (name, value) in self._data}
 
     def remove_parameter(self, rmv_idxs : List[QModelIndex]):
@@ -169,6 +169,7 @@ class NModel(QAbstractItemModel):
         super().__init__()
         self.app = Application()
         self.app.init_viewer_presentation(ctx)
+        self._console = console
         self._root = NNode(None)
         self._root._viewer = self.app._pres_viewer # attach the viewer to the root node so child interfaces can Update the viewer without the need to send a signal
         self._root._label = self.app.doc.GetData().Root()
@@ -259,52 +260,10 @@ class NModel(QAbstractItemModel):
 
         part.display(update=True)
 
-    # def add_operations(self, part_name: str, wp: Workplane,  operations: dict):
-    #     # Implémentation à l'arrache il faudra étudier les TFUNCTIONS et voir comment gérer de l'UNDO REDO
-    #     parts = self._root.child(0).childs
-    #     parts_idx = self.index(0,0) # the Parts container index
+        #update copies of the part in the console
+
+        self._console.update_part(part_name, part.part)
         
-    #     for part in parts:
-    #         if part.name == part_name:
-    #             row = part._row
-    #             parent_part = part                
-    #             break 
-
-    #     part_idx = self.index(row, 0, parts_idx)
-        
-        
-    #     for method, parameters in operations.items():
-    #         operation = NOperation(method, method, wp, parent_part)
-    #         self.insertRows(self.rowCount(), 0, operation, part_idx)
-
-    #         operation_idx = self.index(operation._row, 0, part_idx)
-
-    #         args, kwargs = parameters[0], parameters[1]
-    #         args_names = get_Wp_method_args_name(method)
-    #         if len(args) == len(args_names):
-
-    #             for pos, arg in enumerate(args):                
-    #                 node = NArgument(args_names[pos], arg, operation) 
-    #                 self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
-    #         else: 
-    #             # Means the user passed an argument without calling the keyword
-    #             nb_short_call_kwarg = len(args) - len(args_names)
-
-    #             for pos, arg in enumerate(args[0:nb_short_call_kwarg-1]):                
-    #                 node = NArgument(args_names[pos], arg, operation) 
-    #                 self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
-
-    #             kw_names = [kw_name for kw_name in list(kwargs.keys())]
-    #             for kwarg_name, kwarg_val in zip(kw_names,args[nb_short_call_kwarg - 1:]):
-    #                 kwargs[kwarg_name] = kwarg_val
-
-    #         for kwarg_name, kwarg_val in kwargs.items():
-    #                 node = NArgument(kwarg_name, kwarg_val, operation, kwarg=True) 
-    #                 self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
-
-    #     part.display(update=True)
-
-
 
     def update_shape(self, idx: QModelIndex) -> None:
         pass
@@ -401,8 +360,7 @@ class NModel(QAbstractItemModel):
                 yield from self.walk(child)
 
 
-
-           
+    
 
     def childrens(self, index: QModelIndex = QModelIndex()):
         if self.hasChildren(index):
@@ -567,7 +525,12 @@ class NModel(QAbstractItemModel):
                     else:
                         self.on_arg_error.emit(node._type, value_type)
 
+                    
+
             self.dataChanged.emit(index,index)
+            
+            #Update variables linked to this part in the console   
+            self._console.update_part(node.parent.parent.name, node.parent.parent.part)
             
         
         elif role == Qt.CheckStateRole:
@@ -587,7 +550,10 @@ class NModel(QAbstractItemModel):
         self.layoutChanged.emit()
 
         
-
+    @property
+    def parts(self) -> List[NPart]:
+        nparts = self._root.childs[0].childs
+        return nparts
 
 
 if __name__ == "__main__":
