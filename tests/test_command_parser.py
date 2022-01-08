@@ -1,7 +1,7 @@
 #%%
 import ast
 from unittest import TestCase
-from nales_alpha.NDS.commands import CQAssignAnalyzer, prepare_parent_childs
+from NDS.old_commands_ast import CQAssignAnalyzer, prepare_parent_childs
 import pytest
 import cadquery as cq
 from collections import OrderedDict

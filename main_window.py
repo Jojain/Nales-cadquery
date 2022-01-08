@@ -1,22 +1,16 @@
-import inspect
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QAbstractItemView, QHeaderView, QMessageBox
-from cadquery.cq import Workplane
+from PyQt5.QtWidgets import QAbstractItemView, QHeaderView, QMainWindow, QMessageBox, QUndoStack, QUndoView
 from nales_alpha.uic.mainwindow import Ui_MainWindow
-import qtconsole
 from PyQt5.QtCore import pyqtSlot, pyqtSignal
-import cadquery as cq
-import OCP
-from OCP.TDocStd import TDocStd_Application, TDocStd_Document
+
 from data_user_interface import NalesDIF
 
-from nales_alpha.NDS import NOCAF
+from nales_alpha.NDS import commands
 # from nales_alpha.NDS.NOCAF import Feature, Part
-import re
-from nales_alpha.NDS.commands import Command
-from nales_alpha.NDS.model import NModel, NNode, ParamTableModel
+
+from nales_alpha.NDS.model import NModel, ParamTableModel
 
 from qt_material import apply_stylesheet
 from nales_alpha.views.tree_views import ModelingOpsView
@@ -43,7 +37,7 @@ console_theme ="""QPlainTextEdit, QTextEdit { background-color: yellow;
 .inverted { background-color: black ; color: white; }
 """
 
-class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
+class MainWindow(QMainWindow, Ui_MainWindow):
 
     instance = None
 
@@ -62,7 +56,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.param_table_view.setModel(self.param_model)
         self.param_model.dataChanged.connect(self.model._update_parameters)
         self.param_model.rowsRemoved.connect(lambda first : self.model._disconnect_parameter(param_idx = first))
+        
+        #Undo stack handling
+        self.setup_undo_stack()
+        
         self.nalesdif = NalesDIF(self)
+
 
         # Views / Widgets setup
         self._setup_param_table_view()
@@ -73,7 +72,22 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         #Connect all the slots to the needed signals
         self.model.on_arg_error.connect(lambda exp_typ, rcv_typ: WrongArgMsgBox(exp_typ,rcv_typ, self))
-    
+
+    def setup_undo_stack(self):
+        """
+        Setup the undo stack and undo view
+        """
+        self.undo_stack = QUndoStack(self)
+
+        self.menu = QMainWindow.menuBar(self)
+        undo = self.undo_stack.createUndoAction(self, "Undo")
+        redo = self.undo_stack.createRedoAction(self, "Redo")
+        self.menu.addAction(undo)
+        self.menu.addAction(redo)
+
+        self.uview = QUndoView(self.undo_stack)
+        self.uview.setWindowTitle("Commands")
+        self.uview.show() 
 
     @pyqtSlot(dict)
     def handle_command(self, cmd):
