@@ -17,7 +17,7 @@ from tokenize import any
 from typing import Any, Iterable, List, Tuple
 import sys
 from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtWidgets import QMenu
+from PyQt5.QtWidgets import QMenu, QUndoCommand
 from PyQt5.QtCore import QModelIndex, QAbstractItemModel, QAbstractTableModel, QPersistentModelIndex, Qt, pyqtSignal
 from cadquery import Workplane
 
@@ -40,6 +40,7 @@ import cadquery as cq
 
 
 import debugpy
+from NDS.commands import EditArgument
 
 from nales_cq_impl import Part
 debugpy.debug_this_thread()
@@ -160,7 +161,7 @@ class ParamTableModel(QAbstractTableModel):
 class NModel(QAbstractItemModel):
 
     on_arg_error = pyqtSignal(object,object)
-    node_edited = pyqtSignal(NNode)
+    run_cmd = pyqtSignal(QUndoCommand)
 
     def __init__(self, ctx, nodes = None, console = None):
         """
@@ -352,15 +353,12 @@ class NModel(QAbstractItemModel):
 
 
     def walk(self, index: QModelIndex = QModelIndex()) -> QModelIndex:
-
+        
         yield index 
 
         for child in self.childrens(index):
-            if self.hasChildren(child):
-                yield from self.walk(child)
+            yield from self.walk(child)
 
-
-    
 
     def childrens(self, index: QModelIndex = QModelIndex()):
         if self.hasChildren(index):
@@ -520,8 +518,10 @@ class NModel(QAbstractItemModel):
 
                 else:
                     value_type = determine_type_from_str(value)
-                    if node._type == value_type:
-                        node.value = value
+                    if node._type == value_type:                        
+                        # node.value = value
+                        self.run_cmd.emit(EditArgument(self, value, index))
+
                     else:
                         self.on_arg_error.emit(node._type, value_type)
 

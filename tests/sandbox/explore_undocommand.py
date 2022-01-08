@@ -44,21 +44,26 @@ class MinCommand(QUndoCommand):
     def undo(self):
         self.l.setText(str(self.old_state))
 
-class MainWindow(QMainWindow):
+
+class UI():
+    def setup_ui(self, mw):
+        mw.move(300 ,500)
+
+class MainWindow(QMainWindow, UI):
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent=parent)
+        self.setup_ui(self)
 
         self.central = QWidget(self)
-        
         btn_widget = QWidget(self)
         btn_layout = QHBoxLayout()
-        lb = QPushButton(btn_widget)
-        lb.setText("+1")
-        rb = QPushButton(btn_widget)
-        rb.setText("-1")
-        btn_layout.addWidget(lb)
-        btn_layout.addWidget(rb)
+        self.lb = QPushButton(btn_widget)
+        self.lb.setText("+1")
+        self.rb = QPushButton(btn_widget)
+        self.rb.setText("-1")
+        btn_layout.addWidget(self.lb)
+        btn_layout.addWidget(self.rb)
 
         self.label = QLabel("0",self.central)
         self.label.move(20,0)
@@ -70,28 +75,17 @@ class MainWindow(QMainWindow):
         self.central.setLayout(btn_layout)
         self.setCentralWidget(self.central)
 
-
-
-        def plus():
-            val = int(self.label.text())
-            t = val +1
-            self.label.setText(str(t))
-
-        def moins():
-            val = int(self.label.text())
-            t = val -1
-            self.label.setText(str(t))
-        
-        lb.clicked.connect(plus)
-        rb.clicked.connect(moins)
-    
-
         self.menu = self.menuBar()
-        self.menu.addMenu("&File")
+        self.submenu = self.menu.addMenu("&File")
+        ac = QAction("test")
+        self.submenu.addAction(ac)
+        # self.submenu.show()
 
         self.undostack = QUndoStack(self)
         undo = self.undostack.createUndoAction(self, "Undo")
         redo = self.undostack.createRedoAction(self, "Redo")
+        undo.setShortcut("Ctrl+Z")
+        redo.setShortcut("Ctrl+Y")
         self.menu.addAction(undo)
         self.menu.addAction(redo)
 
@@ -119,6 +113,9 @@ class MainWindow(QMainWindow):
 
         self.menu.addAction(self.add_action)
         self.menu.addAction(self.min_action)
+
+        self.lb.clicked.connect(self.addcmd)
+        self.rb.clicked.connect(self.mincmd)
 
 app = QApplication(sys.argv)
 window = MainWindow()

@@ -1,13 +1,13 @@
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QAbstractItemView, QHeaderView, QMainWindow, QMessageBox, QUndoStack, QUndoView
+from PyQt5.QtWidgets import QAbstractItemView, QAction, QHeaderView, QMainWindow, QMessageBox, QUndoCommand, QUndoStack, QUndoView
 from nales_alpha.uic.mainwindow import Ui_MainWindow
 from PyQt5.QtCore import pyqtSlot, pyqtSignal
 
 from data_user_interface import NalesDIF
 
-from nales_alpha.NDS import commands
+from nales_alpha.NDS.commands import DeleteTreeItem
 # from nales_alpha.NDS.NOCAF import Feature, Part
 
 from nales_alpha.NDS.model import NModel, ParamTableModel
@@ -48,6 +48,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self._console.setStyleSheet(console_theme)
 
+        self.main_menu = QMainWindow.menuBar(self)
+        self.main_menu.setEnabled(True)
 
         ctx = self.viewer.context
         self.model = NModel(ctx = ctx, console = self._console)
@@ -57,9 +59,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.param_model.dataChanged.connect(self.model._update_parameters)
         self.param_model.rowsRemoved.connect(lambda first : self.model._disconnect_parameter(param_idx = first))
         
-        #Undo stack handling
-        self.setup_undo_stack()
         
+        #Undo stack handling
+        self._setup_undo_stack()
+
+        self._setup_actions()
+
+
         self.nalesdif = NalesDIF(self)
 
 
@@ -73,21 +79,34 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         #Connect all the slots to the needed signals
         self.model.on_arg_error.connect(lambda exp_typ, rcv_typ: WrongArgMsgBox(exp_typ,rcv_typ, self))
 
-    def setup_undo_stack(self):
+
+    def _setup_actions(self):
+
+        self.delete_action = QAction(self)
+        self.delete_action.setShortcut("Del")
+        self.main_menu.addAction(self.delete_action)
+        self.delete_action.triggered.connect(lambda: self.push_cmd(DeleteTreeItem(self.model, self.modeling_ops_tree.selectedIndexes())))
+
+    def _setup_undo_stack(self):
         """
         Setup the undo stack and undo view
         """
-        self.undo_stack = QUndoStack(self)
 
-        self.menu = QMainWindow.menuBar(self)
+        self.undo_stack = QUndoStack(self)
         undo = self.undo_stack.createUndoAction(self, "Undo")
         redo = self.undo_stack.createRedoAction(self, "Redo")
-        self.menu.addAction(undo)
-        self.menu.addAction(redo)
+        undo.setShortcut("Ctrl+Z")
+        redo.setShortcut("Ctrl+Y")
+        self.main_menu.addAction(undo)
+        self.main_menu.addAction(redo)
 
         self.uview = QUndoView(self.undo_stack)
         self.uview.setWindowTitle("Commands")
-        self.uview.show() 
+        self.uview.show()
+
+        #connect signals
+        self.model.run_cmd.connect(self.push_cmd)
+
 
     @pyqtSlot(dict)
     def handle_command(self, cmd):
@@ -120,6 +139,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
 
         
+    def push_cmd(self, cmd: QUndoCommand) -> None:
+        """
+        Push the reiceved command on the stack
+        """
+        self.undo_stack.push(cmd)
 
     def _setup_modeling_ops_view(self):
         """
