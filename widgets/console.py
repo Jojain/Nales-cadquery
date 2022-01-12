@@ -3,20 +3,16 @@ from PyQt5.QtWidgets import QApplication, QHBoxLayout, QWidget, QMainWindow
 from PyQt5.QtCore import pyqtSlot, pyqtSignal
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 from qtconsole.inprocess import QtInProcessKernelManager
-from nales_alpha.NDS.commands import CQAssignAnalyzer, Command, prepare_parent_childs
-import sys, io 
-import ast
-from PyQt5 import QtWidgets
-import cadquery as cq
+import sys
+from nales_alpha.nales_cq_impl import Part
+from pprint import pprint
 
-from monkey_patcher import OperationHandler
 # sys.stdout = sys.stderr = io.StringIO() # QtInProcessKernelManager related see https://github.com/ipython/ipython/issues/10658#issuecomment-307757082
 
 
 class ConsoleWidget(RichJupyterWidget):
     
     name = 'Console'
-    on_command = pyqtSignal(Command)
     def __init__(self, customBanner=None, namespace=dict(), *args, **kwargs):
         super(ConsoleWidget, self).__init__(*args, **kwargs)
 
@@ -32,7 +28,6 @@ class ConsoleWidget(RichJupyterWidget):
         self.kernel_client = kernel_client = self._kernel_manager.client()
         kernel_client.start_channels()
 
-        self.cmd_handler = OperationHandler()
         
         self.namespace = self.kernel_manager.kernel.shell.user_global_ns
 
@@ -50,7 +45,7 @@ class ConsoleWidget(RichJupyterWidget):
 
     def _get_part_varname(self, wp_id: int) -> str:
 
-        ns = self.namespace
+        ns = self.namespace 
 
         for var, value in ns.items():
             if id(value) == wp_id :
@@ -63,15 +58,6 @@ class ConsoleWidget(RichJupyterWidget):
         """   
         super()._execute(source, hidden)
 
-        if self.cmd_handler.has_seen_cq_cmd():
-            part_name = self._get_part_varname(self.cmd_handler.part_id)
-            ops = self.cmd_handler.operations
-            obj = self._get_cq_obj(part_name)
-            cmd = Command(part_name, ops, obj)      
-
-            self.on_command.emit(cmd)
-
-            self.cmd_handler.reset()
 
 
 
@@ -115,10 +101,22 @@ class ConsoleWidget(RichJupyterWidget):
         Execute a command in the frame of the console widget
         """
         self._execute(command, False)
+
         
     def _banner_default(self):
         
         return ''
+
+    def update_part(self, name: str, updated_part: "Part"):
+        """
+        Update all instances of a part in the console when it's modified in the GUI
+        """
+        for var,part in [(var,part) for var,part in self.namespace.items() if isinstance(part, Part)]:
+            if part._name == name:
+                self.namespace[var] = updated_part
+
+
+
 
 
 

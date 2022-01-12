@@ -14,7 +14,7 @@ from OCP.TPrsStd import TPrsStd_AISViewer, TPrsStd_AISPresentation
 from OCP.TNaming import TNaming_NamedShape, TNaming_Builder
 
 
-from nales_alpha.NDS.commands import Command
+from NDS.old_commands_ast import Command
 import sys 
 import re
 

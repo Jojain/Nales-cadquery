@@ -2,7 +2,7 @@
 import ast
 from inspect import signature
 from typing import Union
-from PyQt5.QtCore import  QModelIndex, QObject, pyqtSignal
+from PyQt5.QtCore import  QPersistentModelIndex, Qt
 from cadquery import Workplane
 
 from OCP.TDataStd import TDataStd_Name
@@ -18,11 +18,15 @@ from OCP.TopoDS import TopoDS_Shape
 from nales_alpha.utils import PY_TYPES_TO_AST_NODE, get_Workplane_methods
 from OCP.Quantity import Quantity_NameOfColor
 
-import cadquery as cq
 
+
+import debugpy
+debugpy.debug_this_thread()
+
+from widgets.msg_boxs import StdErrorMsgBox
 
 class NNode():
-    error = pyqtSignal(str) # is emitted when an error occurs
+    # error = pyqtSignal(str) # is emitted when an error occurs
     def __init__(self, data, name = None, parent = None):
         self._data = data
         self._parent = parent
@@ -47,11 +51,15 @@ class NNode():
 
         
 
-    def __str__(self):
-            return f"{self.name}"
+    # def __str__(self):
+    #         return f"{self.name}"
 
 
     def walk(self, node: "NNode" = None) -> "NNode":
+        """
+        Walks all the node starting from 'node'
+        If 'node' is None, starts from the called node
+        """
         base_node = node if node else self       
     
         yield base_node
@@ -126,23 +134,32 @@ class NNode():
 
 class NPart(NNode):
 
-    # viewer_updated = pyqtSignal()
 
     def __init__(self, name: str, part: Workplane, parent):
         super().__init__(part, name, parent=parent)
-        
+        self.part = part
         self.visible = True 
-
-        if len(part.objects) != 0:
-
-            self._occt_shape = part.val().wrapped
-        else:
-            self._occt_shape = TopoDS_Shape()
+        self._solid = TopoDS_Shape()
+        self._active_shape = None
 
         self.display()
 
-    def _update_occt_shape(self):        
-        self._occt_shape = self.root_node.console_namespace[self.name].val().wrapped
+
+    
+    def update_display_shapes(self):
+        try:
+            solid = self.part._findSolid().wrapped
+        except ValueError:
+            solid = TopoDS_Shape()
+       
+        self._solid = solid
+       
+        if active_shape := self.part._val().wrapped is solid:
+            self._active_shape = None 
+        else:
+            self._active_shape = active_shape
+
+
 
     def hide(self):
 
@@ -158,12 +175,12 @@ class NPart(NNode):
 
         if update:
             self.ais_shape.Erase(remove=True)
-            self._update_occt_shape()
+            self.update_display_shapes()
             self.root_node._viewer.Update()
 
 
         self.bldr = TNaming_Builder(self._label) #_label is  TDF_Label
-        self.bldr.Generated(self._occt_shape)
+        self.bldr.Generated(self._solid)
 
         named_shape = self.bldr.NamedShape()
         self._label.FindAttribute(TNaming_NamedShape.GetID_s(), named_shape)
@@ -229,11 +246,10 @@ class NOperation(NNode):
 
     def __init__(self, method_name: str, name, part: Workplane, parent : NNode):
         super().__init__(method_name, name, parent=parent)
-
+        self.parent.part = part
+        
         self.name = method_name
-        self.visible = False
-        Workplane_methods = get_Workplane_methods()
-        self.method = Workplane_methods[method_name]
+        self.method = getattr(part,method_name).__func__
         
 
         if method_name == "Workplane":
@@ -241,38 +257,33 @@ class NOperation(NNode):
         else:
             self._root_operation = False
 
-    def __repr__(self) -> str:
-        pass
+               
+    def update(self, pos):
+        parent_part = self.parent.part 
+        part = parent_part._end(pos)
+        args = [child.value for child in self.childs]      
 
-    def _get_ast(self, rewind_idx: int = 0) -> ast.Module:
-        """
-        Creates an AST node 
-        """
-        unpack = lambda args : ",".join(args)
-
-        args = []
-        for child in self._childs:            
-                args.append(repr(child))
-
-
-        if not self._root_operation:            
-            code_line = f"{self.parent.name} = {self.parent.name}.end({rewind_idx}).{self.name}({unpack(args)})"
-        else:
-            code_line = f"{self.parent.name} = cq.{self.name}({unpack(args)})"
-        
-        return ast.parse(code_line)
-
-
+        try:
+            part = self.method(part,*args, internal_call = True)  
+            self.parent.part = part
+        except ValueError as exc:
+            if exc.args[0] == "No pending wires present":                                  
+                previous_op = self.parent.childs[self._row-2]  
+                previous_op.update(pos+1)        
+                self.update(pos)
                 
-    def _update(self, pos):
+                
 
-        node = self._get_ast(pos)
-
-        code = compile(node,"nales", "exec")
-        exec(code, self.root_node.console_namespace)        
-
-            
-
+            else:
+                StdErrorMsgBox(repr(exc))
+                
+    def _restore_pending_wires(self):
+        index = 2
+        previous_ops = self.parent.childs[:self._row]  
+        while len(self.parent.part.ctx.pendingWires) == 0:
+            op = previous_ops[-index]
+            op.update(len(previous_ops)-op._row)
+            index += 1
 
 
 
@@ -302,7 +313,7 @@ class NArgument(NNode):
         
 
         self._linked_param = None
-        self._linked_obj = None
+        self._linked_obj_idx: QPersistentModelIndex = None
 
         self._param_name_pidx = None
         self._param_value_pidx = None
@@ -310,19 +321,24 @@ class NArgument(NNode):
 
         self._get_args_names_and_types()
 
-    def __repr__(self) -> str:
-        return f"{self._value}"
-
 
     def is_kwarg(self):
         return self._kwarg
 
-    def is_linked(self):
-        if self._linked_param or self._linked_obj:
-            return True 
+    def is_linked(self, by:str = None):
+        if by == "obj":
+            return True if self._linked_obj_idx else False 
+        elif by == "param":
+            return True if self._linked_param else False 
+
+        elif by is None:
+            # if self._linked_param or self._linked_obj_idx:
+            if self._linked_param:
+                return True 
+            else:
+                return False
         else:
-            return False
-    
+            raise ValueError("Argument 'by' must be either 'obj' or 'param'")
 
     def _get_args_names_and_types(self):
         parent_method = self.parent.method
@@ -341,8 +357,8 @@ class NArgument(NNode):
 
     @property
     def linked_obj(self):
-        if self.is_linked():
-            return self._linked_obj
+        if self.is_linked(by = "obj"):
+            return self._linked_obj_idx.data(Qt.EditRole).part
         else:
             raise ValueError("This argument is not linked to an object")
 
@@ -358,22 +374,30 @@ class NArgument(NNode):
     def name(self, value):
         self._name = value    
 
-
     @property 
     def value(self):
-        return self._value
+        if self._type is type(None):
+            return None
+        if self.is_linked(by = "param"):
+            return self._type(self._param_value_pidx.data())
+        elif self.is_linked(by = "obj"):
+            return self.linked_obj
+        else:            
+            return self._type(self._value)
+
     @value.setter
     def value(self, value):
-        if self.is_linked():
-            self._value = value 
-        else:
-            try:    
-                self._value = self._type(value)
-            except (ValueError , TypeError, AttributeError) as exp:
-                if exp == ValueError or exp == AttributeError:
-                    error_msg = f"Expected arguments if of type: {self._type} you specified argument of type {type(value)}"
-                    print(error_msg)
-                    self.error.emit(error_msg)
+        self._value = value
+        # if self.is_linked():
+        #     self._value = value 
+        # else:
+        #     try:    
+        #         self._value = self._type(value)
+        #     except (ValueError , TypeError, AttributeError) as exp:
+        #         if exp == ValueError or exp == AttributeError:
+        #             error_msg = f"Expected arguments if of type: {self._type} you specified argument of type {type(value)}"
+        #             print(error_msg)
+
 
     @property 
     def linked_param(self):

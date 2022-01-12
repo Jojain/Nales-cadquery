@@ -1,17 +1,52 @@
 #%%
 import inspect
-from tokenize import String
 from typing import Callable, Dict, List, Union
 from cadquery import Workplane
 import cadquery 
 from inspect import signature
 import cadquery
-from cadquery.occ_impl import shapes
 from collections import OrderedDict
 import ast
 
 PY_TYPES_TO_AST_NODE = {int : ast.Constant, float: ast.Constant, str: ast.Constant, tuple: ast.Tuple, list: ast.List,
 bool: ast.Constant, set: ast.Set}
+
+# class Number(type)
+
+
+def determine_type_from_str(string: str):
+
+    if len(string) == 0:
+        return None
+
+    
+    node = ast.parse(string).body[0].value
+
+    if string == "True" or string == "False":
+        return bool 
+    
+    if isinstance(node, ast.Tuple):
+        return tuple 
+    elif isinstance(node, ast.List):
+        return list 
+    elif isinstance(node, ast.Dict):
+        return dict
+    
+    try:
+        int(string)
+        return int
+    except ValueError:
+        try:
+            float(string)
+            return float 
+        except ValueError:
+            return str
+
+
+    
+    
+
+    
 
 def get_Workplane_methods() -> Dict[str,Callable]:
     """
@@ -108,5 +143,5 @@ def get_cq_types():
 
 
 if __name__ == "__main__":
-    # print(get_Workplane_operations())
-    pass
+    p = determine_type_from_str("'XY'")
+    print(p)
