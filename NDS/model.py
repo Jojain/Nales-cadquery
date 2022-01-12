@@ -17,29 +17,33 @@ from tokenize import any
 from typing import Any, Iterable, List, Tuple
 import sys
 from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtWidgets import QMenu
-from PyQt5.QtCore import QModelIndex, QAbstractItemModel, QAbstractTableModel,QItemSelectionModel, QPersistentModelIndex, QPoint, QVariant, Qt, pyqtSignal
+from PyQt5.QtWidgets import QMenu, QUndoCommand
+from PyQt5.QtCore import QModelIndex, QAbstractItemModel, QAbstractTableModel, QPersistentModelIndex, Qt, pyqtSignal
 from cadquery import Workplane
 
-from OCP.TDataStd import TDataStd_Name
-from OCP.TPrsStd import TPrsStd_AISPresentation
+# from OCP.TDataStd import TDataStd_Name
+# from OCP.TPrsStd import TPrsStd_AISPresentation
 from cadquery.occ_impl.shapes import Shape
-from OCP.AIS import AIS_InteractiveObject, AIS_ColoredShape
-from OCP.TNaming import TNaming_Builder, TNaming_NamedShape
+# from OCP.AIS import AIS_InteractiveObject, AIS_ColoredShape
+# from OCP.TNaming import TNaming_Builder, TNaming_NamedShape
 from nales_alpha.NDS.NOCAF import Application
-from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
-from OCP.TDF import TDF_Label, TDF_TagSource
-from OCP.TCollection import TCollection_ExtendedString
-from OCP.TopoDS import TopoDS_Shape
-from nales_alpha.utils import get_Wp_method_args_name
+# from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
+# from OCP.TDF import TDF_Label, TDF_TagSource
+# from OCP.TCollection import TCollection_ExtendedString
+# from OCP.TopoDS import TopoDS_Shape
+from nales_alpha.utils import determine_type_from_str, get_Wp_method_args_name
 from nales_alpha.NDS.interfaces import NNode, NPart, NOperation, NArgument, NShape
-
+from nales_alpha.widgets.msg_boxs import WrongArgMsgBox
+import ast 
 
 import cadquery as cq
 
 
+import debugpy
+from NDS.commands import EditArgument
 
-
+from nales_cq_impl import Part
+debugpy.debug_this_thread()
 
 
 
@@ -60,7 +64,7 @@ class ParamTableModel(QAbstractTableModel):
             return False
 
     @property
-    def parameters(self):
+    def parameters(self) -> dict:
         return {name: value for (name, value) in self._data}
 
     def remove_parameter(self, rmv_idxs : List[QModelIndex]):
@@ -156,8 +160,8 @@ class ParamTableModel(QAbstractTableModel):
 
 class NModel(QAbstractItemModel):
 
-
-    node_edited = pyqtSignal(NNode)
+    on_arg_error = pyqtSignal(object,object)
+    run_cmd = pyqtSignal(QUndoCommand)
 
     def __init__(self, ctx, nodes = None, console = None):
         """
@@ -166,17 +170,20 @@ class NModel(QAbstractItemModel):
         super().__init__()
         self.app = Application()
         self.app.init_viewer_presentation(ctx)
+        self._console = console
         self._root = NNode(None)
         self._root._viewer = self.app._pres_viewer # attach the viewer to the root node so child interfaces can Update the viewer without the need to send a signal
         self._root._label = self.app.doc.GetData().Root()
-        self._root.console_namespace = console._get_console_namespace()
+        self._root.console_namespace = console.namespace
 
 
         self.insertRows(0,0,NNode(None, "Parts", self._root))
         self.insertRows(1,0,NNode(None, "Shapes", self._root))
         self.insertRows(2,0,NNode(None, "Others", self._root))
 
+        
         # Slots connection 
+        self.dataChanged.connect(lambda idx : self.update_operation(idx)) 
 
         
 
@@ -192,7 +199,7 @@ class NModel(QAbstractItemModel):
         # We check if the part is already defined
         if part_node := self._root.find(name):
             part_idx = self.index(part_node._row-1, 0, parts_idx )
-            self.removeRows([part_idx.child(i,0) for i in range(self.rowCount(part_idx))], part_idx)
+            self.removeRows([part_idx], part_idx.parent())
             
 
         
@@ -203,8 +210,7 @@ class NModel(QAbstractItemModel):
 
 
 
-    
-    def add_operations(self, part_name: str, wp: Workplane,  operations: OrderedDict):
+    def add_operation(self, part_name: str, part_obj: Workplane,  operation: dict):
         # Implémentation à l'arrache il faudra étudier les TFUNCTIONS et voir comment gérer de l'UNDO REDO
         parts = self._root.child(0).childs
         parts_idx = self.index(0,0) # the Parts container index
@@ -212,68 +218,60 @@ class NModel(QAbstractItemModel):
         for part in parts:
             if part.name == part_name:
                 row = part._row
-                parent_part = part
-                
+                parent_part = part                
                 break 
 
-        part_idx = self.index(row, 0, parts_idx)
+        part_idx = self.index(row, 0, parts_idx)        
         
+        method_name = operation["name"]
+        noperation = NOperation(method_name, method_name, part_obj, parent_part)
+        self.insertRows(self.rowCount(), 0, operation, part_idx)
+
+        operation_idx = self.index(noperation._row, 0, part_idx)
+
+        args, kwargs = operation["parameters"][0], operation["parameters"][1]
+        args = [arg._name if isinstance(arg,Part) else arg for arg in args] 
+
+        args_names = get_Wp_method_args_name(method_name)
+        if len(args) == len(args_names):
+
+            for pos, arg in enumerate(args):                
+                node = NArgument(args_names[pos], arg, noperation) 
+                if (obj_node := self._root.find(arg)): # the argument is a object stored in the model data structure
+                    idx = self.index_from_node(obj_node)
+                    node._linked_obj_idx = QPersistentModelIndex(idx)               
+                    node.name = arg
+
+                self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+        else: 
+            # Means the user passed an argument without calling the keyword
+            nb_short_call_kwarg = len(args) - len(args_names)
+
+            for pos, arg in enumerate(args[0:nb_short_call_kwarg-1]):                
+                node = NArgument(args_names[pos], arg, noperation) 
+                self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+
+            kw_names = [kw_name for kw_name in list(kwargs.keys())]
+            for kwarg_name, kwarg_val in zip(kw_names,args[nb_short_call_kwarg - 1:]):
+                kwargs[kwarg_name] = kwarg_val
+
+        for kwarg_name, kwarg_val in kwargs.items():
+                node = NArgument(kwarg_name, kwarg_val, noperation, kwarg=True) 
+                self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+
+        part.display(update=True)
+
+        #update copies of the part in the console
+
+        self._console.update_part(part_name, part.part)
         
-        for method, parameters in operations.items():
-            operation = NOperation(method, method, wp, parent_part)
-            self.insertRows(self.rowCount(), 0, operation, part_idx)
-
-            operation_idx = self.index(operation._row, 0, part_idx)
-
-            args, kwargs = parameters[0], parameters[1]
-            args_names = get_Wp_method_args_name(method)
-            if len(args) == len(args_names):
-
-                for pos, arg in enumerate(args):                
-                    node = NArgument(args_names[pos], arg, operation) 
-                    if (obj := self._get_object(arg)):
-                        node._linked_obj = obj
-                        node.value = arg 
-
-                    self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
-            else: 
-                # Means the user passed an argument without calling the keyword
-                nb_short_call_kwarg = len(args) - len(args_names)
-
-                for pos, arg in enumerate(args[0:nb_short_call_kwarg-1]):                
-                    node = NArgument(args_names[pos], arg, operation) 
-                    if (obj := self._get_object(arg)):
-                        node._linked_obj = obj
-                        node.value = arg 
-                    self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
-
-                kw_names = [kw_name for kw_name in list(kwargs.keys())]
-                for kwarg_name, kwarg_val in zip(kw_names,args[nb_short_call_kwarg - 1:]):
-                    kwargs[kwarg_name] = kwarg_val
-
-            for kwarg_name, kwarg_val in kwargs.items():
-                    node = NArgument(kwarg_name, kwarg_val, operation, kwarg=True) 
-                    if (obj := self._get_object(kwarg_val)):
-                        node._linked_obj = obj
-                        node.value = arg 
-
-                    self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
-
-        self.dataChanged.connect(lambda idx : self.update_operation(idx)) 
-
-
 
     def update_shape(self, idx: QModelIndex) -> None:
         pass
 
 
     def update_operation(self, idx: QModelIndex) -> None:
-        # if isinstance(ptr := idx.internalPointer(), NArgument):
-        #     operation = ptr.parent
 
-        #     pos = len(operation.parent.childs) - operation._row
-        #     operation._update(pos)
-        #     operation.parent.display(update=True)
         
         if isinstance(ptr := idx.internalPointer(), NArgument):           
             starting_op = ptr.parent
@@ -286,21 +284,18 @@ class NModel(QAbstractItemModel):
                     pos = len(part.childs) - operation._row + 1
                 else:
                     pos = 0
-                operation._update(pos)
+                operation.update(pos)
 
             part.display(update=True)
 
 
     def index_from_node(self, node: "NNode") -> QModelIndex:
-        raise NotImplementedError
-        if parent_node := node.parent:
-            parent_idx = self.index_from_node(parent_node)
-        else:
-            parent_idx = QModelIndex()
-    
-        node_idx = self.index(node._row, node._columns_nb, parent_idx)
+        for idx in self.walk():
+            if idx.internalPointer() == node:
+                return idx
+        raise ValueError(f"The node {node} is not in the NModel")
 
-        return node_idx
+
 
     def add_shape(self, shape_name, shape, topo_type, method_call):
         (method_name, args), = method_call.items() #weird unpacking necessary for 1 element dict
@@ -311,6 +306,7 @@ class NModel(QAbstractItemModel):
         shapes_idx = self.index(self._root.child(1)._row, 0)
         self.insertRows(self.rowCount(shapes_idx), 0, node, parent=shapes_idx)
        
+
 
     def _link_parameters(self, indexes: List[QModelIndex], name_pidx:QPersistentModelIndex, value_pidx:QPersistentModelIndex):
         
@@ -353,29 +349,16 @@ class NModel(QAbstractItemModel):
                     self.dataChanged.emit(idx,idx) # here we could modify the behaviour to send only one signal after we modified all the nodes
                     
 
-                
-
-    def _get_object(self, var_name: str) -> Any :
-        """
-        Retrieve an object from the console namespace
-        """
-        try:
-            obj = self._root.console_namespace[var_name]
-            return obj
-        except KeyError:
-            return None
-        
+       
 
 
     def walk(self, index: QModelIndex = QModelIndex()) -> QModelIndex:
         
-        for idx in self.childrens(index):
-            if self.hasChildren(idx):
-                yield from self.walk(idx)
-            else:
-                yield idx
+        yield index 
 
-        
+        for child in self.childrens(index):
+            yield from self.walk(child)
+
 
     def childrens(self, index: QModelIndex = QModelIndex()):
         if self.hasChildren(index):
@@ -454,19 +437,15 @@ class NModel(QAbstractItemModel):
         if isinstance(node, NArgument):
             if role == Qt.DisplayRole:
                 if index.column() == 0: # 
-                    if node.is_linked():
+                    if node.is_linked(by = "param"):
                         return f"{node._arg_infos[0]} = {node.linked_param}"
+                    if node.is_linked(by = "obj"):
+                        return f"{node.name}"
                     else:
                         return f"{node._arg_infos[0]} = {node._value}"
-                # else:
-                #     if node.is_linked(): # if linked to a param 
-                #         return node.linked_param
-                #     else :
-                #         return node._value
 
             elif role == Qt.EditRole:
                 return node
-
 
             elif role == Qt.FontRole:
                 if node.is_linked(): # if linked to a param , gets overidden by the stylesheet
@@ -475,9 +454,11 @@ class NModel(QAbstractItemModel):
                     font.setBold(True)
                     return font         
 
+
+
         elif isinstance(node, NPart) or isinstance(node, NShape):
             if role == Qt.DisplayRole:
-                return node.name # display method's name
+                return node.name # display part or shape var name
             
             elif role == Qt.CheckStateRole:
                 if node.visible:
@@ -516,25 +497,40 @@ class NModel(QAbstractItemModel):
         """
         NModel data setter
         """        
-
+        
         node = index.internalPointer()
         if role == Qt.EditRole:
             if isinstance(node, NArgument):
-                if isinstance(value, tuple): # we assign a paramerter
+                if isinstance(value, tuple): # we assign a parameter
                     node._linked_param = value[0]
                     node.value = value[1]
                     node._param_name_pidx = value[2]
                     node._param_value_pidx = value[3]
 
-                if (obj := self._get_object(value)):
-                    node._linked_obj = obj 
+                elif (obj_node := self._root.find(value)): # the argument is a object stored in the model data structure
+                    idx = self.index_from_node(obj_node)
+                    node._linked_obj_idx = QPersistentModelIndex(idx)               
                     node.name = value
-                    node.value = value 
+
+
+
 
 
                 else:
-                    node.value = value
+                    value_type = determine_type_from_str(value)
+                    if node._type == value_type:                        
+                        # node.value = value
+                        self.run_cmd.emit(EditArgument(self, value, index))
+
+                    else:
+                        self.on_arg_error.emit(node._type, value_type)
+
+                    
+
             self.dataChanged.emit(index,index)
+            
+            #Update variables linked to this part in the console   
+            self._console.update_part(node.parent.parent.name, node.parent.parent.part)
             
         
         elif role == Qt.CheckStateRole:
@@ -542,7 +538,7 @@ class NModel(QAbstractItemModel):
                 if node.visible:
                     node.hide()
                 else:
-                    node.display(node._occt_shape)
+                    node.display(update=True)
 
         
         return True
@@ -554,18 +550,10 @@ class NModel(QAbstractItemModel):
         self.layoutChanged.emit()
 
         
-
-    # def insertColumns(self, column, count):
-    #     pass
-
-
-def setup_dummy_model():
-    nodes = [NNode("part"+str(i)) for i in range(5)]
-    nodes[-1].add_child(NNode(["operation"]))
-    model = NModel(nodes)
-
-    return model
-
+    @property
+    def parts(self) -> List[NPart]:
+        nparts = self._root.childs[0].childs
+        return nparts
 
 
 if __name__ == "__main__":

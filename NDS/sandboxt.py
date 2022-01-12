@@ -41,7 +41,18 @@ def make_graph(code):
 
 
 
-code = "test = cq.Workplane().box(1,5,2)"
+# code = "test = cq.Workplane().box(1,5,2)"
+
+
+
+
+
+
+
+    
+
+
+
 
 
 

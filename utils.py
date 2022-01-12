@@ -1,12 +1,10 @@
 #%%
 import inspect
-from tokenize import String
 from typing import Callable, Dict, List, Union
 from cadquery import Workplane
 import cadquery 
 from inspect import signature
 import cadquery
-from cadquery.occ_impl import shapes
 from collections import OrderedDict
 import ast
 
@@ -151,5 +149,5 @@ def get_cq_types():
 
 
 if __name__ == "__main__":
-    # print(get_Workplane_operations())
-    pass
+    p = determine_type_from_str("'XY'")
+    print(p)
