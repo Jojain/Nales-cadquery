@@ -329,7 +329,10 @@ class NArgument(NNode):
         sig = signature(parent_method)
 
         args_infos = tuple((p_name, p_obj.annotation) for (p_name, p_obj) in sig.parameters.items() if p_name != "self" )
-        self._arg_infos = args_infos[self._row-1]
+        try:
+            self._arg_infos = args_infos[self._row-1]
+        except IndexError:
+            self._arg_infos = [None]
 
 
     @property

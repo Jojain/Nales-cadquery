@@ -59,6 +59,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         
 
 
+<<<<<<< Updated upstream
+=======
+            if cmd["type"]in ("new_part", "part_override"):
+                self.model.add_part(part_name, part)
+            
+            operation = cmd["operations"]
+            if len(operation) != 0:
+                self.model.add_operation(part_name, part, operation)
+                # self.modeling_ops_tree.expandAll()
+>>>>>>> Stashed changes
 
 
         #Connect all the slots to the needed signals

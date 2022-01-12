@@ -137,7 +137,11 @@ class ParamTableModel(QAbstractTableModel):
         # there is only two columns in the param table
         return 2
 
+<<<<<<< Updated upstream
     def index(self, row, column, parent = QModelIndex()):
+=======
+    def index(self, row, column, parent: QModelIndex = QModelIndex()):
+>>>>>>> Stashed changes
         # print("--------------")
         # print("row ", row, "col ", column)
         # print("--------------")

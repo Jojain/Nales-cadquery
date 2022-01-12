@@ -13,6 +13,52 @@ import ast
 PY_TYPES_TO_AST_NODE = {int : ast.Constant, float: ast.Constant, str: ast.Constant, tuple: ast.Tuple, list: ast.List,
 bool: ast.Constant, set: ast.Set}
 
+<<<<<<< Updated upstream
+=======
+# class Number(type)
+
+
+def determine_type_from_str(string: str):
+
+    if len(string) == 0:
+        return None
+    selector_chars = ("%", "|", ">", "<", "#")
+    # if any(char in string for char in selector_chars):
+    #     return str
+
+    try:
+        node = ast.parse(string).body[0].value
+    except SyntaxError:
+        # Means the user provided a str without the quotes
+        return str
+
+    if string == "True" or string == "False":
+        return bool 
+    
+    if isinstance(node, ast.Tuple):
+        return tuple 
+    elif isinstance(node, ast.List):
+        return list 
+    elif isinstance(node, ast.Dict):
+        return dict
+    
+    try:
+        int(string)
+        return int
+    except ValueError:
+        try:
+            float(string)
+            return float 
+        except ValueError:
+            return str
+
+
+    
+    
+
+    
+
+>>>>>>> Stashed changes
 def get_Workplane_methods() -> Dict[str,Callable]:
     """
     This function retrieve all the 'operations' of the Workplane
