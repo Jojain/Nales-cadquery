@@ -255,7 +255,12 @@ class NOperation(NNode):
         else:
             self._root_operation = False
 
-               
+    def remove_operation(self):
+        """
+        Remove the last operation and update the parent NPart and Part obj accordingly
+        """  
+        self.parent.part = self.parent.part._end(1)
+
     def update(self, pos):
         parent_part = self.parent.part 
         part = parent_part._end(pos)

@@ -11,7 +11,7 @@ Taken from : https://gist.github.com/nbassler/342fc56c42df27239fa5276b79fca8e6
 """
 
 from PyQt5.QtGui import QColor, QFont
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 from inspect import signature
 from tokenize import any
 from typing import Any, Iterable, List, Tuple, Union
@@ -39,20 +39,48 @@ import ast
 import cadquery as cq
 
 
-from nales_alpha.NDS.commands import EditArgument
+from nales_alpha.NDS.commands import EditArgument, EditParameter
 
 from nales_alpha.nales_cq_impl import Part
 
 
 
+class NalesParam:
+    def __init__(self, name: str, value: object) -> None:
+        self.name = name
+        self.value = value
 
 class ParamTableModel(QAbstractTableModel):
-    def __init__(self, param_table: List[list]):
+
+    run_cmd = pyqtSignal(QUndoCommand)
+
+    def __init__(self, param_table: List[NalesParam]):
         super().__init__()
         self._data = param_table
 
-    def add_parameter(self):
-        self.insertRows(1) # whatever value I pass it always append row which is fine in our case 
+
+    def add_parameter(self, name: str = None, value: object = None, insert_row: int = None) -> int:
+        """
+        Add a default parameter in the param table
+        :return: the row at which the param has been added
+        """
+        automatic_param_name_indices = [int(param.name[5:]) for param in self._data if (param.name.startswith("param") and param.name[5:].isnumeric())]
+        automatic_param_name_indices.sort()
+        if len(automatic_param_name_indices) != 0:
+            idx = automatic_param_name_indices[-1] + 1
+        else :
+            idx = 1
+        if name and value:
+            self._data.append(NalesParam(name,value))
+        else:
+            self._data.append(NalesParam(f"param{idx}", None))
+
+        if not insert_row:
+            insert_row = len(self._data) - 1
+
+        self.insertRows(insert_row)
+
+        return insert_row
 
 
     def is_null(self):
@@ -75,15 +103,6 @@ class ParamTableModel(QAbstractTableModel):
 
     def insertRows(self, row: int) -> bool:
         self.beginInsertRows(QModelIndex(), row, row)
-
-        automatic_param_name_indices = [int(param[0][5:]) for param in self._data if (param[0].startswith("param") and param[0][5:].isnumeric())]
-        automatic_param_name_indices.sort()
-        if len(automatic_param_name_indices) != 0:
-            idx =automatic_param_name_indices[-1] + 1
-        else :
-            idx = 1
-        self._data.append([f"param{idx}", None])
-
         self.endInsertRows()
         self.layoutChanged.emit()
         return True
@@ -120,9 +139,13 @@ class ParamTableModel(QAbstractTableModel):
         row = index.row()
         col = index.column()
         if role == Qt.DisplayRole or role == Qt.EditRole:
-            return self._data[row][col]
+            if col == 0:
+                return self._data[row].name
+            elif col == 1:
+                return self._data[row].value
 
-
+    def copy_data(self):
+        return self._data
 
     def flags(self, index):        
         # parameter name and value can always be edited so this is always true
@@ -143,15 +166,19 @@ class ParamTableModel(QAbstractTableModel):
         # print("--------------")
         # print("row ", row, "col ", column)
         # print("--------------")
-        return self.createIndex(row, column, self._data[row][column])
+        if column == 0 :
+            return self.createIndex(row, column, self._data[row].name)
+        elif column == 1 :
+            return self.createIndex(row, column, self._data[row].value)
+        else:
+            raise ValueError("`column` must be either 0 or 1")
 
     def setData(self, index, value, role):
         """
         setData of TableModel
         """
         if role == Qt.EditRole:
-            self._data[index.row()][index.column()] = value
-            self.dataChanged.emit(index,index)
+            self.run_cmd.emit(EditParameter(self,value, index))
             return True
 
 
@@ -428,7 +455,7 @@ class NModel(QAbstractItemModel):
         #We update the Part without the last operation
         try:
             last_op = npart.childs[-1]
-            last_op.update(last_op.row)
+            last_op.remove_operation()
         except IndexError:
             while (npart.part.parent_obj is not None):
                 npart.part = npart.part.parent_obj

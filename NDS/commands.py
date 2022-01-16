@@ -1,6 +1,7 @@
 from copy import copy
 import imp
-from typing import Any, TYPE_CHECKING
+from operator import index
+from typing import Any, TYPE_CHECKING, List
 from PyQt5.QtWidgets import QUndoCommand
 from PyQt5.QtCore import Qt, QModelIndex
 from nales_alpha.nales_cq_impl import Part
@@ -8,7 +9,7 @@ from nales_alpha.nales_cq_impl import Part
 from nales_alpha.NDS.interfaces import NPart
 
 if TYPE_CHECKING:
-    from nales_alpha.NDS.model import NModel
+    from nales_alpha.NDS.model import NModel, ParamTableModel
 
 
 class BaseCommand(QUndoCommand):
@@ -104,8 +105,58 @@ class AddOperation(BaseCommand):
         self.model.remove_operation(node_idx)
 
 
+class AddParameter(BaseCommand):
+    def __init__(self, model: "ParamTableModel"):
+        super().__init__()
+        self.model = model
 
 
+    def redo(self) -> None:
+        self.row = self.model.add_parameter()
+    
+    def undo(self) -> None:
+        self.model.remove_parameter([self.model.index(self.row, 0)])
+
+
+class DeleteParameter(BaseCommand):
+    def __init__(self, model: "ParamTableModel", indexes: List[QModelIndex]):
+        super().__init__()
+        self.model = model
+        self.idxs = indexes
+        self.removed_params = [(self.model._data[idx.row()], idx.row()) for idx in indexes]
+
+    def redo(self) -> None:
+        self.old_data = self.model.copy_data()
+        self.model.remove_parameter(self.idxs)
+    
+    def undo(self) -> None:
+        for param, row in self.removed_params:
+            self.model.insertRows(row)
+            self.model._data.insert(row, param)
+        
+
+class EditParameter(BaseCommand):
+    def __init__(self, model: "ParamTableModel", value, index: QModelIndex):
+        super().__init__()
+        self.model = model
+        self.value = value
+        self.idx = index
+
+    def redo(self) -> None:
+        if self.idx.column() == 0:
+            self.old_value = self.model._data[self.idx.row()].name 
+            self.model._data[self.idx.row()].name = self.value
+        elif self.idx.column() == 1:
+            self.old_value = self.model._data[self.idx.row()].value 
+            self.model._data[self.idx.row()].value = self.value
+        self.model.dataChanged.emit(self.idx,self.idx)
+
+    def undo(self) -> None:
+        if self.idx.column() == 0:
+            self.model._data[self.idx.row()].name = self.old_value 
+        elif self.idx.column() == 1:
+            self.model._data[self.idx.row()].value = self.old_value 
+        self.model.dataChanged.emit(self.idx,self.idx)
 
 
 class EditArgument(BaseCommand):

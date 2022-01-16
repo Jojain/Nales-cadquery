@@ -7,7 +7,7 @@ from PyQt5.QtCore import pyqtSlot, pyqtSignal
 
 from nales_alpha.data_user_interface import NalesDIF
 
-from nales_alpha.NDS.commands import AddOperation, AddPart, DeleteOperation, DeletePart
+from nales_alpha.NDS.commands import AddOperation, AddParameter, AddPart, DeleteOperation, DeleteParameter, DeletePart
 # from nales_alpha.NDS.NOCAF import Feature, Part
 
 from nales_alpha.NDS.model import NModel, ParamTableModel
@@ -107,7 +107,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.uview.show()
 
         #connect signals
-        self.model.run_cmd.connect(self.push_cmd)
+        self.model.run_cmd.connect(lambda cmd: self.push_cmd(cmd))
+        self.param_model.run_cmd.connect(lambda cmd: self.push_cmd(cmd))
 
 
     @pyqtSlot(dict)
@@ -156,8 +157,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 else:
                     StdErrorMsgBox("Cannot delete an operation that is not the last one")
 
-        
+    def delete_parameter(self) -> None:
 
+        selected_idx = self.param_table_view.selectionModel().selectedIndexes() 
+        if len(selected_idx) > 0 :
+            self.push_cmd(DeleteParameter(self.param_model, selected_idx))
+
+
+        
 
     def push_cmd(self, cmd: QUndoCommand) -> None:
         """
@@ -187,8 +194,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         param_table.horizontalHeader().setStretchLastSection(True) 
         param_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch) 
 
-        self.add_param_btn.clicked.connect(self.param_model.add_parameter)        
-        self.rmv_param_btn.clicked.connect(lambda : self.param_model.remove_parameter(param_table.selectionModel().selectedIndexes()))
+        param_model = self.param_model
+        self.add_param_btn.clicked.connect(lambda : self.push_cmd(AddParameter(param_model)))        
+        self.rmv_param_btn.clicked.connect(self.delete_parameter)
+        
         
 
 
