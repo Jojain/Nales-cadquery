@@ -5,9 +5,9 @@ from PyQt5.QtWidgets import QAbstractItemView, QAction, QHeaderView, QMainWindow
 from nales_alpha.uic.mainwindow import Ui_MainWindow
 from PyQt5.QtCore import pyqtSlot, pyqtSignal
 
-from data_user_interface import NalesDIF
+from nales_alpha.data_user_interface import NalesDIF
 
-from nales_alpha.NDS.commands import DeleteTreeItem
+from nales_alpha.NDS.commands import AddOperation, AddPart, DeleteOperation, DeletePart
 # from nales_alpha.NDS.NOCAF import Feature, Part
 
 from nales_alpha.NDS.model import NModel, ParamTableModel
@@ -17,6 +17,8 @@ from nales_alpha.views.tree_views import ModelingOpsView
 
 #debug related import
 import debugpy
+
+from nales_alpha.NDS.interfaces import NOperation, NPart
 debugpy.debug_this_thread()
 
 from nales_alpha.utils import get_Workplane_methods
@@ -85,7 +87,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.delete_action = QAction(self)
         self.delete_action.setShortcut("Del")
         self.main_menu.addAction(self.delete_action)
-        self.delete_action.triggered.connect(lambda: self.push_cmd(DeleteTreeItem(self.model, self.modeling_ops_tree.selectedIndexes())))
+        self.delete_action.triggered.connect(self.delete_tree_item)
 
     def _setup_undo_stack(self):
         """
@@ -125,20 +127,38 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             part_name = cmd["obj_name"]
 
             if cmd["type"]in ("new_part", "part_override"):
-                self.model.add_part(part_name, part)
+                self.push_cmd(AddPart(self.model, part_name, part))
             
             operation = cmd["operations"]
             if len(operation) != 0:
-                # self.model.add_operations(part_name, part, operation)
-                self.model.add_operation(part_name, part, operation)
+                self.push_cmd(AddOperation(self.model, part_name, part, operation))
                 # self.modeling_ops_tree.expandAll()
 
                 self.modeling_ops_tree.expand(self.model.childrens()[0])
                 self.modeling_ops_tree.expand(self.model.childrens(self.model.childrens()[0])[0])
                 self.viewer.fit()
 
+    def delete_tree_item(self) -> None:
+        """
+        """
+        selected_idx = self.modeling_ops_tree.selectedIndexes()
+        if len(selected_idx) != 1:
+            return
+        else:
+            idx = selected_idx[0]
+            node = idx.internalPointer()
+            
+            if isinstance(node, NPart):
+                self.push_cmd(DeletePart(self.model, idx))
+            elif isinstance(node, NOperation):
+                if node is node.parent.childs[-1]:
+                    self.push_cmd(DeleteOperation(self.model, idx))
+                else:
+                    StdErrorMsgBox("Cannot delete an operation that is not the last one")
 
         
+
+
     def push_cmd(self, cmd: QUndoCommand) -> None:
         """
         Push the reiceved command on the stack

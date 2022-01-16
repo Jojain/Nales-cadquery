@@ -20,8 +20,7 @@ from OCP.Quantity import Quantity_NameOfColor
 
 
 
-import debugpy
-debugpy.debug_this_thread()
+from nales_alpha.nales_cq_impl import Part
 
 from widgets.msg_boxs import StdErrorMsgBox
 
@@ -38,10 +37,10 @@ class NNode():
         self._childs = []
 
         if parent:
-            parent._childs.append(self)
-            parent._columns_nb = max(self.columns_nb, parent.columns_nb)
-            self._label = TDF_TagSource.NewChild_s(parent._label)
             self._row = len(parent._childs)
+            parent._childs.append(self)
+            parent._columns_nb = max(self.column, parent.column)
+            self._label = TDF_TagSource.NewChild_s(parent._label)            
             self._name = name
             TDataStd_Name.Set_s(self._label, TCollection_ExtendedString(self.name))
         else:
@@ -49,10 +48,6 @@ class NNode():
             self._name = "root"
             self._row = 0
 
-        
-
-    # def __str__(self):
-    #         return f"{self.name}"
 
 
     def walk(self, node: "NNode" = None) -> "NNode":
@@ -86,8 +81,7 @@ class NNode():
             return self._data[column]
 
     @property
-    def columns_nb(self):
-        # return 3
+    def column(self):
         return self._columns_nb
 
     def child_count(self):
@@ -132,6 +126,10 @@ class NNode():
             else:
                 return root
 
+    @property
+    def row(self):
+        return self._row
+
 class NPart(NNode):
 
 
@@ -146,7 +144,7 @@ class NPart(NNode):
 
 
     
-    def update_display_shapes(self):
+    def _update_display_shapes(self):
         try:
             solid = self.part._findSolid().wrapped
         except ValueError:
@@ -175,7 +173,7 @@ class NPart(NNode):
 
         if update:
             self.ais_shape.Erase(remove=True)
-            self.update_display_shapes()
+            self._update_display_shapes()
             self.root_node._viewer.Update()
 
 
@@ -244,10 +242,10 @@ class NShape(NNode):
 class NOperation(NNode):
 
 
-    def __init__(self, method_name: str, name, part: Workplane, parent : NNode):
+    def __init__(self, method_name: str, name, part: Part, parent : NNode, operations: dict):
         super().__init__(method_name, name, parent=parent)
         self.parent.part = part
-        
+        self.operations = operations
         self.name = method_name
         self.method = getattr(part,method_name).__func__
         
@@ -346,7 +344,7 @@ class NArgument(NNode):
 
         args_infos = tuple((p_name, p_obj.annotation) for (p_name, p_obj) in sig.parameters.items() if p_name != "self" )
         try:
-            self._arg_infos = args_infos[self._row-1]
+            self._arg_infos = args_infos[self._row]
         except IndexError:
             self._arg_infos = [None]
 

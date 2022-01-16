@@ -1,4 +1,5 @@
 import inspect
+from typing import Any, List
 from PyQt5.QtWidgets import QApplication, QHBoxLayout, QWidget, QMainWindow
 from PyQt5.QtCore import pyqtSlot, pyqtSignal
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
@@ -43,13 +44,26 @@ class ConsoleWidget(RichJupyterWidget):
         
         self.push_vars(namespace)
 
-    def _get_part_varname(self, wp_id: int) -> str:
+    def remove_obj(self, obj: Any) -> None:
+        """
+        Remove the given `obj` (and all the vars associated) from the console namespace
+        """
+        ns = self.namespace
+
+        for var, value in ns.copy().items():
+            if id(value) == id(obj) :
+                ns.pop(var) 
+
+
+
+    def get_part_varnames(self, part_obj: Part) -> List[str]:
 
         ns = self.namespace 
-
+        vars = []
         for var, value in ns.items():
-            if id(value) == wp_id :
-                return var 
+            if value is part_obj :
+                vars.append(var)
+        return vars
         
 
     def _execute(self, source, hidden):

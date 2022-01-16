@@ -14,7 +14,7 @@ from PyQt5.QtGui import QColor, QFont
 from collections import OrderedDict
 from inspect import signature
 from tokenize import any
-from typing import Any, Iterable, List, Tuple
+from typing import Any, Iterable, List, Tuple, Union
 import sys
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QMenu, QUndoCommand
@@ -39,11 +39,9 @@ import ast
 import cadquery as cq
 
 
-import debugpy
-from NDS.commands import EditArgument
+from nales_alpha.NDS.commands import EditArgument
 
-from nales_cq_impl import Part
-debugpy.debug_this_thread()
+from nales_alpha.nales_cq_impl import Part
 
 
 
@@ -177,17 +175,18 @@ class NModel(QAbstractItemModel):
         self._root.console_namespace = console.namespace
 
 
-        self.insertRows(0,0,NNode(None, "Parts", self._root))
-        self.insertRows(1,0,NNode(None, "Shapes", self._root))
-        self.insertRows(2,0,NNode(None, "Others", self._root))
-
+        self._setup_top_level_nodes()
         
         # Slots connection 
         self.dataChanged.connect(lambda idx : self.update_operation(idx)) 
 
-        
+    def _setup_top_level_nodes(self):
+        NNode(None, "Parts", self._root)
+        NNode(None, "Shapes", self._root)
+        NNode(None, "Others", self._root)
+        self.insertRows(0,3)
 
-    def add_part(self, name: str, part: Workplane):
+    def add_part(self, name: str, part: Part) -> NPart:
         """
         Add a Part to the data model
 
@@ -204,52 +203,65 @@ class NModel(QAbstractItemModel):
 
         
         node = NPart(name, part, self._root.child(0))    
-        self.insertRows(self.rowCount(parts_idx), 0, None, parent=parts_idx)
+        self.insertRows(self.rowCount(parts_idx), parent=parts_idx)
 
         node.display()
+        return node
+
+    def get_part_index(self, part_name: str) -> Union[QModelIndex, None]:
+        for idx in self.walk():
+            try:
+                if idx.internalPointer().name == part_name:
+                    return idx
+            except AttributeError:
+                continue
 
 
 
-    def add_operation(self, part_name: str, part_obj: Workplane,  operation: dict):
-        # Implémentation à l'arrache il faudra étudier les TFUNCTIONS et voir comment gérer de l'UNDO REDO
-        parts = self._root.child(0).childs
+    def add_operation(self, part_name: str, part_obj: Part,  operations: dict) -> NOperation:
+        """
+        Add an operation to the operation tree
+
+        :return: the node of 
+        """
+        nparts = self._root.child(0).childs
         parts_idx = self.index(0,0) # the Parts container index
         
-        for part in parts:
-            if part.name == part_name:
-                row = part._row
-                parent_part = part                
+        for npart in nparts:
+            if npart.name == part_name:
+                row = npart.row
+                parent_part = npart                
                 break 
 
         part_idx = self.index(row, 0, parts_idx)        
         
-        method_name = operation["name"]
-        noperation = NOperation(method_name, method_name, part_obj, parent_part)
-        self.insertRows(self.rowCount(), 0, operation, part_idx)
+        method_name = operations["name"]
+        noperation = NOperation(method_name, method_name, part_obj, parent_part, operations)
+        self.insertRows(self.rowCount(), parent = part_idx)
 
-        operation_idx = self.index(noperation._row, 0, part_idx)
+        operation_idx = self.index(noperation.row, 0, part_idx)
 
-        args, kwargs = operation["parameters"][0], operation["parameters"][1]
-        args = [arg._name if isinstance(arg,Part) else arg for arg in args] 
+        args, kwargs = operations["parameters"][0], operations["parameters"][1]
+        args = [arg.name if isinstance(arg,Part) else arg for arg in args] 
 
         args_names = get_Wp_method_args_name(method_name)
         if len(args) == len(args_names):
 
             for pos, arg in enumerate(args):                
                 node = NArgument(args_names[pos], arg, noperation) 
-                if (obj_node := self._root.find(arg)): # the argument is a object stored in the model data structure
+                if (obj_node := self._root.find(arg)): # the argument is an object stored in the model data structure
                     idx = self.index_from_node(obj_node)
                     node._linked_obj_idx = QPersistentModelIndex(idx)               
                     node.name = arg
 
-                self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+                self.insertRows(self.rowCount(operation_idx), parent = operation_idx)
         else: 
             # Means the user passed an argument without calling the keyword
             nb_short_call_kwarg = len(args) - len(args_names)
 
             for pos, arg in enumerate(args[0:nb_short_call_kwarg-1]):                
                 node = NArgument(args_names[pos], arg, noperation) 
-                self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+                self.insertRows(self.rowCount(operation_idx), parent = operation_idx)
 
             kw_names = [kw_name for kw_name in list(kwargs.keys())]
             for kwarg_name, kwarg_val in zip(kw_names,args[nb_short_call_kwarg - 1:]):
@@ -257,14 +269,14 @@ class NModel(QAbstractItemModel):
 
         for kwarg_name, kwarg_val in kwargs.items():
                 node = NArgument(kwarg_name, kwarg_val, noperation, kwarg=True) 
-                self.insertRows(self.rowCount(operation_idx),0, node, operation_idx)
+                self.insertRows(self.rowCount(operation_idx), parent = operation_idx)
 
-        part.display(update=True)
+        npart.display(update=True)
 
         #update copies of the part in the console
-
-        self._console.update_part(part_name, part.part)
+        self._console.update_part(part_name, npart.part)
         
+        return noperation
 
     def update_shape(self, idx: QModelIndex) -> None:
         pass
@@ -277,11 +289,11 @@ class NModel(QAbstractItemModel):
             starting_op = ptr.parent
             part = starting_op.parent
 
-            operations = part.childs[starting_op._row-1:]
+            operations = part.childs[starting_op.row:]
 
             for operation in operations:
                 if operation is starting_op:
-                    pos = len(part.childs) - operation._row + 1
+                    pos = len(part.childs) - operation.row
                 else:
                     pos = 0
                 operation.update(pos)
@@ -304,7 +316,7 @@ class NModel(QAbstractItemModel):
         node = NShape(shape_name, shape, invoked_method, self._root.child(1))    
 
         shapes_idx = self.index(self._root.child(1)._row, 0)
-        self.insertRows(self.rowCount(shapes_idx), 0, node, parent=shapes_idx)
+        self.insertRows(self.rowCount(shapes_idx), parent=shapes_idx)
        
 
 
@@ -378,8 +390,8 @@ class NModel(QAbstractItemModel):
 
     def columnCount(self, index):
         if index.isValid():
-            return index.internalPointer().columns_nb
-        return self._root.columns_nb
+            return index.internalPointer().column
+        return self._root.column
 
 
     def index(self, row, column, _parent: QModelIndex = QModelIndex()):
@@ -403,6 +415,38 @@ class NModel(QAbstractItemModel):
             if p:
                 return self.createIndex(p._row, 0, p)
         return QtCore.QModelIndex()
+
+    def remove_operation(self, op_idx: QModelIndex) -> None:
+        """
+        Remove an operation at the given `op_idx` index
+        """
+
+        npart = op_idx.parent().internalPointer()
+        # We remove the op from the tree
+        self.removeRows([op_idx], op_idx.parent())
+
+        #We update the Part without the last operation
+        try:
+            last_op = npart.childs[-1]
+            last_op.update(last_op.row)
+        except IndexError:
+            while (npart.part.parent_obj is not None):
+                npart.part = npart.part.parent_obj
+        npart.display(update=True)
+
+    def remove_part(self, part_idx: QModelIndex) -> None:
+        """
+        Remove a part at the given `part_idx` index
+        """  
+        part_node = part_idx.internalPointer()
+        self.removeRows([part_idx], part_idx.parent())
+        
+        #Remove all reference everywhere it's needed
+        Part._names.remove(part_node.name)
+        self._console.remove_obj(part_node.part)
+        part_node.hide()
+        # self.app.viewer_redraw()
+
 
 
     def removeRows(self, rmv_idxs: List[QModelIndex], parent: QModelIndex = QModelIndex()) -> bool:
@@ -442,7 +486,7 @@ class NModel(QAbstractItemModel):
                     if node.is_linked(by = "obj"):
                         return f"{node.name}"
                     else:
-                        return f"{node._arg_infos[0]} = {node._value}"
+                        return f"{node.name} = {node._value}"
 
             elif role == Qt.EditRole:
                 return node
@@ -487,9 +531,10 @@ class NModel(QAbstractItemModel):
                 return (Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable)
 
         if isinstance(node, NPart) or isinstance(node, NShape):
-            return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
+            return (Qt.ItemIsEnabled | Qt.ItemIsUserCheckable |  Qt.ItemIsSelectable)
 
-
+        elif isinstance(node, NOperation):
+            return (Qt.ItemIsEnabled | Qt.ItemIsSelectable)
         else:
             return Qt.ItemIsEnabled
 
@@ -511,9 +556,6 @@ class NModel(QAbstractItemModel):
                     idx = self.index_from_node(obj_node)
                     node._linked_obj_idx = QPersistentModelIndex(idx)               
                     node.name = value
-
-
-
 
 
                 else:
@@ -543,9 +585,14 @@ class NModel(QAbstractItemModel):
         
         return True
     
-    def insertRows(self, row, count, node: NNode, parent = QModelIndex()):
+    def insertRows(self, row: int , count: int = 1, parent = QModelIndex()):
+        """
+        The node is actually not needed, this function just notify the model that rows has been added
+        but there is no more information provided
+        The model get the data from the NNode tree
+        """
         idx = self.index(row, 0, parent)
-        self.beginInsertRows(idx, row, 1)
+        self.beginInsertRows(idx, row, count)
         self.endInsertRows()
         self.layoutChanged.emit()
 
@@ -554,6 +601,10 @@ class NModel(QAbstractItemModel):
     def parts(self) -> List[NPart]:
         nparts = self._root.childs[0].childs
         return nparts
+
+    @property
+    def console(self):
+        return self._console
 
 
 if __name__ == "__main__":
