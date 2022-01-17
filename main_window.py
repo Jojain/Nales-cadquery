@@ -228,7 +228,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self, tree: ModelingOpsView, pos: QPoint, selection: List[QModelIndex]
     ):
         param_model = self.param_model
-        modeling_ops_model = self.model
         for item in selection:
             node = item.internalPointer()
             if isinstance(node, NArgument):
