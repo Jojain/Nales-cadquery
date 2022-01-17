@@ -1,7 +1,7 @@
 from typing import Any, TYPE_CHECKING, List
 from PyQt5.QtWidgets import QUndoCommand
 from PyQt5.QtCore import Qt, QModelIndex, QPersistentModelIndex
-from nales_alpha.nales_cq_impl import Part
+from nales_alpha.nales_cq_impl import Part, Shape
 
 from nales_alpha.NDS.interfaces import NPart
 
@@ -13,6 +13,14 @@ class BaseCommand(QUndoCommand):
     def __init__(self):
         super().__init__()
         self.setText(self.__class__.__name__)
+
+
+class AddTreeItem(BaseCommand):
+    def __init__(self, model: "NModel", item_name: str, item_obj: Any):
+        super().__init__()
+        self.model = model
+        self.item_name = item_name
+        self.item_obj = item_obj
 
 
 class DeleteTreeItem(BaseCommand):
@@ -71,37 +79,31 @@ class DeleteOperation(DeleteTreeItem):
         )
 
 
-class AddPart(BaseCommand):
+class AddPart(AddTreeItem):
     def __init__(self, model: "NModel", part_name: str, part_obj: Part):
-        super().__init__()
-        self.model = model
-        self.part_name = part_name
-        self.part_obj = part_obj
+        super().__init__(model, part_name, part_obj)
 
     def redo(self):
-        self.model.add_part(self.part_name, self.part_obj)
+        self.model.add_part(self.item_name, self.item_obj)
 
     def undo(self):
-        node_idx = self.model.get_part_index(self.part_name)
+        node_idx = self.model.get_part_index(self.item_name)
         self.model.remove_part(node_idx)
 
 
-class AddOperation(BaseCommand):
+class AddOperation(AddTreeItem):
     def __init__(
         self, model: "NModel", part_name: str, part_obj: Part, operation: dict
     ):
-        super().__init__()
-        self.model = model
-        self.part_name = part_name
-        self.part_obj = part_obj
+        super().__init__(model, part_name, part_obj)
         self.operation = operation
 
     def redo(self):
-        node = self.model.add_operation(self.part_name, self.part_obj, self.operation)
+        node = self.model.add_operation(self.item_name, self.item_obj, self.operation)
         self.row = node.row
 
     def undo(self):
-        parent_idx = self.model.get_part_index(self.part_name)
+        parent_idx = self.model.get_part_index(self.item_name)
         node_idx = self.model.index(self.row, 0, parent_idx)
         self.model.remove_operation(node_idx)
 
@@ -128,7 +130,6 @@ class DeleteParameter(BaseCommand):
         ]
 
     def redo(self) -> None:
-        self.old_data = self.model.copy_data()
         self.model.remove_parameter(self.idxs)
 
     def undo(self) -> None:
@@ -226,21 +227,23 @@ class UnlinkParameter(BaseCommand):
         super().__init__()
         self.param_model = param_model
         self.modeling_ops_model = modeling_ops_model
-        self.old_params = []
         self.selected_args = selected_args
-        self.old_values = [
-            param_model.parameters[arg_idx.row()] for arg_idx in selected_args
-        ]
 
     def redo(self) -> None:
-        for arg in self.selected_args:
-            self.old_params.append(arg.internalPointer())
-            self.modeling_ops_model.unlink_parameter(arg)
+        self.old_args = []
+        for arg_idx in self.selected_args:
+            self.old_args.append(arg_idx.internalPointer())
+            self.modeling_ops_model.unlink_parameter(arg_idx)
 
     def undo(self) -> None:
-        for arg, param in zip(self.selected_args, self.old_values):
+        for arg_idx, old_arg in zip(self.selected_args, self.old_args):
             self.modeling_ops_model.link_parameters(
-                [arg],
-                QPersistentModelIndex(param.name),
-                QPersistentModelIndex(param.value),
+                [arg_idx],
+                QPersistentModelIndex(old_arg._param_name_pidx),
+                QPersistentModelIndex(old_arg._param_value_pidx),
             )
+
+
+class AddShape(AddTreeItem):
+    def __init__(self, model: "NModel", shape_name: str, shape_obj: Shape):
+        super().__init__(model, shape_name, shape_obj)

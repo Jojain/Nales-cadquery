@@ -389,7 +389,7 @@ class NModel(QAbstractItemModel):
                         node._linked_param = None
                         self.dataChanged.emit(idx, idx)
 
-    def _update_parameters(self):
+    def update_parameters(self):
         """
         Update the modeling ops view and model when parameters are modified in the Parameter table
         (Note : It's handled with signals and slot, but It could be done with Proxy Models and having only 1 model holding all the data of the app)

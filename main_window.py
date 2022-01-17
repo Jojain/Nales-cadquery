@@ -46,7 +46,7 @@ debugpy.debug_this_thread()
 from nales_alpha.utils import get_Workplane_methods
 from nales_alpha.widgets.msg_boxs import WrongArgMsgBox, StdErrorMsgBox
 
-from nales_alpha.nales_cq_impl import Part
+from nales_alpha.nales_cq_impl import Part, Shape
 
 
 console_theme = """QPlainTextEdit, QTextEdit { background-color: yellow;
@@ -71,6 +71,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         Part._mw_instance = self  # give a reference to the main_window to the Part class, for connecting signals and slots
 
         self.setupUi(self)
+        self.setWindowTitle("Nales")
         self._console.setStyleSheet(console_theme)
 
         self.main_menu = QMainWindow.menuBar(self)
@@ -81,9 +82,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.modeling_ops_tree.setModel(self.model)
         self.param_model = ParamTableModel([])
         self.param_table_view.setModel(self.param_model)
-        self.param_model.dataChanged.connect(self.model._update_parameters)
+        self.param_model.dataChanged.connect(self.model.update_parameters)
         self.param_model.rowsRemoved.connect(
-            lambda first: self.model._disconnect_parameter(param_idx=first)
+            lambda first: self.model.unlink_parameter(param_idx=first)
         )
 
         # Undo stack handling
@@ -138,8 +139,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         This function calls the approriate NModel method depending on the command received.
         """
 
-        if cmd["type"] == "undefined":
-            return
+        if cmd["type"] == "new_shape":
+            shape = cmd["obj"]
+            shape_name = cmd["obj_name"]
 
         if cmd["type"] == "other":
             pass

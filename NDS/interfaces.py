@@ -259,9 +259,8 @@ class NOperation(NNode):
                 previous_op = self.parent.childs[self._row - 2]
                 previous_op.update(pos + 1)
                 self.update(pos)
-
-            else:
-                StdErrorMsgBox(repr(exc))
+        except Exception as exc:
+            StdErrorMsgBox(repr(exc))
 
     def _restore_pending_wires(self):
         index = 2
