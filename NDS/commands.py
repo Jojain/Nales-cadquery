@@ -1,9 +1,6 @@
-from copy import copy
-import imp
-from operator import index
 from typing import Any, TYPE_CHECKING, List
 from PyQt5.QtWidgets import QUndoCommand
-from PyQt5.QtCore import Qt, QModelIndex
+from PyQt5.QtCore import Qt, QModelIndex, QPersistentModelIndex
 from nales_alpha.nales_cq_impl import Part
 
 from nales_alpha.NDS.interfaces import NPart
@@ -21,11 +18,11 @@ class BaseCommand(QUndoCommand):
 class DeleteTreeItem(BaseCommand):
     def __init__(self, model: "NModel", index: QModelIndex):
         super().__init__()
-        self.model = model        
+        self.model = model
         self.node = index.internalPointer()
         if isinstance(self.node, NPart):
-            self.part_obj = self.node.part 
-        else: 
+            self.part_obj = self.node.part
+        else:
             self.part_obj = self.node.parent.part
 
 
@@ -50,11 +47,12 @@ class DeletePart(DeleteTreeItem):
         # If we recreate the part we need to update it in the Part names
         if self.part_name not in Part._names:
             Part._names.append(self.part_name)
-        
+
         # Recreate the vars in the console
         vars_dict = {var: self.part_obj for var in self.vars}
-        
+
         self.model.console.push_vars(vars_dict)
+
 
 class DeleteOperation(DeleteTreeItem):
     def __init__(self, model, index: QModelIndex):
@@ -68,12 +66,13 @@ class DeleteOperation(DeleteTreeItem):
         self.model.remove_operation(node_idx)
 
     def undo(self):
-        self.model.add_operation(self.node.parent.name, self.part_obj, self.node.operations)
-        
+        self.model.add_operation(
+            self.node.parent.name, self.part_obj, self.node.operations
+        )
 
 
 class AddPart(BaseCommand):
-    def __init__(self, model: "NModel", part_name: str, part_obj: Part ):
+    def __init__(self, model: "NModel", part_name: str, part_obj: Part):
         super().__init__()
         self.model = model
         self.part_name = part_name
@@ -81,13 +80,16 @@ class AddPart(BaseCommand):
 
     def redo(self):
         self.model.add_part(self.part_name, self.part_obj)
-    
+
     def undo(self):
         node_idx = self.model.get_part_index(self.part_name)
         self.model.remove_part(node_idx)
 
+
 class AddOperation(BaseCommand):
-    def __init__(self, model: "NModel", part_name: str, part_obj: Part,  operation: dict ):
+    def __init__(
+        self, model: "NModel", part_name: str, part_obj: Part, operation: dict
+    ):
         super().__init__()
         self.model = model
         self.part_name = part_name
@@ -96,8 +98,7 @@ class AddOperation(BaseCommand):
 
     def redo(self):
         node = self.model.add_operation(self.part_name, self.part_obj, self.operation)
-        self.row = node.row 
-
+        self.row = node.row
 
     def undo(self):
         parent_idx = self.model.get_part_index(self.part_name)
@@ -110,10 +111,9 @@ class AddParameter(BaseCommand):
         super().__init__()
         self.model = model
 
-
     def redo(self) -> None:
         self.row = self.model.add_parameter()
-    
+
     def undo(self) -> None:
         self.model.remove_parameter([self.model.index(self.row, 0)])
 
@@ -123,17 +123,19 @@ class DeleteParameter(BaseCommand):
         super().__init__()
         self.model = model
         self.idxs = indexes
-        self.removed_params = [(self.model._data[idx.row()], idx.row()) for idx in indexes]
+        self.removed_params = [
+            (self.model._data[idx.row()], idx.row()) for idx in indexes
+        ]
 
     def redo(self) -> None:
         self.old_data = self.model.copy_data()
         self.model.remove_parameter(self.idxs)
-    
+
     def undo(self) -> None:
         for param, row in self.removed_params:
             self.model.insertRows(row)
             self.model._data.insert(row, param)
-        
+
 
 class EditParameter(BaseCommand):
     def __init__(self, model: "ParamTableModel", value, index: QModelIndex):
@@ -144,23 +146,23 @@ class EditParameter(BaseCommand):
 
     def redo(self) -> None:
         if self.idx.column() == 0:
-            self.old_value = self.model._data[self.idx.row()].name 
+            self.old_value = self.model._data[self.idx.row()].name
             self.model._data[self.idx.row()].name = self.value
         elif self.idx.column() == 1:
-            self.old_value = self.model._data[self.idx.row()].value 
+            self.old_value = self.model._data[self.idx.row()].value
             self.model._data[self.idx.row()].value = self.value
-        self.model.dataChanged.emit(self.idx,self.idx)
+        self.model.dataChanged.emit(self.idx, self.idx)
 
     def undo(self) -> None:
         if self.idx.column() == 0:
-            self.model._data[self.idx.row()].name = self.old_value 
+            self.model._data[self.idx.row()].name = self.old_value
         elif self.idx.column() == 1:
-            self.model._data[self.idx.row()].value = self.old_value 
-        self.model.dataChanged.emit(self.idx,self.idx)
+            self.model._data[self.idx.row()].value = self.old_value
+        self.model.dataChanged.emit(self.idx, self.idx)
 
 
 class EditArgument(BaseCommand):
-    def __init__(self, model: "NModel", value: Any, index: QModelIndex ) -> None:
+    def __init__(self, model: "NModel", value: Any, index: QModelIndex) -> None:
         super().__init__()
         self.model = model
         self.arg_node = model.data(index, Qt.EditRole)
@@ -172,12 +174,73 @@ class EditArgument(BaseCommand):
         # arg_index = self.model.index_from_node(self.arg_node)
         arg_index = self.idx
         self.arg_node.value = self.edit_value
-        self.model.dataChanged.emit(arg_index,arg_index)
-        
-
+        self.model.dataChanged.emit(arg_index, arg_index)
 
     def undo(self) -> None:
         # arg_index = self.model.index_from_node(self.arg_node)
         arg_index = self.idx
         self.arg_node.value = self.old_value
-        self.model.dataChanged.emit(arg_index,arg_index)
+        self.model.dataChanged.emit(arg_index, arg_index)
+
+
+class LinkParameter(BaseCommand):
+    def __init__(
+        self,
+        param_model: "ParamTableModel",
+        modeling_ops_model: "NModel",
+        selected_args: List[QModelIndex],
+        name_idx: QModelIndex,
+        value_idx: QModelIndex,
+    ) -> None:
+
+        super().__init__()
+        self.param_model = param_model
+        self.modeling_ops_model = modeling_ops_model
+        self.name_idx = name_idx
+        self.val_idx = value_idx
+        self.selected_args = selected_args
+        self.old_values = [arg_idx.internalPointer().value for arg_idx in selected_args]
+
+    def redo(self) -> None:
+        self.modeling_ops_model.link_parameters(
+            self.selected_args,
+            QPersistentModelIndex(self.name_idx),
+            QPersistentModelIndex(self.val_idx),
+        )
+
+    def undo(self) -> None:
+        for arg, value in zip(self.selected_args, self.old_values):
+            self.modeling_ops_model.unlink_parameter(arg)
+            arg.internalPointer().value = value
+            self.modeling_ops_model.dataChanged.emit(arg, arg)
+
+
+class UnlinkParameter(BaseCommand):
+    def __init__(
+        self,
+        param_model: "ParamTableModel",
+        modeling_ops_model: "NModel",
+        selected_args: List[QModelIndex],
+    ) -> None:
+
+        super().__init__()
+        self.param_model = param_model
+        self.modeling_ops_model = modeling_ops_model
+        self.old_params = []
+        self.selected_args = selected_args
+        self.old_values = [
+            param_model.parameters[arg_idx.row()] for arg_idx in selected_args
+        ]
+
+    def redo(self) -> None:
+        for arg in self.selected_args:
+            self.old_params.append(arg.internalPointer())
+            self.modeling_ops_model.unlink_parameter(arg)
+
+    def undo(self) -> None:
+        for arg, param in zip(self.selected_args, self.old_values):
+            self.modeling_ops_model.link_parameters(
+                [arg],
+                QPersistentModelIndex(param.name),
+                QPersistentModelIndex(param.value),
+            )
