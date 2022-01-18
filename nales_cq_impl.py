@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional
+from typing import Callable, List, Literal, Optional
 import inspect
 from functools import wraps
 
@@ -6,7 +6,7 @@ from PyQt5.QtCore import QObject, pyqtSignal
 from cadquery import Workplane
 from cadquery.cq import VectorLike, _selectShapes
 from cadquery.occ_impl.geom import Plane, Vector
-from cadquery.occ_impl.shapes import Shape, Solid, Face, Wire, Edge, Vertex
+from cadquery.occ_impl.shapes import Shape, Solid, Face, Wire, Edge, Vertex, Compound
 from utils import get_Wp_method_kwargs
 
 
@@ -207,12 +207,98 @@ class Part(PatchedWorkplane, QObject, metaclass=PartWrapper):
             self.on_method_call.emit(cmd)
 
 
-class NalesShape(Shape, QObject, metaclass=SignalsHandler):
+class ShapeWrapper(SignalsHandler):
+
+    _Vertex_methods = [
+        method.__func__
+        for (name, method) in inspect.getmembers(Vertex)
+        if name.startswith("make")
+    ]
+    _Edge_methods = [
+        method for (name, method) in inspect.getmembers(Edge) if name.startswith("make")
+    ]
+    _Wire_methods = [
+        method for (name, method) in inspect.getmembers(Wire) if name.startswith("make")
+    ]
+    _Face_methods = [
+        method for (name, method) in inspect.getmembers(Face) if name.startswith("make")
+    ]
+    _Solid_methods = [
+        method
+        for (name, method) in inspect.getmembers(Solid)
+        if name.startswith("make")
+    ]
+    _Compound_methods = [
+        method
+        for (name, method) in inspect.getmembers(Compound)
+        if name.startswith("make")
+    ]
+    _Shape_methods = [
+        method.__func__
+        for (name, method) in inspect.getmembers(Shape)
+        if name.startswith("make")
+    ]
+
+    maker_methods = {
+        "Vertex": _Vertex_methods,
+        "Edge": _Edge_methods,
+        "Wire": _Wire_methods,
+        "Face": _Face_methods,
+        "Solid": _Solid_methods,
+        "Compound": _Compound_methods,
+        "Shape": _Shape_methods,
+    }
+
+    @staticmethod
+    def _create_cmd(shape_name: str, obj: "NalesShape", maker_method: str):
+        cmd = {
+            "type": "new_shape",
+            "obj_name": shape_name,
+            "maker_method": maker_method,
+            "obj": obj,
+        }
+        return cmd
+
+    @staticmethod
+    def _maker_method_wrapper(class_name: str, maker_method) -> Callable:
+        @wraps(maker_method)
+        def maker_meth_wrapped(*args, **kwargs):
+
+            shape = maker_method(
+                globals()[class_name], *args, **kwargs
+            )  # we remove the first arg since it will be the NalesShape class name
+            if name := kwargs.get("name"):
+                shape._name = name
+            else:
+                shape._name = "To define"  # ShapeWrapper._get_name()
+            cmd = ShapeWrapper._create_cmd(shape._name, shape, maker_method)
+            shape.on_method_call.emit(cmd)
+
+            return shape
+
+        return maker_meth_wrapped
+
+    @staticmethod
+    def _wrap_maker_methods(class_name: str, class_dict: dict) -> dict:
+        methods = ShapeWrapper.maker_methods[class_name.lstrip("Nales")]
+
+        for method in methods:
+            wrapped_method = ShapeWrapper._maker_method_wrapper(class_name, method)
+            class_dict[method.__name__] = wrapped_method
+
+    def __new__(cls, name, bases, dct):
+        ShapeWrapper._wrap_maker_methods(name, dct)
+        return super().__new__(cls, name, bases, dct)
+
+
+class NalesShape(Shape, QObject, metaclass=ShapeWrapper):
 
     _mw_instance = None  # this fields holds the mainwindow instance and is initialized in the main_window __init__ function
     _names = []
+    on_method_call = pyqtSignal(dict)
+    on_name_error = pyqtSignal(str)
 
-    def __init__(self, obj, name: str = None):
+    def __init__(self, obj: None, name: str = None):
         QObject.__init__(self)
         Shape.__init__(self, obj)
 
@@ -231,9 +317,9 @@ class NalesShape(Shape, QObject, metaclass=SignalsHandler):
 
         else:
             index = 1
-            while (auto_name := f"Shape{index}") in Shape._names:
+            while (auto_name := f"Shape{index}") in NalesShape._names:
                 index += 1
-            Shape._names.append(auto_name)
+            NalesShape._names.append(auto_name)
             self._name = auto_name
         cmd = {
             "type": "new_shape",
@@ -242,31 +328,6 @@ class NalesShape(Shape, QObject, metaclass=SignalsHandler):
             "obj": self,
         }
         self.on_method_call.emit(cmd)
-
-    @staticmethod
-    def _wrap_maker_methods():
-        """
-        Wrap all the maker methods of the class to add Qt sending data logic
-        When the method is called from the console, it populate the treeview and NModel directly
-        """
-
-        for method in [
-            method for (name, method) in inspect.getmembers(__class__) if "make" in name
-        ]:
-            method = __class__._maker_method_wrapper(method)
-            __dict__[method.__name__] = method
-
-    @staticmethod
-    def _maker_method_wrapper(maker_method):
-        @wraps(maker_method)
-        def cq_wrapper(*args, **kwargs):
-            shape = maker_method(*args, **kwargs)
-            cmd = Shape._create_cmd(shape._name, shape, maker_method)
-            shape.on_method_call.emit(cmd)
-
-            return shape
-
-        return cq_wrapper
 
     @staticmethod
     def _create_cmd(shape_name, shape_obj, maker_method):
@@ -279,23 +340,48 @@ class NalesShape(Shape, QObject, metaclass=SignalsHandler):
         return cmd
 
 
-class NalesVertex(NalesShape, Vertex):
-    __dict__ = Vertex.__dict__
+class NalesVertex(NalesShape):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    NalesShape._wrap_maker_methods()
+
+class NalesEdge(NalesShape):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+class NalesWire(NalesShape):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+class NalesFace(NalesShape):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+class NalesSolid(NalesShape):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+class NalesCompound(NalesShape):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
 if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication, QMainWindow
     import sys
 
-    app = QApplication(sys.argv)
-    mw = QMainWindow()
-    mw.show()
+    # app = QApplication(sys.argv)
+    # mw = QMainWindow()
+    # mw.show()
 
-    Part.mainwindow = mw
-    p = NalesVertex
-    print(type(p))
+    # Part.mainwindow = mw
+    # p = Part().box(10, 10, 10)
+    NalesVertex.makeVertex(0, 1, 2)
+    #
     # p.on_name_error.connect(lambda msg: StdErrorMsgBox(msg, p.mainwindow))
     # p.on_name_error.emit("This part name is already taken,\ndelete it or use another name.")
 
