@@ -52,7 +52,7 @@ import ast
 import cadquery as cq
 
 
-from nales_alpha.NDS.commands import EditArgument, EditParameter
+from nales_alpha.commands.edit_commands import EditArgument, EditParameter
 
 from nales_alpha.nales_cq_impl import NalesShape, Part
 
@@ -552,11 +552,11 @@ class NModel(QAbstractItemModel):
             if role == Qt.DisplayRole:
                 if index.column() == 0:  #
                     if node.is_linked(by="param"):
-                        return f"{node._arg_infos[0]} = {node.linked_param}"
+                        return f"{node.name} = {node.linked_param}"
                     if node.is_linked(by="obj"):
                         return f"{node.name}"
                     else:
-                        return f"{node.name} = {node._value}"
+                        return f"{node.name} = {node.value}"
 
             elif role == Qt.EditRole:
                 return node

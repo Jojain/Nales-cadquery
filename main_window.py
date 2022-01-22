@@ -13,20 +13,23 @@ from PyQt5.QtWidgets import (
     QUndoView,
     QMenu,
 )
-from cadquery import Compound
 from nales_alpha.uic.mainwindow import Ui_MainWindow
 from PyQt5.QtCore import pyqtSlot, pyqtSignal
 
 from nales_alpha.data_user_interface import NalesDIF
 from nales_alpha.actions import FitViewAction
-from nales_alpha.NDS.commands import (
+from nales_alpha.commands.add_commands import (
     AddOperation,
     AddParameter,
     AddPart,
     AddShape,
+)
+from nales_alpha.commands.delete_commands import (
     DeleteOperation,
     DeleteParameter,
     DeletePart,
+)
+from nales_alpha.commands.edit_commands import (
     LinkParameter,
     UnlinkParameter,
 )

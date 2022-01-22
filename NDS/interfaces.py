@@ -307,9 +307,9 @@ class NArgument(NNode):
         self._param_name_pidx = None
         self._param_value_pidx = None
 
-        # rustine, il faut refactoriser le _get_args_names_and_types()
-        if not shape_arg:
-            self._get_args_names_and_types()
+        # # rustine, il faut refactoriser le _get_args_names_and_types()
+        # if not shape_arg:
+        #     self._get_args_names_and_types()
 
     def is_kwarg(self):
         return self._kwarg
@@ -329,19 +329,19 @@ class NArgument(NNode):
         else:
             raise ValueError("Argument 'by' must be either 'obj' or 'param'")
 
-    def _get_args_names_and_types(self):
-        parent_method = self.parent.method
-        sig = signature(parent_method)
+    # def _get_args_names_and_types(self):
+    #     parent_method = self.parent.method
+    #     sig = signature(parent_method)
 
-        args_infos = tuple(
-            (p_name, p_obj.annotation)
-            for (p_name, p_obj) in sig.parameters.items()
-            if p_name != "self"
-        )
-        try:
-            self._arg_infos = args_infos[self._row]
-        except IndexError:
-            self._arg_infos = [None]
+    #     args_infos = tuple(
+    #         (p_name, p_obj.annotation)
+    #         for (p_name, p_obj) in sig.parameters.items()
+    #         if p_name != "self"
+    #     )
+    #     try:
+    #         self._arg_infos = args_infos[self._row]
+    #     except IndexError:
+    #         self._arg_infos = [None]
 
     @property
     def linked_param(self):
