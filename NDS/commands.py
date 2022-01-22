@@ -1,7 +1,7 @@
-from typing import Any, TYPE_CHECKING, List
+from typing import Any, TYPE_CHECKING, Callable, Dict, List
 from PyQt5.QtWidgets import QUndoCommand
 from PyQt5.QtCore import Qt, QModelIndex, QPersistentModelIndex
-from nales_alpha.nales_cq_impl import Part, Shape
+from nales_alpha.nales_cq_impl import NalesShape, Part, Shape
 
 from nales_alpha.NDS.interfaces import NPart
 
@@ -245,5 +245,29 @@ class UnlinkParameter(BaseCommand):
 
 
 class AddShape(AddTreeItem):
-    def __init__(self, model: "NModel", shape_name: str, shape_obj: Shape):
+    def __init__(
+        self,
+        model: "NModel",
+        shape_name: str,
+        shape_class,
+        shape_obj: NalesShape,
+        maker_method: Callable,
+        args: Dict,
+    ):
         super().__init__(model, shape_name, shape_obj)
+        self.maker_method = maker_method
+        self.args = args
+        self.shape_class = shape_class
+
+    def redo(self) -> None:
+        self.shape = self.model.add_shape(
+            self.item_name,
+            self.shape_class,
+            self.item_obj,
+            self.maker_method,
+            self.args,
+        )
+
+    def undo(self) -> None:
+        node_idx = self.model.get_shape_index(self.item_name)
+        self.model.remove_shape(node_idx)

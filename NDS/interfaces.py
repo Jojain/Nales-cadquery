@@ -1,7 +1,8 @@
 import ast
 from inspect import signature
-from typing import Union
+from typing import Any, Callable, Dict, List, Union
 from PyQt5.QtCore import QPersistentModelIndex, Qt
+from attr import has
 from cadquery import Workplane
 
 from OCP.TDataStd import TDataStd_Name
@@ -25,14 +26,9 @@ from widgets.msg_boxs import StdErrorMsgBox
 
 class NNode:
     # error = pyqtSignal(str) # is emitted when an error occurs
-    def __init__(self, data, name=None, parent=None):
-        self._data = data
+    def __init__(self, name=None, parent=None):
         self._parent = parent
-        if type(data) == tuple:
-            self._data = list(data)
-        if type(data) is str or not hasattr(data, "__getitem__"):
-            self._data = [data]
-        self._columns_nb = len(self._data)
+        self._columns_nb = 1
         self._childs = []
 
         if parent:
@@ -125,7 +121,7 @@ class NNode:
 
 class NPart(NNode):
     def __init__(self, name: str, part: Workplane, parent):
-        super().__init__(part, name, parent=parent)
+        super().__init__(name, parent=parent)
         self.part = part
         self.visible = True
         self._solid = TopoDS_Shape()
@@ -180,33 +176,29 @@ class NPart(NNode):
 
 
 class NShape(NNode):
-    def __init__(self, name, cq_shape, invoked_method: dict, parent: NNode):
+    def __init__(self, name, cq_shape, parent: NNode):
 
         self._occt_shape = shape = cq_shape.wrapped
-        self._source_code = self._retrieve_source_code(invoked_method)
+        self.shape = cq_shape
         self.visible = False
-        super().__init__(shape, name, parent=parent)
+        super().__init__(name, parent=parent)
 
         # self.display(self._occt_shape)
-
-    def _retrieve_source_code(self, invoked_method: dict) -> str:
-        source = f"cq.{invoked_method['class_name']}.{invoked_method['method_name']}{invoked_method['args']}"
-        return source
 
     def hide(self):
         self.visible = False
         self.ais_shape.Erase()
         self.root_node._viewer.Update()
 
-    def display(self, shape: TopoDS_Shape, update=False):
+    def display(self, update=False):
         """
         Builds the display object and attach it to the OCAF tree
         """
-        if update:
+        if update and hasattr(self, "ais_shape"):
             self.ais_shape.Erase(remove=True)
             self.root_node._viewer.Update()
         self.bldr = TNaming_Builder(self._label)  # _label is  TDF_Label
-        self.bldr.Generated(shape)
+        self.bldr.Generated(self._occt_shape)
 
         named_shape = self.bldr.NamedShape()
         self._label.FindAttribute(TNaming_NamedShape.GetID_s(), named_shape)
@@ -219,20 +211,30 @@ class NShape(NNode):
 
         self.visible = True
 
-    def _update(self):
+    def update(self):
+        """
+        Update the shape object
+        """
+        self._occt_shape = self.shape.wrapped
 
-        code = self.source_code
-        exec(code, self.root_node.console_namespace)
+
+class NShapeOperation(NNode):
+    def __init__(self, maker_method: Callable, shape_class, parent=None):
+        super().__init__(maker_method.__name__, parent)
+        self.maker_method = maker_method
+        self.shape_class = shape_class
+
+    def update(self, _=None) -> None:
+        args = [child.value for child in self.childs]
+        self.parent.shape = self.maker_method(self.shape_class, *args)
+        self.parent.update()
 
 
 class NOperation(NNode):
-    def __init__(
-        self, method_name: str, name, part: Part, parent: NNode, operations: dict
-    ):
-        super().__init__(method_name, name, parent=parent)
+    def __init__(self, method_name: str, part: Part, parent: NNode, operations: dict):
+        super().__init__(method_name, parent=parent)
         self.parent.part = part
         self.operations = operations
-        self.name = method_name
         self.method = getattr(part, method_name).__func__
 
         if method_name == "Workplane":
@@ -271,6 +273,11 @@ class NOperation(NNode):
             index += 1
 
 
+class NShapeArgument(NNode):
+    def __init__(self, name=None, parent=None):
+        super().__init__(name, parent)
+
+
 class NArgument(NNode):
     """
     The underlying data of an Argument is as follow :
@@ -281,8 +288,8 @@ class NArgument(NNode):
     If the Argument is linked to a Parameter, the Parameter name is displayed
     """
 
-    def __init__(self, arg_name: str, value, parent, kwarg=False):
-        super().__init__(None, arg_name, parent=parent)
+    def __init__(self, arg_name: str, value, parent, kwarg=False, shape_arg=False):
+        super().__init__(arg_name, parent=parent)
 
         self._name = arg_name
         if type(value) == str and (value in self.root_node.console_namespace.keys()):
@@ -300,7 +307,9 @@ class NArgument(NNode):
         self._param_name_pidx = None
         self._param_value_pidx = None
 
-        self._get_args_names_and_types()
+        # rustine, il faut refactoriser le _get_args_names_and_types()
+        if not shape_arg:
+            self._get_args_names_and_types()
 
     def is_kwarg(self):
         return self._kwarg

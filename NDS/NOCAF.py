@@ -14,10 +14,6 @@ from OCP.TPrsStd import TPrsStd_AISViewer, TPrsStd_AISPresentation
 from OCP.TNaming import TNaming_NamedShape, TNaming_Builder
 
 
-from NDS.old_commands_ast import Command
-import sys 
-import re
-
 # class Document():
 #     def __init__(self, binary = True):
 #         _storage_format = TCollection_ExtendedString("BinOcaf") if binary is True else TCollection_ExtendedString("XmlOcaf")
@@ -26,11 +22,8 @@ import re
 #         self.main_label = self._wrapped.Main()
 
 
-
-
-
 class Application(TDocStd_Application):
-    def __init__(self, binary = False):
+    def __init__(self, binary=False):
         super().__init__()
         if binary:
             BinDrivers.DefineFormat_s(self)
@@ -44,7 +37,6 @@ class Application(TDocStd_Application):
         self.doc = TDocStd_Document(TCollection_ExtendedString(self.doc_format))
 
         self.NewDocument(TCollection_ExtendedString(self.doc_format), self.doc)
-  
 
     def viewer_redraw(self):
         """
@@ -52,9 +44,8 @@ class Application(TDocStd_Application):
         """
         self._pres_viewer.Update()
 
-    def init_viewer_presentation(self, context: OCP.AIS.AIS_InteractiveContext):        
+    def init_viewer_presentation(self, context: OCP.AIS.AIS_InteractiveContext):
         self._pres_viewer = TPrsStd_AISViewer.New_s(self.doc.GetData().Root(), context)
-
 
     def save_as(self, path: str):
         """
@@ -63,15 +54,13 @@ class Application(TDocStd_Application):
         """
         path += self._file_extension
         status = self.SaveAs(self.doc, TCollection_ExtendedString(path))
-        
+
         if status != OCP.PCDM.PCDM_SS_OK:
             self.Close(self.doc)
             raise Exception("The document could not be saved !")
 
     def close(self):
         self.Close(self.document)
-
-
 
 
 # class Label():
@@ -91,7 +80,7 @@ class Application(TDocStd_Application):
 
 #     def find_by_name(self, name: str, first_level = True):
 #         """
-#         Finds the 
+#         Finds the
 #         No labels
 #         """
 #         pass
@@ -100,12 +89,12 @@ class Application(TDocStd_Application):
 #     @property
 #     def tag(self):
 #         return Label.wrap(self.wrapped.Tag())
-    
+
 #     @property
 #     def father(self):
 #         return Label.wrap(self.wrapped.Father())
 
-#     # Label attributes 
+#     # Label attributes
 
 #     @property
 #     def name(self):
@@ -115,7 +104,6 @@ class Application(TDocStd_Application):
 #     def name(self, value: str):
 #         self._name = value
 #         TDataStd_Name.Set_s(self.wrapped, TCollection_ExtendedString(value))
-      
 
 
 #     @classmethod
@@ -123,9 +111,6 @@ class Application(TDocStd_Application):
 #         wrapped_label = Label()
 #         wrapped_label.wrapped = label
 #         return wrapped_label
-
-
-
 
 
 # class Part(Label):
@@ -142,7 +127,7 @@ class Application(TDocStd_Application):
 
 #         self.ais_shape = TPrsStd_AISPresentation.Set_s(named_shape)
 #         self.ais_shape.Display(update=True)
-    
+
 #     @property
 #     def vshape(self):
 #         pass
@@ -162,10 +147,8 @@ class Application(TDocStd_Application):
 #         ais_shape.Display(update=True)
 
 
-
-
 # Pour référence :
-def make_AIS(obj , options={}):
+def make_AIS(obj, options={}):
 
     shape = None
 
@@ -177,14 +160,15 @@ def make_AIS(obj , options={}):
     else:
         # shape = to_compound(obj)
         ais = AIS_ColoredShape(shape.wrapped)
-   
-    if 'alpha' in options:
-        ais.SetTransparency(options['alpha'])
-    if 'color' in options:
-        ais.SetColor(to_occ_color(options['color']))
-    if 'rgba' in options:
-        r,g,b,a = options['rgba']
-        ais.SetColor(to_occ_color((r,g,b)))
+
+    if "alpha" in options:
+        ais.SetTransparency(options["alpha"])
+    if "color" in options:
+        ais.SetColor(to_occ_color(options["color"]))
+    if "rgba" in options:
+        r, g, b, a = options["rgba"]
+        ais.SetColor(to_occ_color((r, g, b)))
         ais.SetTransparency(a)
 
-    return ais,shape
+    return ais, shape
+

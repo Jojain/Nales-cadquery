@@ -11,7 +11,7 @@ from PyQt5.QtGui import QColor, QFont
 from collections import OrderedDict, namedtuple
 from inspect import signature
 from tokenize import any
-from typing import Any, Iterable, List, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
 import sys
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QMenu, QUndoCommand
@@ -38,7 +38,14 @@ from nales_alpha.NDS.NOCAF import Application
 # from OCP.TCollection import TCollection_ExtendedString
 # from OCP.TopoDS import TopoDS_Shape
 from nales_alpha.utils import determine_type_from_str, get_Wp_method_args_name
-from nales_alpha.NDS.interfaces import NNode, NPart, NOperation, NArgument, NShape
+from nales_alpha.NDS.interfaces import (
+    NNode,
+    NPart,
+    NOperation,
+    NArgument,
+    NShape,
+    NShapeOperation,
+)
 from nales_alpha.widgets.msg_boxs import WrongArgMsgBox
 import ast
 
@@ -47,7 +54,7 @@ import cadquery as cq
 
 from nales_alpha.NDS.commands import EditArgument, EditParameter
 
-from nales_alpha.nales_cq_impl import Part
+from nales_alpha.nales_cq_impl import NalesShape, Part
 
 
 class NalesParam:
@@ -216,9 +223,9 @@ class NModel(QAbstractItemModel):
         self.dataChanged.connect(lambda idx: self.update_operation(idx))
 
     def _setup_top_level_nodes(self):
-        NNode(None, "Parts", self._root)
-        NNode(None, "Shapes", self._root)
-        NNode(None, "Others", self._root)
+        NNode("Parts", self._root)
+        NNode("Shapes", self._root)
+        NNode("Others", self._root)
         self.insertRows(0, 3)
 
     def add_part(self, name: str, part: Part) -> NPart:
@@ -249,6 +256,14 @@ class NModel(QAbstractItemModel):
             except AttributeError:
                 continue
 
+    def get_shape_index(self, shape_name: str) -> Union[QModelIndex, None]:
+        for idx in self.walk():
+            try:
+                if idx.internalPointer().name == shape_name:
+                    return idx
+            except AttributeError:
+                continue
+
     def add_operation(
         self, part_name: str, part_obj: Part, operations: dict
     ) -> NOperation:
@@ -269,9 +284,7 @@ class NModel(QAbstractItemModel):
         part_idx = self.index(row, 0, parts_idx)
 
         method_name = operations["name"]
-        noperation = NOperation(
-            method_name, method_name, part_obj, parent_part, operations
-        )
+        noperation = NOperation(method_name, part_obj, parent_part, operations)
         self.insertRows(self.rowCount(), parent=part_idx)
 
         operation_idx = self.index(noperation.row, 0, part_idx)
@@ -341,18 +354,19 @@ class NModel(QAbstractItemModel):
                 return idx
         raise ValueError(f"The node {node} is not in the NModel")
 
-    def add_shape(self, shape_name, shape, topo_type, method_call):
-        (
-            (method_name, args),
-        ) = method_call.items()  # weird unpacking necessary for 1 element dict
-
-        invoked_method = {
-            "class_name": topo_type,
-            "method_name": method_name,
-            "args": args[0],
-            "kwargs": args[1],
-        }
-        node = NShape(shape_name, shape, invoked_method, self._root.child(1))
+    def add_shape(
+        self, shape_name, shape_class, shape, maker_method: Callable, args: Dict
+    ):
+        """
+        Add a shape to the data model
+        """
+        # Add the shape to the tree
+        nshape = NShape(shape_name, shape, self._root.child(1))
+        # Add the maker method to the tree as an operation
+        nop = NShapeOperation(maker_method, shape_class, nshape)
+        # Add the makermethod args to the tree
+        for name, value in args.items():
+            NArgument(name, value, nop, shape_arg=True)
 
         shapes_idx = self.index(self._root.child(1)._row, 0)
         self.insertRows(self.rowCount(shapes_idx), parent=shapes_idx)
@@ -487,6 +501,18 @@ class NModel(QAbstractItemModel):
         part_node.hide()
         # self.app.viewer_redraw()
 
+    def remove_shape(self, shape_idx: QModelIndex) -> None:
+        """
+        Remove a part at the given `part_idx` index
+        """
+        shape_node = shape_idx.internalPointer()
+        self.removeRows([shape_idx], shape_idx.parent())
+
+        # Remove all reference everywhere it's needed
+        NalesShape._names.remove(shape_node.name)
+        self._console.remove_obj(shape_node.shape)
+        shape_node.hide()
+
     def removeRows(
         self, rmv_idxs: List[QModelIndex], parent: QModelIndex = QModelIndex()
     ) -> bool:
@@ -589,6 +615,10 @@ class NModel(QAbstractItemModel):
         node = index.internalPointer()
         if role == Qt.EditRole:
             if isinstance(node, NArgument):
+                if isinstance(node.parent, NShapeOperation):
+                    SHAPEARG = True
+                else:
+                    SHAPEARG = False
                 if isinstance(value, tuple):  # we assign a parameter
                     node._linked_param = value[0]
                     node.value = value[1]
@@ -614,7 +644,10 @@ class NModel(QAbstractItemModel):
             self.dataChanged.emit(index, index)
 
             # Update variables linked to this part in the console
-            self._console.update_part(node.parent.parent.name, node.parent.parent.part)
+            if not SHAPEARG:
+                self._console.update_part(
+                    node.parent.parent.name, node.parent.parent.part
+                )
 
         elif role == Qt.CheckStateRole:
             if isinstance(node, NPart) or isinstance(node, NShape):

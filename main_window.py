@@ -13,15 +13,17 @@ from PyQt5.QtWidgets import (
     QUndoView,
     QMenu,
 )
+from cadquery import Compound
 from nales_alpha.uic.mainwindow import Ui_MainWindow
 from PyQt5.QtCore import pyqtSlot, pyqtSignal
 
 from nales_alpha.data_user_interface import NalesDIF
-
+from nales_alpha.actions import FitViewAction
 from nales_alpha.NDS.commands import (
     AddOperation,
     AddParameter,
     AddPart,
+    AddShape,
     DeleteOperation,
     DeleteParameter,
     DeletePart,
@@ -46,7 +48,16 @@ debugpy.debug_this_thread()
 from nales_alpha.utils import get_Workplane_methods
 from nales_alpha.widgets.msg_boxs import WrongArgMsgBox, StdErrorMsgBox
 
-from nales_alpha.nales_cq_impl import Part, Shape
+from nales_alpha.nales_cq_impl import (
+    Part,
+    NalesShape,
+    NalesCompound,
+    NalesSolid,
+    NalesFace,
+    NalesWire,
+    NalesEdge,
+    NalesVertex,
+)
 
 
 console_theme = """QPlainTextEdit, QTextEdit { background-color: yellow;
@@ -68,7 +79,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def __init__(self):
         super().__init__()
-        Part._mw_instance = self  # give a reference to the main_window to the Part class, for connecting signals and slots
 
         self.setupUi(self)
         self.setWindowTitle("Nales")
@@ -98,19 +108,49 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._setup_param_table_view()
         self._setup_modeling_ops_view()
 
-        self._console.push_vars({"nales": self.nalesdif, "Part": Part})
+        self._setup_exposed_classes()
+        self._console.push_vars(
+            {
+                "nales": self.nalesdif,
+                "Part": Part,
+                "Shape": NalesShape,
+                "Compound": NalesCompound,
+                "Solid": NalesSolid,
+                "Face": NalesFace,
+                "Wire": NalesWire,
+                "Edge": NalesEdge,
+                "Vertex": NalesVertex,
+            }
+        )
 
         # Connect all the slots to the needed signals
         self.model.on_arg_error.connect(
             lambda exp_typ, rcv_typ: WrongArgMsgBox(exp_typ, rcv_typ, self)
         )
 
+    def _setup_exposed_classes(self):
+        Part._mw_instance = self  # give a reference to the main_window to the Part class, for connecting signals and slots
+        NalesVertex._mw_instance = self  # give a reference to the main_window to the Part class, for connecting signals and slots
+        NalesSolid._mw_instance = self  # give a reference to the main_window to the Part class, for connecting signals and slots
+        NalesFace._mw_instance = self  # give a reference to the main_window to the Part class, for connecting signals and slots
+        NalesCompound._mw_instance = self  # give a reference to the main_window to the Part class, for connecting signals and slots
+        NalesWire._mw_instance = self  # give a reference to the main_window to the Part class, for connecting signals and slots
+        NalesEdge._mw_instance = self  # give a reference to the main_window to the Part class, for connecting signals and slots
+
     def _setup_actions(self):
 
-        self.delete_action = QAction(self)
-        self.delete_action.setShortcut("Del")
-        self.main_menu.addAction(self.delete_action)
-        self.delete_action.triggered.connect(self.delete_tree_item)
+        self.mw_actions = {}
+
+        self.mw_actions["delete"] = delete = QAction(self)
+        self.mw_actions["fitview"] = fitview = FitViewAction(self)
+
+        delete.setShortcut("Del")
+        # self.addAction(delete)
+        # self.addAction(fitview)
+        self.main_menu.addAction(delete)
+        self.main_menu.addAction(fitview)
+        delete.triggered.connect(self.delete_tree_item)
+        fitview.triggered.connect(self.viewer.fit)
 
     def _setup_undo_stack(self):
         """
@@ -134,14 +174,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.param_model.run_cmd.connect(lambda cmd: self.push_cmd(cmd))
 
     @pyqtSlot(dict)
-    def handle_command(self, cmd):
+    def handle_command(self, cmd: dict):
         """
         This function calls the approriate NModel method depending on the command received.
         """
 
         if cmd["type"] == "new_shape":
-            shape = cmd["obj"]
-            shape_name = cmd["obj_name"]
+            self.push_cmd(
+                AddShape(
+                    self.model,
+                    cmd["obj_name"],
+                    cmd["shape_class"],
+                    cmd["obj"],
+                    cmd["maker_method"],
+                    cmd["args"],
+                )
+            )
 
         if cmd["type"] == "other":
             pass
@@ -158,11 +206,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.push_cmd(AddOperation(self.model, part_name, part, operation))
                 # self.modeling_ops_tree.expandAll()
 
-                self.modeling_ops_tree.expand(self.model.childrens()[0])
-                self.modeling_ops_tree.expand(
-                    self.model.childrens(self.model.childrens()[0])[0]
-                )
+                # self.modeling_ops_tree.expand(self.model.childrens()[0])
+                # self.modeling_ops_tree.expand(
+                #     self.model.childrens(self.model.childrens()[0])[0]
+                # )
                 self.viewer.fit()
+        self.modeling_ops_tree.expandAll()
 
     def delete_tree_item(self) -> None:
         """
