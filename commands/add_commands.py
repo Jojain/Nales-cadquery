@@ -10,11 +10,17 @@ from nales_alpha.commands.base_commands import AddTreeItem, BaseCommand
 class AddPart(AddTreeItem):
     def __init__(self, model: "NModel", part_name: str, part_obj: Part):
         super().__init__(model, part_name, part_obj)
+        self.has_been_undone = False
 
     def redo(self):
+        if self.has_been_undone:
+            Part._names.append(self.item_name)
+            self.has_been_undone = False
+
         self.model.add_part(self.item_name, self.item_obj)
 
     def undo(self):
+        self.has_been_undone = True
         node_idx = self.model.get_part_index(self.item_name)
         self.model.remove_part(node_idx)
 
@@ -62,8 +68,12 @@ class AddShape(AddTreeItem):
         self.maker_method = maker_method
         self.args = args
         self.shape_class = shape_class
+        self.has_been_undone = False
 
     def redo(self) -> None:
+        if self.has_been_undone:
+            NalesShape._names.append(self.item_name)
+            self.has_been_undone = False
         self.shape = self.model.add_shape(
             self.item_name,
             self.shape_class,
@@ -73,5 +83,6 @@ class AddShape(AddTreeItem):
         )
 
     def undo(self) -> None:
+        self.has_been_undone = True
         node_idx = self.model.get_shape_index(self.item_name)
         self.model.remove_shape(node_idx)

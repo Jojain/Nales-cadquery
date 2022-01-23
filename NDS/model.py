@@ -55,6 +55,7 @@ import cadquery as cq
 from nales_alpha.commands.edit_commands import EditArgument, EditParameter
 
 from nales_alpha.nales_cq_impl import NalesShape, Part
+from numpy import isin
 
 
 class NalesParam:
@@ -220,7 +221,7 @@ class NModel(QAbstractItemModel):
         self._setup_top_level_nodes()
 
         # Slots connection
-        self.dataChanged.connect(lambda idx: self.update_operation(idx))
+        self.dataChanged.connect(lambda idx: self.update_model(idx))
 
     def _setup_top_level_nodes(self):
         NNode("Parts", self._root)
@@ -290,19 +291,19 @@ class NModel(QAbstractItemModel):
         operation_idx = self.index(noperation.row, 0, part_idx)
 
         args, kwargs = operations["parameters"][0], operations["parameters"][1]
-        args = [arg.name if isinstance(arg, Part) else arg for arg in args]
+        args = [arg.name if isinstance(arg, NPart) else arg for arg in args]
 
         args_names = get_Wp_method_args_name(method_name)
         if len(args) == len(args_names):
-
             for pos, arg in enumerate(args):
                 node = NArgument(args_names[pos], arg, noperation)
-                if (
-                    obj_node := self._root.find(arg)
-                ) :  # the argument is an object stored in the model data structure
-                    idx = self.index_from_node(obj_node)
-                    node._linked_obj_idx = QPersistentModelIndex(idx)
-                    node.name = arg
+                if type(arg) is str:
+                    if (
+                        obj_node := self._root.find(arg)
+                    ) :  # the argument is an object stored in the model data structure
+                        idx = self.index_from_node(obj_node)
+                        node._linked_obj_idx = QPersistentModelIndex(idx)
+                        node.name = arg
 
                 self.insertRows(self.rowCount(operation_idx), parent=operation_idx)
         else:
@@ -328,8 +329,46 @@ class NModel(QAbstractItemModel):
 
         return noperation
 
+    def update_model(self, idx: QModelIndex) -> None:
+        """
+        This method is called each time something is changed in the data model
+        It's job is to dispatch the event to the right method in order to keep the data model 
+        synchronized
+        """
+        if not isinstance(ptr := idx.internalPointer(), NArgument):
+            raise ValueError("Autre chose qu'un Argument a été modifié")
+
+        if isinstance(ptr.parent, NOperation):
+            self.update_operation(idx)
+            part_obj = ptr.parent.parent
+            self.update_objs_linked_to_obj(part_obj)
+
+        elif isinstance(ptr.parent, NShapeOperation):
+            self.update_shape(idx)
+            shape_obj = ptr.parent.parent
+            self.update_objs_linked_to_obj(shape_obj)
+        else:
+            raise ValueError
+
+    def update_objs_linked_to_obj(self, obj: Any):
+        """
+        Update any object in the model that is linked to the `obj`
+        """
+        for idx in self.walk():
+            if isinstance(arg_ptr := idx.internalPointer(), NArgument):
+                op = arg_ptr.parent
+                if (
+                    isinstance(op, NOperation)
+                    and arg_ptr.is_linked(by="obj")
+                    and arg_ptr.linked_obj is obj
+                ):
+                    op.update(op.row)
+                elif isinstance(op, NShapeOperation):
+                    NotImplementedError("Can't update this obj yet")
+
     def update_shape(self, idx: QModelIndex) -> None:
-        pass
+        shape_op = idx.internalPointer().parent
+        shape_op.update()
 
     def update_operation(self, idx: QModelIndex) -> None:
 
@@ -390,7 +429,7 @@ class NModel(QAbstractItemModel):
     ):
         if arg_idx and not param_idx:
             arg = arg_idx.internalPointer()
-            arg._linked_param = None
+            arg.unlink()
             self.dataChanged.emit(arg_idx, arg_idx)
 
         elif param_idx and not arg_idx:
@@ -544,6 +583,10 @@ class NModel(QAbstractItemModel):
         return True
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
+        """
+        data method of NModel
+        Allow acces to underlying Data tree
+        """
         if not index.isValid():
             return None
         node = index.internalPointer()
@@ -620,16 +663,13 @@ class NModel(QAbstractItemModel):
                 else:
                     SHAPEARG = False
                 if isinstance(value, tuple):  # we assign a parameter
-                    node._linked_param = value[0]
-                    node.value = value[1]
-                    node._param_name_pidx = value[2]
-                    node._param_value_pidx = value[3]
+                    node.link("param", value)
 
                 elif (
                     obj_node := self._root.find(value)
                 ) :  # the argument is an object stored in the model data structure
                     idx = self.index_from_node(obj_node)
-                    node._linked_obj_idx = QPersistentModelIndex(idx)
+                    node.link("obj", (QPersistentModelIndex(idx),))
                     node.name = value
 
                 else:

@@ -1,6 +1,6 @@
 import ast
 from inspect import signature
-from typing import Any, Callable, Dict, List, Union
+from typing import Any, Callable, Dict, List, Literal, Union
 from PyQt5.QtCore import QPersistentModelIndex, Qt
 from attr import has
 from cadquery import Workplane
@@ -19,13 +19,22 @@ from nales_alpha.utils import PY_TYPES_TO_AST_NODE, get_Workplane_methods
 from OCP.Quantity import Quantity_NameOfColor
 
 
-from nales_alpha.nales_cq_impl import Part
+from nales_alpha.nales_cq_impl import (
+    NALES_TYPES,
+    NalesCompound,
+    NalesEdge,
+    NalesFace,
+    NalesShape,
+    NalesSolid,
+    NalesVertex,
+    NalesWire,
+    Part,
+)
 
 from widgets.msg_boxs import StdErrorMsgBox
 
 
 class NNode:
-    # error = pyqtSignal(str) # is emitted when an error occurs
     def __init__(self, name=None, parent=None):
         self._parent = parent
         self._columns_nb = 1
@@ -37,7 +46,7 @@ class NNode:
             parent._columns_nb = max(self.column, parent.column)
             self._label = TDF_TagSource.NewChild_s(parent._label)
             self._name = name
-            TDataStd_Name.Set_s(self._label, TCollection_ExtendedString(self.name))
+            TDataStd_Name.Set_s(self._label, TCollection_ExtendedString(name))
         else:
             self._label = TDF_Label()
             self._name = "root"
@@ -174,16 +183,33 @@ class NPart(NNode):
 
         self.visible = True
 
+    def update(self):
+        """
+        When called this method rebuild the entire Part, by calling each child Operation
+        """
+        child_ops = self.childs
+        for pos, child_op in enumerate(child_ops):
+            child_op.update(pos)
+
 
 class NShape(NNode):
     def __init__(self, name, cq_shape, parent: NNode):
 
         self._occt_shape = shape = cq_shape.wrapped
         self.shape = cq_shape
-        self.visible = False
+        self.visible = True
         super().__init__(name, parent=parent)
 
-        # self.display(self._occt_shape)
+        self.bldr = TNaming_Builder(self._label)  # _label is  TDF_Label
+        self.bldr.Generated(shape)
+
+        named_shape = self.bldr.NamedShape()
+        self._label.FindAttribute(TNaming_NamedShape.GetID_s(), named_shape)
+
+        self.ais_shape = TPrsStd_AISPresentation.Set_s(named_shape)
+        self.ais_shape.SetTransparency(0.5)
+        self.ais_shape.SetColor(Quantity_NameOfColor.Quantity_NOC_ALICEBLUE)
+        self.ais_shape.Display(update=True)
 
     def hide(self):
         self.visible = False
@@ -194,7 +220,7 @@ class NShape(NNode):
         """
         Builds the display object and attach it to the OCAF tree
         """
-        if update and hasattr(self, "ais_shape"):
+        if update:
             self.ais_shape.Erase(remove=True)
             self.root_node._viewer.Update()
         self.bldr = TNaming_Builder(self._label)  # _label is  TDF_Label
@@ -216,6 +242,7 @@ class NShape(NNode):
         Update the shape object
         """
         self._occt_shape = self.shape.wrapped
+        self.display(True)
 
 
 class NShapeOperation(NNode):
@@ -224,7 +251,7 @@ class NShapeOperation(NNode):
         self.maker_method = maker_method
         self.shape_class = shape_class
 
-    def update(self, _=None) -> None:
+    def update(self) -> None:
         args = [child.value for child in self.childs]
         self.parent.shape = self.maker_method(self.shape_class, *args)
         self.parent.update()
@@ -261,6 +288,8 @@ class NOperation(NNode):
                 previous_op = self.parent.childs[self._row - 2]
                 previous_op.update(pos + 1)
                 self.update(pos)
+            else:
+                StdErrorMsgBox(repr(exc))
         except Exception as exc:
             StdErrorMsgBox(repr(exc))
 
@@ -307,9 +336,23 @@ class NArgument(NNode):
         self._param_name_pidx = None
         self._param_value_pidx = None
 
-        # # rustine, il faut refactoriser le _get_args_names_and_types()
-        # if not shape_arg:
-        #     self._get_args_names_and_types()
+    def link(self, by: Literal["param", "obj"], value):
+        """
+        Link this parameter to an object in available in the data model
+        """
+        if by == "param":
+            self._linked_param = value[0]
+            self.value = value[1]
+            self._param_name_pidx = value[2]
+            self._param_value_pidx = value[3]
+        else:
+            self._linked_obj_idx = value[0]
+
+    def unlink(self):
+        self._linked_obj_idx = None
+        self._linked_param = None
+        self._param_name_pidx = None
+        self._param_value_pidx = None
 
     def is_kwarg(self):
         return self._kwarg
@@ -321,27 +364,12 @@ class NArgument(NNode):
             return True if self._linked_param else False
 
         elif by is None:
-            # if self._linked_param or self._linked_obj_idx:
             if self._linked_param:
                 return True
             else:
                 return False
         else:
             raise ValueError("Argument 'by' must be either 'obj' or 'param'")
-
-    # def _get_args_names_and_types(self):
-    #     parent_method = self.parent.method
-    #     sig = signature(parent_method)
-
-    #     args_infos = tuple(
-    #         (p_name, p_obj.annotation)
-    #         for (p_name, p_obj) in sig.parameters.items()
-    #         if p_name != "self"
-    #     )
-    #     try:
-    #         self._arg_infos = args_infos[self._row]
-    #     except IndexError:
-    #         self._arg_infos = [None]
 
     @property
     def linked_param(self):
@@ -353,7 +381,21 @@ class NArgument(NNode):
     @property
     def linked_obj(self):
         if self.is_linked(by="obj"):
-            return self._linked_obj_idx.data(Qt.EditRole).part
+            if self._type is Part:
+                return self._linked_obj_idx.data(Qt.EditRole).part
+            elif self._type in (
+                NalesShape,
+                NalesSolid,
+                NalesCompound,
+                NalesFace,
+                NalesWire,
+                NalesEdge,
+                NalesVertex,
+            ):
+                return self._linked_obj_idx.data(Qt.EditRole).shape
+            else:
+                raise NotImplementedError
+
         else:
             raise ValueError("This argument is not linked to an object")
 
@@ -363,7 +405,10 @@ class NArgument(NNode):
 
     @property
     def name(self):
-        return self._name
+        if self.is_linked(by="obj"):
+            return self.value.name
+        else:
+            return self._name
 
     @name.setter
     def name(self, value):
@@ -377,8 +422,10 @@ class NArgument(NNode):
             return self._type(self._param_value_pidx.data())
         elif self.is_linked(by="obj"):
             return self.linked_obj
-        else:
+        elif self._type not in NALES_TYPES:
             return self._type(self._value)
+        else:
+            return self._value
 
     @value.setter
     def value(self, value):

@@ -4,9 +4,10 @@ from functools import wraps
 
 from PyQt5.QtCore import QObject, pyqtSignal
 from cadquery import Workplane
-from cadquery.cq import VectorLike, _selectShapes
+from cadquery.cq import VectorLike
 from cadquery.occ_impl.geom import Plane, Vector
 from cadquery.occ_impl.shapes import Shape, Solid, Face, Wire, Edge, Vertex, Compound
+from OCP.TopoDS import TopoDS_Shape
 from nales_alpha.utils import get_Wp_method_kwargs, get_method_args_with_names
 
 
@@ -206,6 +207,10 @@ class Part(PatchedWorkplane, QObject, metaclass=PartWrapper):
             }
             self.on_method_call.emit(cmd)
 
+    @property
+    def name(self):
+        return self._name
+
 
 class ShapeWrapper(SignalsHandler):
 
@@ -307,17 +312,19 @@ class ShapeWrapper(SignalsHandler):
         return super().__new__(cls, name, bases, dct)
 
 
-class NalesShape(Shape, QObject, metaclass=ShapeWrapper):
+class NalesShape(QObject, metaclass=ShapeWrapper):
 
     _mw_instance = None  # this fields holds the mainwindow instance and is initialized in the main_window __init__ function
     _names = []
     on_method_call = pyqtSignal(dict)
     on_name_error = pyqtSignal(str)
 
-    def __init__(self, obj: None, name: str = None):
+    def __init__(self, *args, **kwargs):
         QObject.__init__(self)
-        Shape.__init__(self, obj)
-
+        # super().__init__()
+        # if not obj:
+        #     obj = TopoDS_Shape()
+        # Shape.__init__(self, obj)
         self.on_name_error.connect(lambda msg: StdErrorMsgBox(msg, self._mw_instance))
         self.on_method_call.connect(lambda ops: self._mw_instance.handle_command(ops))
 
@@ -327,6 +334,10 @@ class NalesShape(Shape, QObject, metaclass=ShapeWrapper):
             index += 1
         NalesShape._names.append(auto_name)
         self._name = auto_name
+
+    @property
+    def name(self):
+        return self._name
 
     @staticmethod
     def _create_cmd(shape_name, shape_obj, maker_method):
@@ -339,34 +350,52 @@ class NalesShape(Shape, QObject, metaclass=ShapeWrapper):
         return cmd
 
 
-class NalesVertex(NalesShape):
+class NalesVertex(Vertex, NalesShape):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        Vertex.__init__(self, args, **kwargs)
+        NalesShape.__init__(self)
 
 
-class NalesEdge(NalesShape):
+class NalesEdge(Edge, NalesShape):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        Edge.__init__(self, args, **kwargs)
+        NalesShape.__init__(self)
 
 
-class NalesWire(NalesShape):
+class NalesWire(Wire, NalesShape):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        Wire.__init__(self, args, **kwargs)
+        NalesShape.__init__(self)
 
 
-class NalesFace(NalesShape):
+class NalesFace(Face, NalesShape):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        Face.__init__(self, args, **kwargs)
+        NalesShape.__init__(self)
 
 
-class NalesSolid(NalesShape):
+class NalesSolid(Solid, NalesShape):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        Solid.__init__(self, *args, **kwargs)
+        NalesShape.__init__(self)
 
 
-class NalesCompound(NalesShape):
+class NalesCompound(Compound, NalesShape):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        Compound.__init__(self, args, **kwargs)
+        NalesShape.__init__(self)
+
+
+NALES_TYPES = (
+    NalesShape,
+    NalesCompound,
+    NalesSolid,
+    NalesFace,
+    NalesWire,
+    NalesEdge,
+    NalesVertex,
+    Part,
+)
 
 
 if __name__ == "__main__":
@@ -381,10 +410,9 @@ if __name__ == "__main__":
 
     # Part.mainwindow = mw
     # p = Part().box(10, 10, 10)
-    NalesSolid.makeBox(1, 1, 2)
+    a = NalesSolid.makeBox(1, 1, 2)
     NalesVertex.makeVertex(2, 2, 2)
 
-    Vertex.makeVertex
     #
     # p.on_name_error.connect(lambda msg: StdErrorMsgBox(msg, p.mainwindow))
     # p.on_name_error.emit("This part name is already taken,\ndelete it or use another name.")
