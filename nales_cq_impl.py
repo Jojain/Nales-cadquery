@@ -64,7 +64,13 @@ class PartWrapper(SignalsHandler):
                         default_kwargs[kwarg] = val
 
                 operations["name"] = cq_method.__name__
-                operations["parameters"] = ([arg for arg in args[1:]], default_kwargs)
+                operations["parameters"] = (
+                    [
+                        arg.name if isinstance(arg, NALES_TYPES) else arg
+                        for arg in args[1:]
+                    ],
+                    default_kwargs,
+                )
                 cmd = PartWrapper._create_cmd(new_obj._name, new_obj, operations)
                 new_obj.on_method_call.emit(cmd)
 
@@ -283,10 +289,7 @@ class ShapeWrapper(SignalsHandler):
             shape = maker_method(
                 shape_class, *args, **kwargs
             )  # the first arg is the classname
-            if name:
-                shape._name = name
-            else:
-                shape._create_name()
+            shape.name = name
             all_args = list(args)
             all_args.extend([val for val in kwargs.values()])
             named_args = get_method_args_with_names(maker_method, all_args)
@@ -319,25 +322,26 @@ class NalesShape(QObject, metaclass=ShapeWrapper):
     on_method_call = pyqtSignal(dict)
     on_name_error = pyqtSignal(str)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         QObject.__init__(self)
-        # super().__init__()
-        # if not obj:
-        #     obj = TopoDS_Shape()
-        # Shape.__init__(self, obj)
+
         self.on_name_error.connect(lambda msg: StdErrorMsgBox(msg, self._mw_instance))
         self.on_method_call.connect(lambda ops: self._mw_instance.handle_command(ops))
-
-    def _create_name(self) -> None:
-        index = 1
-        while (auto_name := f"Shape{index}") in NalesShape._names:
-            index += 1
-        NalesShape._names.append(auto_name)
-        self._name = auto_name
 
     @property
     def name(self):
         return self._name
+
+    @name.setter
+    def name(self, __name) -> None:
+        if __name:
+            self._name = __name
+        else:
+            index = 1
+            while (auto_name := f"Shape{index}") in NalesShape._names:
+                index += 1
+            NalesShape._names.append(auto_name)
+            self._name = auto_name
 
     @staticmethod
     def _create_cmd(shape_name, shape_obj, maker_method):

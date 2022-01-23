@@ -114,6 +114,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._setup_exposed_classes()
         self._console.push_vars(
             {
+                "mw": self,
                 "nales": self.nalesdif,
                 "Part": Part,
                 "Shape": NalesShape,

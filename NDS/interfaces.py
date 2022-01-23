@@ -1,5 +1,6 @@
 import ast
 from inspect import signature
+from os import link
 from typing import Any, Callable, Dict, List, Literal, Union
 from PyQt5.QtCore import QPersistentModelIndex, Qt
 from attr import has
@@ -275,10 +276,58 @@ class NOperation(NNode):
         """
         self.parent.part = self.parent.part._end(1)
 
+    def update_from_node(self):
+        """
+        Update the Part from this node
+        It recomputes every operation from this node to the end
+        """
+        ops = self.parent.childs
+        first_op = True
+        for op in ops:
+            op.new_update(first_op)
+            first_op = False
+
+        self.parent.display(update=True)
+
+    def new_update(self, first_op=False):
+        """
+        
+        """
+        parent_part = self.parent.part
+        if first_op:
+            pos = len(self.parent.childs) - self.row - 1
+        else:
+            pos = 0
+        part = parent_part._end(pos)
+        args = [
+            child.value if not child.is_linked("obj") else child.linked_obj
+            for child in self.childs
+        ]
+
+        try:
+            part = self.method(part, *args, internal_call=True)
+            self.parent.part = part
+        except ValueError as exc:
+            if exc.args[0] == "No pending wires present":
+                previous_op = self.parent.childs[self._row - 2]
+                previous_op.update(pos + 1)
+                self.update(pos)
+            else:
+                StdErrorMsgBox(repr(exc))
+        except Exception as exc:
+            StdErrorMsgBox(repr(exc))
+
     def update(self, pos):
+        """
+        pos : the position of the cq stack
+        It goes in reverse, the operation row 0 is at end(len(stack))
+        """
         parent_part = self.parent.part
         part = parent_part._end(pos)
-        args = [child.value for child in self.childs]
+        args = [
+            child.value if not child.is_linked("obj") else child.linked_obj
+            for child in self.childs
+        ]
 
         try:
             part = self.method(part, *args, internal_call=True)
@@ -345,8 +394,17 @@ class NArgument(NNode):
             self.value = value[1]
             self._param_name_pidx = value[2]
             self._param_value_pidx = value[3]
+            self.type = type(value[3].data())
         else:
             self._linked_obj_idx = value[0]
+            linked_node = value[0].data(Qt.EditRole)  # The NNode holding the linked obj
+            if isinstance(linked_node, NPart):
+                linked_obj = linked_node.part
+            elif isinstance(linked_node, NShape):
+                linked_obj = linked_node.shape
+
+            self._value = linked_obj.name
+            self.type = type(linked_obj)
 
     def unlink(self):
         self._linked_obj_idx = None
@@ -370,6 +428,14 @@ class NArgument(NNode):
                 return False
         else:
             raise ValueError("Argument 'by' must be either 'obj' or 'param'")
+
+    @property
+    def type(self):
+        return self._type
+
+    @type.setter
+    def type(self, value):
+        self._type = value
 
     @property
     def linked_param(self):
@@ -405,10 +471,11 @@ class NArgument(NNode):
 
     @property
     def name(self):
-        if self.is_linked(by="obj"):
-            return self.value.name
-        else:
-            return self._name
+        return self._name
+        # if self.is_linked(by="obj"):
+        #     return self.value.name
+        # else:
+        #     return self._name
 
     @name.setter
     def name(self, value):
@@ -420,8 +487,6 @@ class NArgument(NNode):
             return None
         if self.is_linked(by="param"):
             return self._type(self._param_value_pidx.data())
-        elif self.is_linked(by="obj"):
-            return self.linked_obj
         elif self._type not in NALES_TYPES:
             return self._type(self._value)
         else:

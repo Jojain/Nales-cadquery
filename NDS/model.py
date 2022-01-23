@@ -54,7 +54,7 @@ import cadquery as cq
 
 from nales_alpha.commands.edit_commands import EditArgument, EditParameter
 
-from nales_alpha.nales_cq_impl import NalesShape, Part
+from nales_alpha.nales_cq_impl import NALES_TYPES, NalesShape, Part
 from numpy import isin
 
 
@@ -297,13 +297,12 @@ class NModel(QAbstractItemModel):
         if len(args) == len(args_names):
             for pos, arg in enumerate(args):
                 node = NArgument(args_names[pos], arg, noperation)
-                if type(arg) is str:
-                    if (
-                        obj_node := self._root.find(arg)
-                    ) :  # the argument is an object stored in the model data structure
-                        idx = self.index_from_node(obj_node)
-                        node._linked_obj_idx = QPersistentModelIndex(idx)
-                        node.name = arg
+
+                if type(arg) is str and (
+                    obj_node := self._root.find(arg)
+                ):  # the argument is an object stored in the model data structure
+                    idx = self.index_from_node(obj_node)
+                    node.link("obj", (idx,))
 
                 self.insertRows(self.rowCount(operation_idx), parent=operation_idx)
         else:
@@ -340,12 +339,12 @@ class NModel(QAbstractItemModel):
 
         if isinstance(ptr.parent, NOperation):
             self.update_operation(idx)
-            part_obj = ptr.parent.parent
+            part_obj = ptr.parent.parent.part
             self.update_objs_linked_to_obj(part_obj)
 
         elif isinstance(ptr.parent, NShapeOperation):
             self.update_shape(idx)
-            shape_obj = ptr.parent.parent
+            shape_obj = ptr.parent.parent.shape
             self.update_objs_linked_to_obj(shape_obj)
         else:
             raise ValueError
@@ -362,7 +361,7 @@ class NModel(QAbstractItemModel):
                     and arg_ptr.is_linked(by="obj")
                     and arg_ptr.linked_obj is obj
                 ):
-                    op.update(op.row)
+                    op.update_from_node()
                 elif isinstance(op, NShapeOperation):
                     NotImplementedError("Can't update this obj yet")
 
@@ -596,8 +595,8 @@ class NModel(QAbstractItemModel):
                 if index.column() == 0:  #
                     if node.is_linked(by="param"):
                         return f"{node.name} = {node.linked_param}"
-                    if node.is_linked(by="obj"):
-                        return f"{node.name}"
+                    # if node.is_linked(by="obj"):
+                    #     return f"{node.name}"
                     else:
                         return f"{node.name} = {node.value}"
 
@@ -670,7 +669,6 @@ class NModel(QAbstractItemModel):
                 ) :  # the argument is an object stored in the model data structure
                     idx = self.index_from_node(obj_node)
                     node.link("obj", (QPersistentModelIndex(idx),))
-                    node.name = value
 
                 else:
                     value_type = determine_type_from_str(value)
