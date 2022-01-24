@@ -76,7 +76,7 @@ class DeleteOperation(DeleteTreeItem):
 
     def undo(self):
         self.model.add_operation(
-            self.node.parent.name, self.part_obj, self.node.operations
+            self.node.parent.name, self.item_obj, self.node.operations
         )
 
 
