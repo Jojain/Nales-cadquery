@@ -92,7 +92,8 @@ def get_Wp_method_args_name(method: Union[str, Callable]) -> list:
     params = inspect.signature(method).parameters
     args = []
     for p in params.values():
-        if p.default is p.empty and p.name != "self":
+        # if p.default is p.empty and p.name != "self":
+        if p.name != "self":
             args.append(p.name)
     return args
 
