@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'd:\Projets\Nales\nales_alpha\mainwindow.ui'
+# Form implementation generated from reading ui file 'D:/Projets/Nales/nales_alpha/nales_alpha/mainwindow.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.4
 #
@@ -29,28 +29,11 @@ class Ui_MainWindow(object):
         self.top_frame_container.setObjectName("top_frame_container")
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout(self.top_frame_container)
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
-        self.main_icons_container = QtWidgets.QWidget(self.top_frame_container)
-        self.main_icons_container.setObjectName("main_icons_container")
-        self.horizontalLayout_8 = QtWidgets.QHBoxLayout(self.main_icons_container)
+        self._ribbon = RibbonWidget(self.top_frame_container)
+        self._ribbon.setObjectName("_ribbon")
+        self.horizontalLayout_8 = QtWidgets.QHBoxLayout(self._ribbon)
         self.horizontalLayout_8.setObjectName("horizontalLayout_8")
-        self.pushButton = QtWidgets.QPushButton(self.main_icons_container)
-        self.pushButton.setObjectName("pushButton")
-        self.horizontalLayout_8.addWidget(self.pushButton)
-        self.horizontalLayout_2.addWidget(self.main_icons_container)
-        self.tabWidget = QtWidgets.QTabWidget(self.top_frame_container)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.tabWidget.sizePolicy().hasHeightForWidth())
-        self.tabWidget.setSizePolicy(sizePolicy)
-        self.tabWidget.setObjectName("tabWidget")
-        self.tab = QtWidgets.QWidget()
-        self.tab.setObjectName("tab")
-        self.tabWidget.addTab(self.tab, "")
-        self.tab_2 = QtWidgets.QWidget()
-        self.tab_2.setObjectName("tab_2")
-        self.tabWidget.addTab(self.tab_2, "")
-        self.horizontalLayout_2.addWidget(self.tabWidget)
+        self.horizontalLayout_2.addWidget(self._ribbon)
         self.verticalLayout_3.addWidget(self.top_frame_container)
         self.center_app_container = QtWidgets.QWidget(self.centralwidget)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
@@ -182,12 +165,20 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.pushButton.setText(_translate("MainWindow", "PushButton"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), _translate("MainWindow", "Tab 1"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), _translate("MainWindow", "Tab 2"))
         self.param_label.setText(_translate("MainWindow", "Parameters"))
         self.add_param_btn.setText(_translate("MainWindow", "+"))
         self.rmv_param_btn.setText(_translate("MainWindow", "-"))
+from nales_alpha.third_parties.QupyRibbon.GUI.RibbonWidget import RibbonWidget
 from nales_alpha.views.tree_views import ModelingOpsView
 from nales_alpha.widgets.console import ConsoleWidget
 from nales_alpha.widgets.occt_widget import OCCTWidget
+
+
+if __name__ == "__main__":
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    MainWindow = QtWidgets.QMainWindow()
+    ui = Ui_MainWindow()
+    ui.setupUi(MainWindow)
+    MainWindow.show()
+    sys.exit(app.exec_())

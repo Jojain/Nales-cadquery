@@ -12,9 +12,17 @@ from PyQt5.QtWidgets import (
     QUndoStack,
     QUndoView,
     QMenu,
+    QLabel,
 )
+from third_parties.QupyRibbon.GUI.RibbonButton import RibbonButton
+from third_parties.QupyRibbon.GUI.RibbonTextbox import RibbonTextbox
+from third_parties.QupyRibbon.GUI.RibbonWidget import RibbonWidget
+
 from nales_alpha.uic.mainwindow import Ui_MainWindow
 from PyQt5.QtCore import pyqtSlot, pyqtSignal
+
+from third_parties.QupyRibbon.GUI.Icons import get_icon
+
 
 from nales_alpha.data_user_interface import NalesDIF
 from nales_alpha.actions import FitViewAction
@@ -110,6 +118,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Views / Widgets setup
         self._setup_param_table_view()
         self._setup_modeling_ops_view()
+
+        self._setup_ribbon()
 
         self._setup_exposed_classes()
         self._console.push_vars(
@@ -321,6 +331,55 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 context_menu.show()
             else:
                 return
+
+    # -------------      textboxes       -----------------
+
+    def add_action(
+        self, caption, icon_name, status_tip, icon_visible, connection, shortcut=None
+    ):
+        action = QAction(get_icon(icon_name), caption, self)
+        action.setStatusTip(status_tip)
+        action.triggered.connect(connection)
+        action.setIconVisibleInMenu(icon_visible)
+        if shortcut is not None:
+            action.setShortcuts(shortcut)
+        self.addAction(action)
+        return action
+
+    def _setup_ribbon(self):
+        self.addToolBar(self._ribbon)
+
+        self._open_action = self.add_action(
+            "Open", "open", "Open file", True, lambda x: None,
+        )
+        self._save_action = self.add_action(
+            "Save", "save", "Save file", True, lambda x: None
+        )
+       
+        home_tab = self._ribbon.add_ribbon_tab("Home")
+
+        file_pane = home_tab.add_ribbon_pane("File")
+        file_pane.add_ribbon_widget(RibbonButton(self, None, True))
+        file_pane.add_ribbon_widget(RibbonButton(self, None, True))
+
+        edit_panel = home_tab.add_ribbon_pane("Edit")
+
+        grid = edit_panel.add_grid_widget(200)
+        grid.addWidget(QLabel("Text box 1"), 1, 1)
+        grid.addWidget(QLabel("Text box 2"), 2, 1)
+        grid.addWidget(QLabel("Text box 3"), 3, 1)
+        grid.addWidget(self._text_box1, 1, 2)
+        grid.addWidget(self._text_box2, 2, 2)
+        grid.addWidget(self._text_box3, 3, 2)
+
+        view_panel = home_tab.add_ribbon_pane("View")
+        # view_panel.add_ribbon_widget(RibbonButton(self, self._zoom_action, True))
+        home_tab.add_spacer()
+
+        about_tab = self._ribbon.add_ribbon_tab("About")
+        info_panel = about_tab.add_ribbon_pane("Info")
+        # info_panel.add_ribbon_widget(RibbonButton(self, self._about_action, True))
+        # info_panel.add_ribbon_widget(RibbonButton(self, self._license_action, True))
 
 
 # if __name__ == "__main__":

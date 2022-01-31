@@ -28,36 +28,8 @@
      <widget class="QWidget" name="top_frame_container" native="true">
       <layout class="QHBoxLayout" name="horizontalLayout_2">
        <item>
-        <widget class="QWidget" name="main_icons_container" native="true">
-         <layout class="QHBoxLayout" name="horizontalLayout_8">
-          <item>
-           <widget class="QPushButton" name="pushButton">
-            <property name="text">
-             <string>PushButton</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
-        <widget class="QTabWidget" name="tabWidget">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <widget class="QWidget" name="tab">
-          <attribute name="title">
-           <string>Tab 1</string>
-          </attribute>
-         </widget>
-         <widget class="QWidget" name="tab_2">
-          <attribute name="title">
-           <string>Tab 2</string>
-          </attribute>
-         </widget>
+        <widget class="RibbonWidget" name="_ribbon" native="true">
+         <layout class="QHBoxLayout" name="horizontalLayout_8"/>
         </widget>
        </item>
       </layout>
@@ -282,6 +254,12 @@
    <class>ModelingOpsView</class>
    <extends>QTreeView</extends>
    <header>nales_alpha/views/tree_views.h</header>
+  </customwidget>
+  <customwidget>
+   <class>RibbonWidget</class>
+   <extends>QWidget</extends>
+   <header>nales_alpha/third_parties/QupyRibbon/GUI/RibbonWidget.h</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <tabstops>

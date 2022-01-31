@@ -113,3 +113,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .vscode/settings.json
+.qt_for_python/lupdate/mainwindow.qt.ts
+.qt_for_python/uic/mainwindow.py
+.vscode/tasks.json
