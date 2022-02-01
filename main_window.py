@@ -38,7 +38,7 @@ from nales_alpha.commands.edit_commands import (
     UnlinkParameter,
 )
 
-# from nales_alpha.NDS.NOCAF import Feature, Part
+from nales_alpha.NDS.exporters import PythonFileWriter
 
 from nales_alpha.NDS.model import NModel, ParamTableModel
 
@@ -354,6 +354,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         about_tab = self._ribbon.add_ribbon_tab("About")
         info_panel = about_tab.add_ribbon_pane("Info")
+
+    def save_file(self):
+
+        writer = PythonFileWriter(self.model)
+
+        writer.write_file(
+            r"D:\Projets\Nales\nales_alpha\nales_alpha\tests\test_save.py"
+        )
 
 
 # if __name__ == "__main__":

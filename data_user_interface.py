@@ -27,3 +27,9 @@ class NalesDIF:
         Fit the view on objects in the viewer
         """
         self.mw.viewer.fit()
+
+    def save(self):
+        """
+        Launch the save command
+        """
+        self.mw.save_file()
