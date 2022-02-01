@@ -8,14 +8,16 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QToolBar,
     QTabWidget,
-    QLabel
+    QLabel,
+    QAction,
 )
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPainter
 
+
 class RibbonPane(QWidget):
     def __init__(self, parent, name):
-        super().__init__(self, parent)
+        super().__init__(parent)
         # self.setStyleSheet(get_stylesheet("ribbonPane"))
         horizontal_layout = QHBoxLayout()
         horizontal_layout.setSpacing(0)
@@ -44,21 +46,10 @@ class RibbonPane(QWidget):
     def add_ribbon_widget(self, widget):
         self.contentLayout.addWidget(widget, 0, Qt.AlignTop)
 
-    def add_grid_widget(self, width):
-        widget = QWidget()
-        widget.setMaximumWidth(width)
-        grid_layout = QGridLayout()
-        widget.setLayout(grid_layout)
-        grid_layout.setSpacing(4)
-        grid_layout.setContentsMargins(4, 4, 4, 4)
-        self.contentLayout.addWidget(widget)
-        grid_layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        return grid_layout
-
 
 class RibbonSeparator(QWidget):
     def __init__(self, parent):
-        QWidget.__init__(self, parent)
+        super().__init__(parent)
         self.setMinimumHeight(80)
         self.setMaximumHeight(80)
         self.setMinimumWidth(1)
@@ -71,9 +62,10 @@ class RibbonSeparator(QWidget):
         qp.fillRect(event.rect(), Qt.lightGray)
         qp.end()
 
+
 class RibbonButton(QToolButton):
-    def __init__(self, owner, action):
-        super().__init__(self, owner)
+    def __init__(self, parent, action: QAction):
+        super().__init__(parent)
         sc = 1
         # sc = gui_scale()
         self._actionOwner = action
@@ -89,7 +81,6 @@ class RibbonButton(QToolButton):
         self.setToolButtonStyle(3)
         self.setIconSize(QSize(32 * sc, 32 * sc))
 
-
     def update_button_status_from_action(self):
         self.setText(self._actionOwner.text())
         self.setStatusTip(self._actionOwner.statusTip())
@@ -102,7 +93,7 @@ class RibbonButton(QToolButton):
 
 class RibbonTab(QWidget):
     def __init__(self, parent, name):
-        super().__init__(self, parent)
+        super().__init__(parent)
         layout = QHBoxLayout()
         self.setLayout(layout)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -121,7 +112,7 @@ class RibbonTab(QWidget):
 
 class RibbonWidget(QToolBar):
     def __init__(self, parent):
-        super().__init__(self, parent)
+        super().__init__(parent)
         # self.setStyleSheet(get_stylesheet("ribbon"))
         self.setObjectName("ribbonWidget")
         self.setWindowTitle("Ribbon")

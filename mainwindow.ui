@@ -118,14 +118,22 @@
                   <item>
                    <widget class="QPushButton" name="add_param_btn">
                     <property name="text">
-                     <string>+</string>
+                     <string/>
+                    </property>
+                    <property name="icon">
+                     <iconset resource="resources/resources.qrc">
+                      <normaloff>:/icons/plus_dm.png</normaloff>:/icons/plus_dm.png</iconset>
                     </property>
                    </widget>
                   </item>
                   <item>
                    <widget class="QPushButton" name="rmv_param_btn">
                     <property name="text">
-                     <string>-</string>
+                     <string/>
+                    </property>
+                    <property name="icon">
+                     <iconset resource="resources/resources.qrc">
+                      <normaloff>:/icons/minus_dm.png</normaloff>:/icons/minus_dm.png</iconset>
                     </property>
                    </widget>
                   </item>
@@ -258,13 +266,15 @@
   <customwidget>
    <class>RibbonWidget</class>
    <extends>QWidget</extends>
-   <header>nales_alpha/third_parties/QupyRibbon/GUI/RibbonWidget.h</header>
+   <header>nales_alpha/widgets/ribbon_widget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
  <tabstops>
   <tabstop>modeling_ops_tree</tabstop>
  </tabstops>
- <resources/>
+ <resources>
+  <include location="resources/resources.qrc"/>
+ </resources>
  <connections/>
 </ui>

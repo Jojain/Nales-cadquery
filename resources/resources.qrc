@@ -3,5 +3,9 @@
         <file alias="minus.svg">icons/minus.svg</file>
         <file alias="plus.svg">icons/plus.svg</file>
         <file alias="save.svg">icons/save.svg</file>
+        <file alias="save_dm.png">icons/save_dm.png</file>
+        <file alias="load_dm.png">icons/load_dm.png</file>
+        <file alias="plus_dm.png">icons/plus_dm.png</file>
+        <file alias="minus_dm.png">icons/minus_dm.png</file>
     </qresource>    
 </RCC>

@@ -92,9 +92,17 @@ class Ui_MainWindow(object):
         self.param_label.setObjectName("param_label")
         self.horizontalLayout.addWidget(self.param_label)
         self.add_param_btn = QtWidgets.QPushButton(self.widget)
+        self.add_param_btn.setText("")
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap(":/icons/plus_dm.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.add_param_btn.setIcon(icon)
         self.add_param_btn.setObjectName("add_param_btn")
         self.horizontalLayout.addWidget(self.add_param_btn)
         self.rmv_param_btn = QtWidgets.QPushButton(self.widget)
+        self.rmv_param_btn.setText("")
+        icon1 = QtGui.QIcon()
+        icon1.addPixmap(QtGui.QPixmap(":/icons/minus_dm.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.rmv_param_btn.setIcon(icon1)
         self.rmv_param_btn.setObjectName("rmv_param_btn")
         self.horizontalLayout.addWidget(self.rmv_param_btn)
         self.verticalLayout_5.addWidget(self.widget)
@@ -166,12 +174,11 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.param_label.setText(_translate("MainWindow", "Parameters"))
-        self.add_param_btn.setText(_translate("MainWindow", "+"))
-        self.rmv_param_btn.setText(_translate("MainWindow", "-"))
-from nales_alpha.third_parties.QupyRibbon.GUI.RibbonWidget import RibbonWidget
 from nales_alpha.views.tree_views import ModelingOpsView
 from nales_alpha.widgets.console import ConsoleWidget
 from nales_alpha.widgets.occt_widget import OCCTWidget
+from nales_alpha.widgets.ribbon_widget import RibbonWidget
+import resources_rc
 
 
 if __name__ == "__main__":
