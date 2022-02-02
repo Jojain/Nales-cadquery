@@ -84,6 +84,15 @@ class PythonFileWriter:
         op_str += ")"
         return op_str
 
+    def _get_part_header(self, pdata):
+        name = pdata["name"]
+        ops = [opdata["name"] for opdata in pdata["operations"]]
+        ops = ",".join(ops)
+        link = pdata["linked"]
+        header = f'"""\n{name}\n{ops}\n{link}\n"""\n'
+
+        return header
+
     def _part_data_to_str(self, part_data):
 
         part_str = f'{part_data["name"]} = cq.Workplane()\n'
@@ -103,6 +112,7 @@ class PythonFileWriter:
             py_file.write("import cadquery as cq\n")
 
             for part in self.parts_data:
+                py_file.write(self._get_part_header(part))
                 py_file.write(self._part_data_to_str(part))
                 py_file.write("\n")
 

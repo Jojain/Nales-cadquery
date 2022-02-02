@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List, Literal, Optional
+from typing import Any, Callable, Dict, List, Literal, Optional
 import inspect
 from functools import wraps
 
@@ -24,7 +24,9 @@ class SignalsHandler(type(QObject)):
 
 class PartWrapper(SignalsHandler):
     @staticmethod
-    def _create_cmd(part_name, obj, operations):
+    def _create_cmd(
+        part_name, obj, operations: Dict[Literal["name", "operations"], Any]
+    ):
         cmd = {
             "type": "part_edit",
             "obj_name": part_name,
