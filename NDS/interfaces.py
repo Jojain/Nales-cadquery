@@ -422,7 +422,7 @@ class NArgument(NNode):
             return True if self._linked_param else False
 
         elif by is None:
-            if self._linked_param:
+            if self._linked_param or self._linked_obj_idx:
                 return True
             else:
                 return False

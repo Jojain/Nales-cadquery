@@ -5,21 +5,37 @@ from NDS.model import NModel
 
 
 class PythonFileWriter:
-    def __init__(self, model: NModel) -> None:
+    def __init__(self, model: NModel, param_table) -> None:
         self.model = model
+        self.param_table = param_table
         self.parts_data = []
         self.shapes_data = []
         self.others_data = []
 
         self._prepare_data()
 
+    def _write_parameters(self, file_obj):
+        params = self.param_table.parameters
+        file_obj.write(
+            f"#Paramsdef>> {len(params)}\n"
+        )  # write the number of param lines
+        for param in params:
+            file_obj.write(f"{param.name} = {param.value} # {param.type}\n ")
+        file_obj.write("\n")
+
     def _get_arg_data(self, narg):
 
         arg_data = {}
 
         arg_data["name"] = narg.name
-        arg_data["linked"] = narg.is_linked
-        arg_data["value"] = narg.value
+        arg_data["linked"] = narg.is_linked()
+
+        if narg.is_linked(by="param"):
+            val = narg.linked_param
+        else:
+            val = narg.value
+
+        arg_data["value"] = val
 
         return arg_data
 
@@ -86,11 +102,9 @@ class PythonFileWriter:
 
     def _get_part_header(self, pdata):
         name = pdata["name"]
-        ops = [opdata["name"] for opdata in pdata["operations"]]
-        ops = ",".join(ops)
+        nb_ops = len(pdata["operations"]) + 1
         link = pdata["linked"]
-        header = f'"""\n{name}\n{ops}\n{link}\n"""\n'
-
+        header = f"#Partdef>> {name} {nb_ops} {link}\n"
         return header
 
     def _part_data_to_str(self, part_data):
@@ -109,7 +123,9 @@ class PythonFileWriter:
             py_file.write(
                 "# Don't modify this file unless you know what you are doing\n"
             )
-            py_file.write("import cadquery as cq\n")
+            py_file.write("import cadquery as cq\n\n")
+
+            self._write_parameters(py_file)
 
             for part in self.parts_data:
                 py_file.write(self._get_part_header(part))

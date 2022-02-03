@@ -1,5 +1,6 @@
 from typing import List
-import cadquery as cq
+
+from nales_alpha.NDS.model import NalesParam
 
 """
 Partdef
@@ -17,6 +18,7 @@ class PythonFileReader:
     def __init__(self, file_path: str) -> None:
         with open(file_path, "r") as py_file:
             self.lines = py_file.readlines()
+        self.params: List[NalesParam] = []
 
     def _check_file_validity(self):
         if self.lines[0] != "# This file has been generated automatically by Nales":
@@ -30,7 +32,7 @@ class PythonFileReader:
         """
         parts_idx = []
         for idx, line in enumerate(self.lines):
-            if line.startswith("# Partdef"):
+            if line.startswith("#Partdef>>"):
                 parts_idx.append(idx)
 
         return parts_idx
@@ -46,9 +48,32 @@ class PythonFileReader:
             part_def["operations"] = part_data[1].strip().split(",")
             part_def["link"] = part_data[2].strip()
 
+        self.parts
+
+    def _parse_params(self):
+        """
+        Populate `self.params` attribute with data read in the input file
+        """
+        for idx, line in enumerate(self.lines):
+            if line.startswith("#Paramsdef>>"):
+                nb_of_params = int(line.split()[1])
+                params_lines = self.lines[idx + 1 : idx + nb_of_params]
+                break
+
+        for param_line in params_lines:
+            data = param_line.split(
+                "#"
+            )  # param_line is something like : variable = 5 # int
+            name = data[0].split("=")[0].strip()
+            value = data[0].split("=")[1].strip()
+            type_ = data[1].strip()
+            param = NalesParam(name, value, type_)
+            self.params.append(param)
+
     def _parse(self):
-        for line in self.lines:
-            pass
+
+        self._parse_params()
+        self._parse_parts()
 
     def _get_parts_cmds(self):
         pass

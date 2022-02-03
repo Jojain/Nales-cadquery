@@ -357,7 +357,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def save_file(self):
 
-        writer = PythonFileWriter(self.model)
+        writer = PythonFileWriter(self.model, self.param_model)
 
         writer.write_file(
             r"D:\Projets\Nales\nales_alpha\nales_alpha\tests\test_save.py"

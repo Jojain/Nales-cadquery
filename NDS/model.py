@@ -59,9 +59,10 @@ from numpy import isin
 
 
 class NalesParam:
-    def __init__(self, name: str, value: object) -> None:
+    def __init__(self, name: str, value: object, type_: Any = None) -> None:
         self.name = name
         self.value = value
+        self.type = type_ if type_ else type(value)
 
 
 class ParamTableModel(QAbstractTableModel):
@@ -108,7 +109,7 @@ class ParamTableModel(QAbstractTableModel):
             return False
 
     @property
-    def parameters(self) -> dict:
+    def parameters(self) -> List[NalesParam]:
         return self._data
 
     def remove_parameter(self, rmv_idxs: List[QModelIndex]):
