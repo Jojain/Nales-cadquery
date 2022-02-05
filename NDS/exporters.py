@@ -19,7 +19,7 @@ class PythonFileWriter:
             f"#Paramsdef>> {len(params)}\n"
         )  # write the number of param lines
         for param in params:
-            file_obj.write(f"{param.name} = {param.value} # {param.type}\n ")
+            file_obj.write(f"{param.name} = {param.value} # {param.type.__name__}\n ")
         file_obj.write("\n")
 
     def _get_arg_data(self, narg):

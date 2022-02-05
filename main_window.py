@@ -177,7 +177,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.uview = QUndoView(self.undo_stack)
         self.uview.setWindowTitle("Commands")
-        self.uview.show()
+        # self.uview.show() # Needs to be passed to a button to open up
 
         # connect signals
         self.model.run_cmd.connect(lambda cmd: self.push_cmd(cmd))
@@ -337,15 +337,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         load = QAction("Load", self)
         icon = QtGui.QIcon(":/icons/load_dm.png")
         load.setIcon(icon)
-
         file_pane.add_ribbon_widget(RibbonButton(self, load))
 
         # save action
         save = QAction("Save", self)
         icon = QtGui.QIcon(":/icons/save_dm.png")
         save.setIcon(icon)
-
         file_pane.add_ribbon_widget(RibbonButton(self, save))
+
+        # commands history action
+        cmd_history = QAction("Open cmd\nHistory", self)
+        # icon = QtGui.QIcon(":/icons/save_dm.png")
+        # cmd_history.setIcon(icon)
+        file_pane.add_ribbon_widget(RibbonButton(self, cmd_history))
 
         edit_panel = home_tab.add_ribbon_pane("Edit")
 
@@ -362,7 +366,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         writer.write_file(path)
 
 
-# if __name__ == "__main__":
 def main():
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
@@ -376,7 +379,10 @@ def main():
     }
 
     apply_stylesheet(app, theme="dark_teal.xml", extra=extra)
-    #
     window.show()
 
     app.exec_()
+
+
+if __name__ == "__main__":
+    main()
