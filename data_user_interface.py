@@ -1,7 +1,8 @@
-class NalesDIF:
+class NalesPublicAPI:
     # This class is used to separate what's available to the user through the console
     # all the methods defined in this class are supposed to be accessible to the user so that he can retrieve
     # data from the app
+
     def __init__(self, mainwindow):
         self.mw = mainwindow
 
@@ -28,8 +29,14 @@ class NalesDIF:
         """
         self.mw.viewer.fit()
 
-    def save(self, path: str = None):
+    def save(self, path: str = None) -> None:
         """
         Save the session is to `path` if provided else opens a filedialog
         """
         self.mw.save_file(path)
+
+    def load(self, path: str = None) -> None:
+        """
+        If provided loads the file `path` in the session else opens a filedialog
+        """
+        self.mw.open_file(path)

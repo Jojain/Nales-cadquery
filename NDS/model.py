@@ -66,12 +66,12 @@ NALES_PARAMS_TYPES = {
 
 
 class NalesParam:
-    def __init__(self, name: str, value: object, type_: str = None) -> None:
+    def __init__(self, name: str, value: object) -> None:
         self.name = name
         self._value = value
-        type_ if type_ else type(value).__name__
+        type_ = None if value is None else type(value).__name__
 
-        if type_ not in NALES_PARAMS_TYPES and type_ not in [None, "None"]:
+        if type_ not in NALES_PARAMS_TYPES and type_ is not None:
             raise ValueError(
                 f"Type {type_} not allowed. Allowed types are : {', '.join(NALES_PARAMS_TYPES.keys())}"
             )
@@ -120,7 +120,7 @@ class ParamTableModel(QAbstractTableModel):
             idx = automatic_param_name_indices[-1] + 1
         else:
             idx = 1
-        if name and value:
+        if name:
             self._data.append(NalesParam(name, value))
         else:
             self._data.append(NalesParam(f"param{idx}", None))

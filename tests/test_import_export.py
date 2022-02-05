@@ -45,3 +45,26 @@ def test_export_param(qtbot):
     assert data[0] == "test_param"
     assert data[1] == "15"
     assert data[2] == "int"
+
+
+def test_import_param(qtbot):
+    # Create a save file
+    test_import_file = os.path.join(TESTS_FILES_FOLDER, "test_import_param.py")
+    mw = MainWindow()
+    mw.hide()
+    qtbot.addWidget(mw)
+    mw.param_model.add_parameter("p1", 15)
+    mw.param_model.add_parameter("p2", "bonjour")
+    mw.param_model.add_parameter("p3", None)
+    mw._console.execute_command(
+        f"nales.save(r'{test_import_file}')"
+    )  # tested before, shouldn't fail
+
+    # Read the file and update the GUI
+    mw._console.execute_command(f"nales.load(r'{test_import_file}')")
+    params = mw.param_model.parameters
+    assert len(params) == 3
+    assert (params[0].name, params[0].value, params[0].type) == ("p1", 15, "int")
+    assert (params[1].name, params[1].value, params[1].type) == ("p2", "bonjour", "str")
+    assert (params[2].name, params[2].value, params[2].type) == ("p3", None, None)
+

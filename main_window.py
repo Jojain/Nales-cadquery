@@ -22,7 +22,7 @@ from nales_alpha.uic.mainwindow import Ui_MainWindow
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QSettings
 
 from nales_alpha.NDS.importers import PythonFileReader
-from nales_alpha.data_user_interface import NalesDIF
+from nales_alpha.data_user_interface import NalesPublicAPI
 from nales_alpha.actions import FitViewAction
 from nales_alpha.commands.add_commands import (
     AddOperation,
@@ -113,7 +113,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self._setup_actions()
 
-        self.nalesdif = NalesDIF(self)
+        self.api = NalesPublicAPI(self)
 
         # Views / Widgets setup
         self._setup_param_table_view()
@@ -125,7 +125,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._console.push_vars(
             {
                 "mw": self,
-                "nales": self.nalesdif,
+                "nales": self.api,
                 "Part": Part,
                 "Shape": NalesShape,
                 "Compound": NalesCompound,

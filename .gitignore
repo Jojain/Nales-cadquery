@@ -118,4 +118,4 @@ dmypy.json
 .vscode/tasks.json
 
 # Manually ignored :
-/test/test_files/
+/test/test_files/*
