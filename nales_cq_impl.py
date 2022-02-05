@@ -11,7 +11,7 @@ from OCP.TopoDS import TopoDS_Shape
 from nales_alpha.utils import get_Wp_method_kwargs, get_method_args_with_names
 
 
-from widgets.msg_boxs import StdErrorMsgBox
+from nales_alpha.widgets.msg_boxs import StdErrorMsgBox
 
 
 class SignalsHandler(type(QObject)):

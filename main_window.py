@@ -46,11 +46,11 @@ from qt_material import apply_stylesheet
 from nales_alpha.views.tree_views import ModelingOpsView
 
 # debug related import
-import debugpy
+# import debugpy
 
 from nales_alpha.NDS.interfaces import NArgument, NOperation, NPart
 
-debugpy.debug_this_thread()
+# debugpy.debug_this_thread()
 
 from nales_alpha.utils import get_Workplane_methods
 from nales_alpha.widgets.msg_boxs import WrongArgMsgBox, StdErrorMsgBox
@@ -355,13 +355,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         about_tab = self._ribbon.add_ribbon_tab("About")
         info_panel = about_tab.add_ribbon_pane("Info")
 
-    def save_file(self):
+    def save_file(self, path):
 
         writer = PythonFileWriter(self.model, self.param_model)
 
-        writer.write_file(
-            r"D:\Projets\Nales\nales_alpha\nales_alpha\tests\test_save.py"
-        )
+        writer.write_file(path)
 
 
 # if __name__ == "__main__":

@@ -28,8 +28,8 @@ class NalesDIF:
         """
         self.mw.viewer.fit()
 
-    def save(self):
+    def save(self, path):
         """
         Launch the save command
         """
-        self.mw.save_file()
+        self.mw.save_file(path)

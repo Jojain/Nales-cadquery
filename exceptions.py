@@ -1,4 +1,0 @@
-
-
-class CannotDelete(BaseException):
-    pass

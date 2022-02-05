@@ -1,9 +1,5 @@
-import ast
-from inspect import signature
-from os import link
 from typing import Any, Callable, Dict, List, Literal, Union
 from PyQt5.QtCore import QPersistentModelIndex, Qt
-from attr import has
 from cadquery import Workplane
 
 from OCP.TDataStd import TDataStd_Name
@@ -32,7 +28,7 @@ from nales_alpha.nales_cq_impl import (
     Part,
 )
 
-from widgets.msg_boxs import StdErrorMsgBox
+from nales_alpha.widgets.msg_boxs import StdErrorMsgBox
 
 
 class NNode:

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'D:/Projets/Nales/nales_alpha/nales_alpha/mainwindow.ui'
+# Form implementation generated from reading ui file 'D:/Projets/Nales/nales_alpha/nales_alpha/uic/mainwindow.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.4
 #
@@ -178,8 +178,7 @@ from nales_alpha.views.tree_views import ModelingOpsView
 from nales_alpha.widgets.console import ConsoleWidget
 from nales_alpha.widgets.occt_widget import OCCTWidget
 from nales_alpha.widgets.ribbon_widget import RibbonWidget
-import resources_rc
-
+from nales_alpha.resources import resources_rc
 
 if __name__ == "__main__":
     import sys

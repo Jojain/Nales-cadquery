@@ -1,7 +1,6 @@
-from pickletools import pyfloat
 from typing import Dict, List
 
-from NDS.model import NModel
+from nales_alpha.NDS.model import NModel
 
 
 class PythonFileWriter:
