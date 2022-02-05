@@ -3,6 +3,11 @@ from typing import Dict, List
 from nales_alpha.NDS.model import NModel
 
 
+class FileWriter:
+    def __init__(self) -> None:
+        pass
+
+
 class PythonFileWriter:
     def __init__(self, model: NModel, param_table) -> None:
         self.model = model
@@ -19,7 +24,7 @@ class PythonFileWriter:
             f"#Paramsdef>> {len(params)}\n"
         )  # write the number of param lines
         for param in params:
-            file_obj.write(f"{param.name} = {param.value} # {param.type.__name__}\n ")
+            file_obj.write(f"{param.name} = {param.value} # {param.type}\n")
         file_obj.write("\n")
 
     def _get_arg_data(self, narg):

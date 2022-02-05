@@ -1,3 +1,4 @@
+import os
 import sys
 from typing import List
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -13,13 +14,14 @@ from PyQt5.QtWidgets import (
     QUndoView,
     QMenu,
     QLabel,
+    QFileDialog,
 )
 
 from nales_alpha.widgets.ribbon_widget import RibbonButton
 from nales_alpha.uic.mainwindow import Ui_MainWindow
-from PyQt5.QtCore import pyqtSlot, pyqtSignal
+from PyQt5.QtCore import pyqtSlot, pyqtSignal, QSettings
 
-
+from nales_alpha.NDS.importers import PythonFileReader
 from nales_alpha.data_user_interface import NalesDIF
 from nales_alpha.actions import FitViewAction
 from nales_alpha.commands.add_commands import (
@@ -93,6 +95,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.main_menu = QMainWindow.menuBar(self)
         self.main_menu.setEnabled(True)
+
+        self.settings = QSettings("Nales Tech", "Nales", self)
 
         ctx = self.viewer.context
         self.model = NModel(ctx=ctx, console=self._console)
@@ -335,12 +339,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # load action
         load = QAction("Load", self)
+        load.triggered.connect(self.read_file)
         icon = QtGui.QIcon(":/icons/load_dm.png")
         load.setIcon(icon)
         file_pane.add_ribbon_widget(RibbonButton(self, load))
 
         # save action
         save = QAction("Save", self)
+        save.triggered.connect(self.save_file)
         icon = QtGui.QIcon(":/icons/save_dm.png")
         save.setIcon(icon)
         file_pane.add_ribbon_widget(RibbonButton(self, save))
@@ -359,11 +365,47 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         about_tab = self._ribbon.add_ribbon_tab("About")
         info_panel = about_tab.add_ribbon_pane("Info")
 
-    def save_file(self, path):
+    def save_file(self, path=None):
+
+        last_dir = self.settings.value("LAST_SAVE_PATH")
+        if not path:
+            path, _ = QFileDialog.getSaveFileName(
+                self, "Open a file", last_dir, "Python files (*.py)"
+            )
+        if path == "":  # the users exited the Filedialog
+            return
+
+        self.settings.setValue("LAST_SAVE_PATH", os.path.dirname(path))
 
         writer = PythonFileWriter(self.model, self.param_model)
 
         writer.write_file(path)
+
+    def read_file(self, path=None):
+
+        last_dir = self.settings.value("LAST_SAVE_PATH")
+        if not path:
+            path, _ = QFileDialog.getOpenFileName(
+                self, "Open a file", last_dir, "Python files (*.py)"
+            )
+
+        if path == "":  # the users exited the Filedialog
+            return
+
+        self.settings.setValue("LAST_READ_PATH", os.path.dirname(path))
+
+        reader = PythonFileReader(path)
+
+        for param in reader.params:
+            name = param.name
+            try:
+                value = param.value
+            except TypeError as exc:
+                StdErrorMsgBox(
+                    f"Couldn't read the param {name}\nCheck param type : {param.type}"
+                )
+                return
+            self.param_model.add_parameter(name, value)
 
 
 def main():

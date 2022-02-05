@@ -55,14 +55,44 @@ import cadquery as cq
 from nales_alpha.commands.edit_commands import EditArgument, EditParameter
 
 from nales_alpha.nales_cq_impl import NALES_TYPES, NalesShape, Part
-from numpy import isin
+
+NALES_PARAMS_TYPES = {
+    "int": int,
+    "str": str,
+    "tuple": tuple,
+    "list": list,
+    "float": float,
+}
 
 
 class NalesParam:
-    def __init__(self, name: str, value: object, type_: Any = None) -> None:
+    def __init__(self, name: str, value: object, type_: str = None) -> None:
         self.name = name
-        self.value = value
-        self.type = type_ if type_ else type(value)
+        self._value = value
+        type_ if type_ else type(value).__name__
+
+        if type_ not in NALES_PARAMS_TYPES and type_ not in [None, "None"]:
+            raise ValueError(
+                f"Type {type_} not allowed. Allowed types are : {', '.join(NALES_PARAMS_TYPES.keys())}"
+            )
+        else:
+            self.type = type_
+
+    @classmethod
+    def cast(cls, type_: str, value: str):
+        if type_ == "None":
+            return None
+        else:
+            return NALES_PARAMS_TYPES[type_](value)
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, val):
+        self.type = determine_type_from_str(val).__name__
+        self._value = val
 
 
 class ParamTableModel(QAbstractTableModel):

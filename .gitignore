@@ -116,3 +116,6 @@ dmypy.json
 .qt_for_python/lupdate/mainwindow.qt.ts
 .qt_for_python/uic/mainwindow.py
 .vscode/tasks.json
+
+# Manually ignored :
+/test/test_files/

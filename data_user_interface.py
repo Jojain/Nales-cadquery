@@ -28,8 +28,8 @@ class NalesDIF:
         """
         self.mw.viewer.fit()
 
-    def save(self, path):
+    def save(self, path: str = None):
         """
-        Launch the save command
+        Save the session is to `path` if provided else opens a filedialog
         """
         self.mw.save_file(path)

@@ -1,17 +1,17 @@
 from typing import List
 
-from nales_alpha.NDS.model import NalesParam
+from nales_alpha.NDS.model import NALES_PARAMS_TYPES, NalesParam
 
-"""
-Partdef
-Part1
-box,circle,cutThruAll
-No
-"""
-Part1 = cq.Workplane()
-Part1 = Part1.box(length=10, width=5, height=5, centered=True, combine=True, clean=True)
-Part1 = Part1.circle(radius=1, forConstruction=False)
-Part1 = Part1.cutThruAll(clean=True, taper=0)
+# """
+# Partdef
+# Part1
+# box,circle,cutThruAll
+# No
+# """
+# Part1 = cq.Workplane()
+# Part1 = Part1.box(length=10, width=5, height=5, centered=True, combine=True, clean=True)
+# Part1 = Part1.circle(radius=1, forConstruction=False)
+# Part1 = Part1.cutThruAll(clean=True, taper=0)
 
 
 class PythonFileReader:
@@ -19,6 +19,8 @@ class PythonFileReader:
         with open(file_path, "r") as py_file:
             self.lines = py_file.readlines()
         self.params: List[NalesParam] = []
+
+        self._parse_params()
 
     def _check_file_validity(self):
         if self.lines[0] != "# This file has been generated automatically by Nales":
@@ -56,7 +58,7 @@ class PythonFileReader:
         """
         for idx, line in enumerate(self.lines):
             if line.startswith("#Paramsdef>>"):
-                nb_of_params = int(line.split()[1])
+                nb_of_params = int(line.split()[1]) + 1
                 params_lines = self.lines[idx + 1 : idx + nb_of_params]
                 break
 
@@ -65,8 +67,9 @@ class PythonFileReader:
                 "#"
             )  # param_line is something like : variable = 5 # int
             name = data[0].split("=")[0].strip()
-            value = data[0].split("=")[1].strip()
             type_ = data[1].strip()
+            value = NalesParam.cast(type_, data[0].split("=")[1].strip())
+
             param = NalesParam(name, value, type_)
             self.params.append(param)
 
