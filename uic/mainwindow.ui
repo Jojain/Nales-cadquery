@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+  <class>MainWindow</class>
+  <widget class="QMainWindow" name="MainWindow">
+    <property name="enabled">
+      <bool>true</bool>
+    </property>
+    <property name="geometry">
+      <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>971</width>
+        <height>638</height>
+      </rect>
+    </property>
+    <property name="windowTitle">
+      <string>MainWindow</string>
+    </property>
+    <widget class="QWidget" name="centralwidget">
+      <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+        </sizepolicy>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
+          <widget class="QWidget" name="top_frame_container" native="true">
+            <layout class="QHBoxLayout" name="horizontalLayout_2">
+              <item>
+                <widget class="RibbonWidget" name="_ribbon" native="true">
+                  <layout class="QHBoxLayout" name="horizontalLayout_8"/>
+                </widget>
+              </item>
+            </layout>
+          </widget>
+        </item>
+        <item>
+          <widget class="QWidget" name="center_app_container" native="true">
+            <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+              </sizepolicy>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_2">
+              <item>
+                <widget class="QSplitter" name="splitter_8">
+                  <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                  </property>
+                  <widget class="QWidget" name="left_panel_container" native="true">
+                    <property name="sizePolicy">
+                      <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                      </sizepolicy>
+                    </property>
+                    <layout class="QVBoxLayout" name="verticalLayout_7">
+                      <item>
+                        <widget class="QSplitter" name="splitter">
+                          <property name="orientation">
+                            <enum>Qt::Vertical</enum>
+                          </property>
+                          <widget class="QWidget" name="tree_view_container" native="true">
+                            <layout class="QVBoxLayout" name="verticalLayout_6">
+                              <item>
+                                <widget class="ModelingOpsView" name="modeling_ops_tree">
+                                  <property name="enabled">
+                                    <bool>true</bool>
+                                  </property>
+                                  <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+                                      <horstretch>1</horstretch>
+                                      <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                  </property>
+                                  <property name="minimumSize">
+                                    <size>
+                                      <width>0</width>
+                                      <height>100</height>
+                                    </size>
+                                  </property>
+                                  <property name="sizeIncrement">
+                                    <size>
+                                      <width>1</width>
+                                      <height>0</height>
+                                    </size>
+                                  </property>
+                                  <property name="baseSize">
+                                    <size>
+                                      <width>200</width>
+                                      <height>0</height>
+                                    </size>
+                                  </property>
+                                  <property name="contextMenuPolicy">
+                                    <enum>Qt::CustomContextMenu</enum>
+                                  </property>
+                                  <property name="layoutDirection">
+                                    <enum>Qt::LeftToRight</enum>
+                                  </property>
+                                </widget>
+                              </item>
+                            </layout>
+                          </widget>
+                          <widget class="QWidget" name="param_table_view_container" native="true">
+                            <layout class="QVBoxLayout" name="verticalLayout_5">
+                              <item>
+                                <widget class="QWidget" name="widget" native="true">
+                                  <layout class="QHBoxLayout" name="horizontalLayout">
+                                    <item>
+                                      <widget class="QLabel" name="param_label">
+                                        <property name="text">
+                                          <string>Parameters</string>
+                                        </property>
+                                      </widget>
+                                    </item>
+                                    <item>
+                                      <widget class="QPushButton" name="add_param_btn">
+                                        <property name="text">
+                                          <string/>
+                                        </property>
+                                        <property name="icon">
+                                          <iconset resource="resources/resources.qrc">
+                                            <normaloff>:/icons/plus_dm.png</normaloff>:/icons/plus_dm.png</iconset>
+                                        </property>
+                                      </widget>
+                                    </item>
+                                    <item>
+                                      <widget class="QPushButton" name="rmv_param_btn">
+                                        <property name="text">
+                                          <string/>
+                                        </property>
+                                        <property name="icon">
+                                          <iconset resource="resources/resources.qrc">
+                                            <normaloff>:/icons/minus_dm.png</normaloff>:/icons/minus_dm.png</iconset>
+                                        </property>
+                                      </widget>
+                                    </item>
+                                  </layout>
+                                </widget>
+                              </item>
+                              <item>
+                                <widget class="QTableView" name="param_table_view"/>
+                              </item>
+                            </layout>
+                          </widget>
+                        </widget>
+                      </item>
+                    </layout>
+                  </widget>
+                  <widget class="QWidget" name="console_viewer_container" native="true">
+                    <property name="sizePolicy">
+                      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                        <horstretch>1</horstretch>
+                        <verstretch>0</verstretch>
+                      </sizepolicy>
+                    </property>
+                    <layout class="QVBoxLayout" name="verticalLayout">
+                      <item>
+                        <widget class="QSplitter" name="splitter_3">
+                          <property name="sizePolicy">
+                            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                              <horstretch>0</horstretch>
+                              <verstretch>0</verstretch>
+                            </sizepolicy>
+                          </property>
+                          <property name="orientation">
+                            <enum>Qt::Vertical</enum>
+                          </property>
+                          <widget class="OCCTWidget" name="viewer" native="true">
+                            <property name="sizePolicy">
+                              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                                <horstretch>10</horstretch>
+                                <verstretch>1</verstretch>
+                              </sizepolicy>
+                            </property>
+                            <property name="minimumSize">
+                              <size>
+                                <width>0</width>
+                                <height>100</height>
+                              </size>
+                            </property>
+                            <property name="sizeIncrement">
+                              <size>
+                                <width>1</width>
+                                <height>0</height>
+                              </size>
+                            </property>
+                            <property name="baseSize">
+                              <size>
+                                <width>800</width>
+                                <height>500</height>
+                              </size>
+                            </property>
+                            <property name="layoutDirection">
+                              <enum>Qt::LeftToRight</enum>
+                            </property>
+                          </widget>
+                          <widget class="QWidget" name="console_container" native="true">
+                            <layout class="QVBoxLayout" name="verticalLayout_4">
+                              <item>
+                                <widget class="ConsoleWidget" name="_console">
+                                  <property name="sizePolicy">
+                                    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                                      <horstretch>0</horstretch>
+                                      <verstretch>0</verstretch>
+                                    </sizepolicy>
+                                  </property>
+                                  <property name="minimumSize">
+                                    <size>
+                                      <width>0</width>
+                                      <height>50</height>
+                                    </size>
+                                  </property>
+                                </widget>
+                              </item>
+                            </layout>
+                          </widget>
+                        </widget>
+                      </item>
+                    </layout>
+                  </widget>
+                </widget>
+              </item>
+            </layout>
+          </widget>
+        </item>
+      </layout>
+    </widget>
+    <widget class="QStatusBar" name="statusbar"/>
+    <widget class="QMenuBar" name="menuBar">
+      <property name="enabled">
+        <bool>false</bool>
+      </property>
+      <property name="geometry">
+        <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>971</width>
+          <height>20</height>
+        </rect>
+      </property>
+      <property name="defaultUp">
+        <bool>false</bool>
+      </property>
+    </widget>
+  </widget>
+  <customwidgets>
+    <customwidget>
+      <class>OCCTWidget</class>
+      <extends>QWidget</extends>
+      <header>nales/widgets/occt_widget.h</header>
+      <container>1</container>
+    </customwidget>
+    <customwidget>
+      <class>ConsoleWidget</class>
+      <extends>QTextEdit</extends>
+      <header>nales/widgets/console.h</header>
+    </customwidget>
+    <customwidget>
+      <class>ModelingOpsView</class>
+      <extends>QTreeView</extends>
+      <header>nales/views/tree_views.h</header>
+    </customwidget>
+    <customwidget>
+      <class>RibbonWidget</class>
+      <extends>QWidget</extends>
+      <header>nales/widgets/ribbon_widget.h</header>
+      <container>1</container>
+    </customwidget>
+  </customwidgets>
+  <tabstops>
+    <tabstop>modeling_ops_tree</tabstop>
+  </tabstops>
+  <resources>
+    <include location="../resources/resources.qrc"/>
+  </resources>
+  <connections/>
+</ui>
