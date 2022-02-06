@@ -31,14 +31,14 @@ from cadquery.occ_impl.shapes import Shape
 
 # from OCP.AIS import AIS_InteractiveObject, AIS_ColoredShape
 # from OCP.TNaming import TNaming_Builder, TNaming_NamedShape
-from nales_alpha.NDS.NOCAF import Application
+from nales.NDS.NOCAF import Application
 
 # from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
 # from OCP.TDF import TDF_Label, TDF_TagSource
 # from OCP.TCollection import TCollection_ExtendedString
 # from OCP.TopoDS import TopoDS_Shape
-from nales_alpha.utils import determine_type_from_str, get_Wp_method_args_name
-from nales_alpha.NDS.interfaces import (
+from nales.utils import determine_type_from_str, get_Wp_method_args_name
+from nales.NDS.interfaces import (
     NNode,
     NPart,
     NOperation,
@@ -46,15 +46,15 @@ from nales_alpha.NDS.interfaces import (
     NShape,
     NShapeOperation,
 )
-from nales_alpha.widgets.msg_boxs import WrongArgMsgBox
+from nales.widgets.msg_boxs import WrongArgMsgBox
 import ast
 
 import cadquery as cq
 
 
-from nales_alpha.commands.edit_commands import EditArgument, EditParameter
+from nales.commands.edit_commands import EditArgument, EditParameter
 
-from nales_alpha.nales_cq_impl import NALES_TYPES, NalesShape, Part
+from nales.nales_cq_impl import NALES_TYPES, NalesShape, Part
 
 NALES_PARAMS_TYPES = {
     "int": int,

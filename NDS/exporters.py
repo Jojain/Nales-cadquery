@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-from nales_alpha.NDS.model import NModel
+from nales.NDS.model import NModel
 
 
 class FileWriter:

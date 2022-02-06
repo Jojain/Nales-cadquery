@@ -1,10 +1,10 @@
 from typing import Any, TYPE_CHECKING, Callable, Dict, List
-from nales_alpha.nales_cq_impl import NalesShape, Part
+from nales.nales_cq_impl import NalesShape, Part
 
 if TYPE_CHECKING:
-    from nales_alpha.NDS.model import NModel, ParamTableModel
+    from nales.NDS.model import NModel, ParamTableModel
 
-from nales_alpha.commands.base_commands import AddTreeItem, BaseCommand
+from nales.commands.base_commands import AddTreeItem, BaseCommand
 
 
 class AddPart(AddTreeItem):

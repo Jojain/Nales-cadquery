@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from typing import List, Tuple
 from ezdxf import is_dxf_file
-from nales_alpha.main_window import MainWindow
+from nales.main_window import MainWindow
 
 TESTS_FILES_FOLDER = __file__.strip(__name__ + ".py") + "tests_files"
 

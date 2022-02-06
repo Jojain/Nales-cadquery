@@ -2,10 +2,10 @@ from typing import Any, TYPE_CHECKING, List
 from PyQt5.QtCore import Qt, QModelIndex, QPersistentModelIndex
 
 
-from nales_alpha.commands.base_commands import BaseCommand
+from nales.commands.base_commands import BaseCommand
 
 if TYPE_CHECKING:
-    from nales_alpha.NDS.model import NModel, ParamTableModel
+    from nales.NDS.model import NModel, ParamTableModel
 
 
 class EditArgument(BaseCommand):

@@ -1,3 +1,3 @@
-# from nales_alpha.main_window import main
+# from nales.main_window import main
 
 # main()

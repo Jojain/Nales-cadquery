@@ -1,10 +1,10 @@
 from typing import List
 
-from nales_alpha.NDS.model import NalesParam
+from nales.NDS.model import NalesParam
 
 import ast
 
-from nales_alpha.nales_cq_impl import Part
+from nales.nales_cq_impl import Part
 
 
 class PythonFileReader:

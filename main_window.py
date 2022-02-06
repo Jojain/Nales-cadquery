@@ -18,47 +18,47 @@ from PyQt5.QtWidgets import (
     QFileDialog,
 )
 
-from nales_alpha.widgets.ribbon_widget import RibbonButton
-from nales_alpha.uic.mainwindow import Ui_MainWindow
+from nales.widgets.ribbon_widget import RibbonButton
+from nales.uic.mainwindow import Ui_MainWindow
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QSettings
 
-from nales_alpha.NDS.importers import PythonFileReader
-from nales_alpha.data_user_interface import NalesPublicAPI
-from nales_alpha.actions import FitViewAction
-from nales_alpha.commands.add_commands import (
+from nales.NDS.importers import PythonFileReader
+from nales.data_user_interface import NalesPublicAPI
+from nales.actions import FitViewAction
+from nales.commands.add_commands import (
     AddOperation,
     AddParameter,
     AddPart,
     AddShape,
 )
-from nales_alpha.commands.delete_commands import (
+from nales.commands.delete_commands import (
     DeleteOperation,
     DeleteParameter,
     DeletePart,
 )
-from nales_alpha.commands.edit_commands import (
+from nales.commands.edit_commands import (
     LinkParameter,
     UnlinkParameter,
 )
 
-from nales_alpha.NDS.exporters import PythonFileWriter
+from nales.NDS.exporters import PythonFileWriter
 
-from nales_alpha.NDS.model import NModel, ParamTableModel
+from nales.NDS.model import NModel, ParamTableModel
 
 from qt_material import apply_stylesheet
-from nales_alpha.views.tree_views import ModelingOpsView
+from nales.views.tree_views import ModelingOpsView
 
 # debug related import
 # import debugpy
 
-from nales_alpha.NDS.interfaces import NArgument, NOperation, NPart
+from nales.NDS.interfaces import NArgument, NOperation, NPart
 
 # debugpy.debug_this_thread()
 
-from nales_alpha.utils import get_Workplane_methods, sort_args_kwargs
-from nales_alpha.widgets.msg_boxs import WrongArgMsgBox, StdErrorMsgBox
+from nales.utils import get_Workplane_methods, sort_args_kwargs
+from nales.widgets.msg_boxs import WrongArgMsgBox, StdErrorMsgBox
 
-from nales_alpha.nales_cq_impl import (
+from nales.nales_cq_impl import (
     Part,
     NalesShape,
     NalesCompound,

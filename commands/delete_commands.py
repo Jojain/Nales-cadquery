@@ -1,12 +1,12 @@
 from typing import Any, TYPE_CHECKING, Dict, List
 from PyQt5.QtCore import QModelIndex
-from nales_alpha.nales_cq_impl import Part
+from nales.nales_cq_impl import Part
 
 
-from nales_alpha.commands.base_commands import BaseCommand, DeleteTreeItem
+from nales.commands.base_commands import BaseCommand, DeleteTreeItem
 
 if TYPE_CHECKING:
-    from nales_alpha.NDS.model import NModel, ParamTableModel
+    from nales.NDS.model import NModel, ParamTableModel
 
 
 class DeletePart(DeleteTreeItem):

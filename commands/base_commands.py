@@ -2,10 +2,10 @@ from typing import Any, TYPE_CHECKING
 from PyQt5.QtWidgets import QUndoCommand
 from PyQt5.QtCore import QModelIndex
 
-from nales_alpha.NDS.interfaces import NOperation, NPart, NShape
+from nales.NDS.interfaces import NOperation, NPart, NShape
 
 if TYPE_CHECKING:
-    from nales_alpha.NDS.model import NModel
+    from nales.NDS.model import NModel
 
 
 class BaseCommand(QUndoCommand):

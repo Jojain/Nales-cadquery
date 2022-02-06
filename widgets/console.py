@@ -5,7 +5,7 @@ from PyQt5.QtCore import pyqtSlot, pyqtSignal
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 from qtconsole.inprocess import QtInProcessKernelManager
 import sys
-from nales_alpha.nales_cq_impl import Part
+from nales.nales_cq_impl import Part
 from pprint import pprint
 
 # sys.stdout = sys.stderr = io.StringIO() # QtInProcessKernelManager related see https://github.com/ipython/ipython/issues/10658#issuecomment-307757082

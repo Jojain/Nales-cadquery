@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'D:/Projets/Nales/nales_alpha/nales_alpha/uic/mainwindow.ui'
+# Form implementation generated from reading ui file 'D:/Projets/Nales/nales/nales/uic/mainwindow.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.4
 #
@@ -17,10 +17,14 @@ class Ui_MainWindow(object):
         MainWindow.setEnabled(True)
         MainWindow.resize(971, 638)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.centralwidget.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.centralwidget.sizePolicy().hasHeightForWidth()
+        )
         self.centralwidget.setSizePolicy(sizePolicy)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout_3 = QtWidgets.QVBoxLayout(self.centralwidget)
@@ -36,10 +40,14 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2.addWidget(self._ribbon)
         self.verticalLayout_3.addWidget(self.top_frame_container)
         self.center_app_container = QtWidgets.QWidget(self.centralwidget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.center_app_container.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.center_app_container.sizePolicy().hasHeightForWidth()
+        )
         self.center_app_container.setSizePolicy(sizePolicy)
         self.center_app_container.setObjectName("center_app_container")
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.center_app_container)
@@ -48,10 +56,14 @@ class Ui_MainWindow(object):
         self.splitter_8.setOrientation(QtCore.Qt.Horizontal)
         self.splitter_8.setObjectName("splitter_8")
         self.left_panel_container = QtWidgets.QWidget(self.splitter_8)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Preferred
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.left_panel_container.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.left_panel_container.sizePolicy().hasHeightForWidth()
+        )
         self.left_panel_container.setSizePolicy(sizePolicy)
         self.left_panel_container.setObjectName("left_panel_container")
         self.verticalLayout_7 = QtWidgets.QVBoxLayout(self.left_panel_container)
@@ -67,10 +79,14 @@ class Ui_MainWindow(object):
         self.verticalLayout_6.setObjectName("verticalLayout_6")
         self.modeling_ops_tree = ModelingOpsView(self.tree_view_container)
         self.modeling_ops_tree.setEnabled(True)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding
+        )
         sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.modeling_ops_tree.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.modeling_ops_tree.sizePolicy().hasHeightForWidth()
+        )
         self.modeling_ops_tree.setSizePolicy(sizePolicy)
         self.modeling_ops_tree.setMinimumSize(QtCore.QSize(0, 100))
         self.modeling_ops_tree.setSizeIncrement(QtCore.QSize(1, 0))
@@ -94,14 +110,18 @@ class Ui_MainWindow(object):
         self.add_param_btn = QtWidgets.QPushButton(self.widget)
         self.add_param_btn.setText("")
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":/icons/plus_dm.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(
+            QtGui.QPixmap(":/icons/plus_dm.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
+        )
         self.add_param_btn.setIcon(icon)
         self.add_param_btn.setObjectName("add_param_btn")
         self.horizontalLayout.addWidget(self.add_param_btn)
         self.rmv_param_btn = QtWidgets.QPushButton(self.widget)
         self.rmv_param_btn.setText("")
         icon1 = QtGui.QIcon()
-        icon1.addPixmap(QtGui.QPixmap(":/icons/minus_dm.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon1.addPixmap(
+            QtGui.QPixmap(":/icons/minus_dm.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
+        )
         self.rmv_param_btn.setIcon(icon1)
         self.rmv_param_btn.setObjectName("rmv_param_btn")
         self.horizontalLayout.addWidget(self.rmv_param_btn)
@@ -111,17 +131,23 @@ class Ui_MainWindow(object):
         self.verticalLayout_5.addWidget(self.param_table_view)
         self.verticalLayout_7.addWidget(self.splitter)
         self.console_viewer_container = QtWidgets.QWidget(self.splitter_8)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
+        )
         sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.console_viewer_container.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.console_viewer_container.sizePolicy().hasHeightForWidth()
+        )
         self.console_viewer_container.setSizePolicy(sizePolicy)
         self.console_viewer_container.setObjectName("console_viewer_container")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.console_viewer_container)
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout.setObjectName("verticalLayout")
         self.splitter_3 = QtWidgets.QSplitter(self.console_viewer_container)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.splitter_3.sizePolicy().hasHeightForWidth())
@@ -129,7 +155,9 @@ class Ui_MainWindow(object):
         self.splitter_3.setOrientation(QtCore.Qt.Vertical)
         self.splitter_3.setObjectName("splitter_3")
         self.viewer = OCCTWidget(self.splitter_3)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
         sizePolicy.setHorizontalStretch(10)
         sizePolicy.setVerticalStretch(1)
         sizePolicy.setHeightForWidth(self.viewer.sizePolicy().hasHeightForWidth())
@@ -145,7 +173,9 @@ class Ui_MainWindow(object):
         self.verticalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
         self._console = ConsoleWidget(self.console_container)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self._console.sizePolicy().hasHeightForWidth())
@@ -174,14 +204,17 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.param_label.setText(_translate("MainWindow", "Parameters"))
-from nales_alpha.views.tree_views import ModelingOpsView
-from nales_alpha.widgets.console import ConsoleWidget
-from nales_alpha.widgets.occt_widget import OCCTWidget
-from nales_alpha.widgets.ribbon_widget import RibbonWidget
-from nales_alpha.resources import resources_rc
+
+
+from nales.views.tree_views import ModelingOpsView
+from nales.widgets.console import ConsoleWidget
+from nales.widgets.occt_widget import OCCTWidget
+from nales.widgets.ribbon_widget import RibbonWidget
+from nales.resources import resources_rc
 
 if __name__ == "__main__":
     import sys
+
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()

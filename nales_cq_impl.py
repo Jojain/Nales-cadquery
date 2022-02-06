@@ -8,10 +8,10 @@ from cadquery.cq import VectorLike
 from cadquery.occ_impl.geom import Plane, Vector
 from cadquery.occ_impl.shapes import Shape, Solid, Face, Wire, Edge, Vertex, Compound
 from OCP.TopoDS import TopoDS_Shape
-from nales_alpha.utils import get_Wp_method_kwargs, get_method_args_with_names
+from nales.utils import get_Wp_method_kwargs, get_method_args_with_names
 import os
 
-from nales_alpha.widgets.msg_boxs import StdErrorMsgBox
+from nales.widgets.msg_boxs import StdErrorMsgBox
 
 
 class SignalsHandler(type(QObject)):

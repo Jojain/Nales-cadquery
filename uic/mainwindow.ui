@@ -250,23 +250,23 @@
     <customwidget>
       <class>OCCTWidget</class>
       <extends>QWidget</extends>
-      <header>nales_alpha/widgets/occt_widget.h</header>
+      <header>nales/widgets/occt_widget.h</header>
       <container>1</container>
     </customwidget>
     <customwidget>
       <class>ConsoleWidget</class>
       <extends>QTextEdit</extends>
-      <header>nales_alpha/widgets/console.h</header>
+      <header>nales/widgets/console.h</header>
     </customwidget>
     <customwidget>
       <class>ModelingOpsView</class>
       <extends>QTreeView</extends>
-      <header>nales_alpha/views/tree_views.h</header>
+      <header>nales/views/tree_views.h</header>
     </customwidget>
     <customwidget>
       <class>RibbonWidget</class>
       <extends>QWidget</extends>
-      <header>nales_alpha/widgets/ribbon_widget.h</header>
+      <header>nales/widgets/ribbon_widget.h</header>
       <container>1</container>
     </customwidget>
   </customwidgets>

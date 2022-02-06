@@ -2,19 +2,43 @@
 from typing import Any, List, Tuple, Union
 from PyQt5.QtCore import QObject
 import ast
+
 # import astpretty
-from ast import Expr,keyword, Assign, Name, Call, Store, Attribute, Load, Constant, Expression, Module, Del, iter_child_nodes, walk
+from ast import (
+    Expr,
+    keyword,
+    Assign,
+    Name,
+    Call,
+    Store,
+    Attribute,
+    Load,
+    Constant,
+    Expression,
+    Module,
+    Del,
+    iter_child_nodes,
+    walk,
+)
 import cadquery.cqgi
 from cadquery import Workplane
 from cadquery.occ_impl.shapes import Shape
 import cadquery as cq
 from collections import OrderedDict
+
 # from graphviz.backend import command
-from nales_alpha.utils import get_cq_class_kwargs_name, get_cq_topo_classes, get_cq_types, get_Wp_method_kwargs, get_topo_class_kwargs_name
-# from nales_alpha.NDS.ast_grapher import make_graph
+from nales.utils import (
+    get_cq_class_kwargs_name,
+    get_cq_topo_classes,
+    get_cq_types,
+    get_Wp_method_kwargs,
+    get_topo_class_kwargs_name,
+)
+
+# from nales.NDS.ast_grapher import make_graph
 
 # from collections import OrderedDict
-from nales_alpha.utils import (
+from nales.utils import (
     get_cq_class_kwargs_name,
     get_cq_topo_classes,
     get_cq_types,
@@ -32,8 +56,6 @@ def prepare_parent_childs(tree):
         for child_node in ast.iter_child_nodes(node):
             node.childs.append(child_node)
             child_node.parent = node
-
-
 
 
 class CQAssignAnalyzer(ast.NodeVisitor):
@@ -403,25 +425,23 @@ class Command:
     """
 
     def __init__(self, var: str, operations: List[dict], obj: Any, new_var: bool):
-        self.var = var 
+        self.var = var
         self.operations = operations
         self.obj = obj
         self.new_var = new_var
 
         self.type = self._get_cmd_type()
         self.topo_type = None
-    
+
     def _get_cmd_type(self):
         if list(self.operations[0].keys())[0] == "Workplane" and not self.new_var:
             return "part_override"
-        elif list(self.operations[0].keys())[0] == "Workplane"and self.new_var:
+        elif list(self.operations[0].keys())[0] == "Workplane" and self.new_var:
             return "new_part"
-        elif list(self.operations[0].keys())[0] != "Workplane"and not self.new_var:
+        elif list(self.operations[0].keys())[0] != "Workplane" and not self.new_var:
             return "part_edit"
         else:
             return "unbound"
-
-
 
 
 if __name__ == "__main__":
@@ -429,16 +449,20 @@ if __name__ == "__main__":
     import cadquery as cq
     from cadquery import cq
     from astmonkey import visitors, transformers
+
     debug = True
     cmd = "a = b.box(1,1,1).sphere(2)\nu = b"
-    c=cq.Workplane().box(1,1,1).sphere(2)
-    ns = {"cq":cadquery, "b":c}
-    ns2 = {"a": 5,"cq":cadquery, "b":c}
-    cmd_analyzer = CQAssignAnalyzer(ns2, ns) # call this line in the ipython window to view the graph
+    c = cq.Workplane().box(1, 1, 1).sphere(2)
+    ns = {"cq": cadquery, "b": c}
+    ns2 = {"a": 5, "cq": cadquery, "b": c}
+    cmd_analyzer = CQAssignAnalyzer(
+        ns2, ns
+    )  # call this line in the ipython window to view the graph
 
     ast_tree = ast.parse(cmd)
     from astmonkey import transformers, visitors
     import graphviz
+
     visitor = visitors.GraphNodeVisitor()
     node = ParentChildNodeTransformer().visit(ast_tree)
     visitor.visit(node)
@@ -447,6 +471,6 @@ if __name__ == "__main__":
     cmd_analyzer.visit(node)
     cmd = cmd_analyzer.get_commands()
     print(cmd_analyzer.call_stack.items())
-   
-   
+
+
 # %%

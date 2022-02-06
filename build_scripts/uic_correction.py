@@ -11,7 +11,7 @@ with open(file_to_modify, "r") as inp:
 new_lines = []
 for line in inp_lines:
     if "import resources_rc" in line:
-        new_lines.append("from nales_alpha.resources import resources_rc")
+        new_lines.append("from nales.resources import resources_rc")
     else:
         new_lines.append(line)
 

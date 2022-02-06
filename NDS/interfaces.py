@@ -7,16 +7,16 @@ from OCP.TPrsStd import TPrsStd_AISPresentation
 from cadquery.occ_impl.shapes import Shape
 from OCP.AIS import AIS_InteractiveObject, AIS_ColoredShape
 from OCP.TNaming import TNaming_Builder, TNaming_NamedShape
-from nales_alpha.NDS.NOCAF import Application
+from nales.NDS.NOCAF import Application
 from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
 from OCP.TDF import TDF_Label, TDF_TagSource
 from OCP.TCollection import TCollection_ExtendedString
 from OCP.TopoDS import TopoDS_Shape
-from nales_alpha.utils import PY_TYPES_TO_AST_NODE, get_Workplane_methods
+from nales.utils import PY_TYPES_TO_AST_NODE, get_Workplane_methods
 from OCP.Quantity import Quantity_NameOfColor
 
 
-from nales_alpha.nales_cq_impl import (
+from nales.nales_cq_impl import (
     NALES_TYPES,
     NalesCompound,
     NalesEdge,
@@ -28,7 +28,7 @@ from nales_alpha.nales_cq_impl import (
     Part,
 )
 
-from nales_alpha.widgets.msg_boxs import StdErrorMsgBox
+from nales.widgets.msg_boxs import StdErrorMsgBox
 
 
 class NNode:
