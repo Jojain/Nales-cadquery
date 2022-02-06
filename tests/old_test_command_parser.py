@@ -3,7 +3,7 @@ import ast
 from unittest import TestCase
 from NDS.old_commands_ast import CQAssignAnalyzer, prepare_parent_childs
 import pytest
-import cadquery as cq
+import ncadquery as cq
 from collections import OrderedDict
 
 
@@ -14,12 +14,13 @@ def get_analyzer_cmds(namespace, code):
     an.visit(ast.parse(code))
     return an.get_commands()
 
+
 def get_analyzer(namespace, code):
     ns_before = namespace.copy()
     exec(code, namespace)
     an = CQAssignAnalyzer(namespace, ns_before)
     an.visit(ast.parse(code))
-    return an 
+    return an
 
 
 class TestCommandParser(TestCase):
@@ -28,7 +29,7 @@ class TestCommandParser(TestCase):
 
     # def test__is_from_main_call_stack(self):
     #     code = "part = cq.Workplane().sphere(1).union(cq.Workplane().box(1,1,1))"
-    #     ns = {"cq": cq}    
+    #     ns = {"cq": cq}
     #     analyzer = get_analyzer(ns, code)
 
     #     ast_code = ast.parse(code).body[0]
@@ -39,7 +40,6 @@ class TestCommandParser(TestCase):
     #     self.assertTrue(analyzer._is_from_main_call_stack(main_call))
     #     self.assertTrue(analyzer._is_from_main_call_stack(sphere_node))
     #     self.assertFalse(analyzer._is_from_main_call_stack(secondary_call))
-
 
     def test_Workplane_creation_cmd(self):
         code = "part = cq.Workplane()"
@@ -63,7 +63,7 @@ class TestCommandParser(TestCase):
 
         cmds = get_analyzer_cmds(ns, code)
         ops = cmds[0].operations
-        
+
         dict_ops = {
             "Workplane": ([], {"inPlane": "XY", "origin": (0, 0, 0), "obj": None}),
             "sphere": (
@@ -85,48 +85,42 @@ class TestCommandParser(TestCase):
 
     def test_part_edit_cmd(self):
         code = "part = part.sphere(1).box(1,1,1)"
-        ns = {"cq": cq, "part":cq.Workplane()}
+        ns = {"cq": cq, "part": cq.Workplane()}
 
-        cmds = get_analyzer_cmds(ns, code)        
+        cmds = get_analyzer_cmds(ns, code)
         self.assertTrue(cmds[0].type == "part_edit")
 
     def test_part_override_cmd(self):
         code = "part = cq.Workplane().sphere(1).box(1,1,1)"
-        ns = {"cq": cq, "part":cq.Workplane()}
-        cmds = get_analyzer_cmds(ns, code)        
+        ns = {"cq": cq, "part": cq.Workplane()}
+        cmds = get_analyzer_cmds(ns, code)
         self.assertTrue(cmds[0].type == "part_override")
 
     def test_subcommands(self):
         code = "part = cq.Workplane().sphere(1).union(cq.Workplane().box(1,1,1))"
-        ns = {"cq": cq}     
-        cmds = get_analyzer_cmds(ns, code)  
+        ns = {"cq": cq}
+        cmds = get_analyzer_cmds(ns, code)
 
         self.assertTrue(len(cmds) == 2)
-        self.assertTrue(cmds[0].type == "new_part")  
-        self.assertTrue(cmds[1].type == "unbound")  
-
+        self.assertTrue(cmds[0].type == "new_part")
+        self.assertTrue(cmds[1].type == "unbound")
 
     def test_new_shape(self):
-        pass 
+        pass
 
     def test_shape_override(self):
         pass
-
-    
-
-
-
 
 
 if __name__ == "__main__":
     from pprint import pprint
     import astpretty
+
     # import
     code = "part = cq.Workplane()"
     ns = {"cq": cq}
 
-    cmds = get_analyzer_cmds(ns, code)  
-
+    cmds = get_analyzer_cmds(ns, code)
 
     # prepare_parent_childs(secondary_call)
     # analyzer = get_analyzer(ns, code)

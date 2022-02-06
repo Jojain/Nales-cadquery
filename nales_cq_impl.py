@@ -3,10 +3,10 @@ import inspect
 from functools import wraps
 
 from PyQt5.QtCore import QObject, pyqtSignal
-from cadquery import Workplane
-from cadquery.cq import VectorLike
-from cadquery.occ_impl.geom import Plane, Vector
-from cadquery.occ_impl.shapes import Shape, Solid, Face, Wire, Edge, Vertex, Compound
+from ncadquery import Workplane
+from ncadquery.cq import VectorLike
+from ncadquery.occ_impl.geom import Plane, Vector
+from ncadquery.occ_impl.shapes import Shape, Solid, Face, Wire, Edge, Vertex, Compound
 from OCP.TopoDS import TopoDS_Shape
 from nales.utils import get_Wp_method_kwargs, get_method_args_with_names
 import os

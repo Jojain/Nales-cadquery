@@ -23,11 +23,11 @@ from PyQt5.QtCore import (
     Qt,
     pyqtSignal,
 )
-from cadquery import Workplane
+from ncadquery import Workplane
 
 # from OCP.TDataStd import TDataStd_Name
 # from OCP.TPrsStd import TPrsStd_AISPresentation
-from cadquery.occ_impl.shapes import Shape
+from ncadquery.occ_impl.shapes import Shape
 
 # from OCP.AIS import AIS_InteractiveObject, AIS_ColoredShape
 # from OCP.TNaming import TNaming_Builder, TNaming_NamedShape
@@ -49,7 +49,7 @@ from nales.NDS.interfaces import (
 from nales.widgets.msg_boxs import WrongArgMsgBox
 import ast
 
-import cadquery as cq
+import ncadquery as cq
 
 
 from nales.commands.edit_commands import EditArgument, EditParameter

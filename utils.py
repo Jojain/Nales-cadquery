@@ -1,8 +1,8 @@
 #%%
 import inspect
 from typing import Callable, Dict, List, Literal, Union
-from cadquery import Workplane
-import cadquery
+from ncadquery import Workplane
+import ncadquery
 from inspect import signature
 from collections import OrderedDict
 import ast
@@ -124,7 +124,7 @@ def get_Wp_method_kwargs(method: Union[str, Callable]) -> dict:
 
 def get_topo_class_methods(class_name: str) -> Dict[str, Callable]:
 
-    topo_class = getattr(cadquery, class_name)
+    topo_class = getattr(ncadquery, class_name)
     return dict(
         (func, getattr(topo_class, func))
         for func in dir(topo_class)
@@ -134,7 +134,7 @@ def get_topo_class_methods(class_name: str) -> Dict[str, Callable]:
 
 def get_cq_topo_classes() -> List[str]:
     """
-    Returns all the cadquery topological classes
+    Returns all the ncadquery topological classes
     """
 
     return ["Shape", "Compound", "CompSolid", "Solid", "Face", "Wire", "Edge", "Vertex"]
@@ -166,7 +166,7 @@ def get_cq_class_kwargs_name(class_name: str) -> OrderedDict:
 
     cq_classes = {
         class_name: obj
-        for (class_name, obj) in inspect.getmembers(cadquery)
+        for (class_name, obj) in inspect.getmembers(ncadquery)
         if inspect.isclass(obj)
     }
     params = inspect.signature(cq_classes[class_name]).parameters
@@ -179,10 +179,10 @@ def get_cq_class_kwargs_name(class_name: str) -> OrderedDict:
 
 def get_cq_types():
     """
-    Returns all the cadquery available types
+    Returns all the ncadquery available types
     """
     types = []
-    for _, obj in inspect.getmembers(cadquery):
+    for _, obj in inspect.getmembers(ncadquery):
         if inspect.isclass(obj):
             types.append(obj)
     return types

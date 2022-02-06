@@ -20,10 +20,10 @@ from ast import (
     iter_child_nodes,
     walk,
 )
-import cadquery.cqgi
-from cadquery import Workplane
-from cadquery.occ_impl.shapes import Shape
-import cadquery as cq
+import ncadquery.cqgi
+from ncadquery import Workplane
+from ncadquery.occ_impl.shapes import Shape
+import ncadquery as cq
 from collections import OrderedDict
 
 # from graphviz.backend import command
@@ -130,7 +130,7 @@ class CQAssignAnalyzer(ast.NodeVisitor):
 
     def _cq_call_type(self, node: Call) -> str:
         """
-        Returns the cadquery call type, valid types are :
+        Returns the ncadquery call type, valid types are :
         - Shape
         - Workplane
         - Other
@@ -157,7 +157,7 @@ class CQAssignAnalyzer(ast.NodeVisitor):
 
     def _is_cq_call(self, node: Call) -> bool:
         """
-        Returns if a Call node is a cadquery call (i.e it calls a cadquery fonction / method)
+        Returns if a Call node is a ncadquery call (i.e it calls a ncadquery fonction / method)
         """
 
         call_root = self._get_root_node_from_Call(node)
@@ -446,15 +446,15 @@ class Command:
 
 if __name__ == "__main__":
     import astpretty
-    import cadquery as cq
-    from cadquery import cq
+    import ncadquery as cq
+    from ncadquery import cq
     from astmonkey import visitors, transformers
 
     debug = True
     cmd = "a = b.box(1,1,1).sphere(2)\nu = b"
     c = cq.Workplane().box(1, 1, 1).sphere(2)
-    ns = {"cq": cadquery, "b": c}
-    ns2 = {"a": 5, "cq": cadquery, "b": c}
+    ns = {"cq": ncadquery, "b": c}
+    ns2 = {"a": 5, "cq": ncadquery, "b": c}
     cmd_analyzer = CQAssignAnalyzer(
         ns2, ns
     )  # call this line in the ipython window to view the graph

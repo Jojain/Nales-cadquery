@@ -1,10 +1,10 @@
 from typing import Any, Callable, Dict, List, Literal, Union
 from PyQt5.QtCore import QPersistentModelIndex, Qt
-from cadquery import Workplane
+from ncadquery import Workplane
 
 from OCP.TDataStd import TDataStd_Name
 from OCP.TPrsStd import TPrsStd_AISPresentation
-from cadquery.occ_impl.shapes import Shape
+from ncadquery.occ_impl.shapes import Shape
 from OCP.AIS import AIS_InteractiveObject, AIS_ColoredShape
 from OCP.TNaming import TNaming_Builder, TNaming_NamedShape
 from nales.NDS.NOCAF import Application
