@@ -4,9 +4,9 @@ from typing import Callable, Dict, List, Literal, Union
 from cadquery import Workplane
 import cadquery
 from inspect import signature
-import cadquery
 from collections import OrderedDict
 import ast
+
 
 PY_TYPES_TO_AST_NODE = {
     int: ast.Constant,
@@ -18,7 +18,18 @@ PY_TYPES_TO_AST_NODE = {
     set: ast.Set,
 }
 
-# class Number(type)
+
+def sort_args_kwargs(part_cls, method_name: str, mixed_args: list) -> tuple:
+    sig = inspect.signature(getattr(part_cls, method_name))
+
+    args = []
+    kwargs = {}
+    for idx, p in enumerate(sig.parameters.values()):
+        if p.default is inspect.Parameter.empty:
+            args.append(mixed_args[idx - 1])
+        else:
+            kwargs[p.name] = mixed_args[idx - 1]
+    return args, kwargs
 
 
 def determine_type_from_str(string: str):

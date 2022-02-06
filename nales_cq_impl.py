@@ -9,7 +9,7 @@ from cadquery.occ_impl.geom import Plane, Vector
 from cadquery.occ_impl.shapes import Shape, Solid, Face, Wire, Edge, Vertex, Compound
 from OCP.TopoDS import TopoDS_Shape
 from nales_alpha.utils import get_Wp_method_kwargs, get_method_args_with_names
-
+import os
 
 from nales_alpha.widgets.msg_boxs import StdErrorMsgBox
 
@@ -47,6 +47,7 @@ class PartWrapper(SignalsHandler):
             # Since a cq_method can have internals calls to other cq_methods, cq_wrapper is called recursively here
             parent_obj = args[0]
 
+            # Checking if the call comes from the console or elswhere (i.e it's an internal call)
             try:
                 internal_call = kwargs.pop("internal_call")
             except KeyError:
@@ -185,6 +186,13 @@ class Part(PatchedWorkplane, QObject, metaclass=PartWrapper):
 
     def __init__(self, *args, name=None, **kwargs):
         QObject.__init__(self)
+
+        # Checking if the call comes from the console or elswhere (i.e it's an internal call)
+        try:
+            internal_call = kwargs.pop("internal_call")
+        except KeyError:
+            internal_call = False
+
         PatchedWorkplane.__init__(self, *args, **kwargs)
 
         self.on_name_error.connect(lambda msg: StdErrorMsgBox(msg, self._mw_instance))
@@ -213,7 +221,8 @@ class Part(PatchedWorkplane, QObject, metaclass=PartWrapper):
                 "operations": {},
                 "obj": self,
             }
-            self.on_method_call.emit(cmd)
+            if not internal_call:
+                self.on_method_call.emit(cmd)
 
     @property
     def name(self):

@@ -1,3 +1,4 @@
+import inspect
 import os
 import sys
 from typing import List
@@ -54,7 +55,7 @@ from nales_alpha.NDS.interfaces import NArgument, NOperation, NPart
 
 # debugpy.debug_this_thread()
 
-from nales_alpha.utils import get_Workplane_methods
+from nales_alpha.utils import get_Workplane_methods, sort_args_kwargs
 from nales_alpha.widgets.msg_boxs import WrongArgMsgBox, StdErrorMsgBox
 
 from nales_alpha.nales_cq_impl import (
@@ -153,10 +154,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def _setup_actions(self):
 
-        self.mw_actions = {}
+        self._actions = {}
 
-        self.mw_actions["delete"] = delete = QAction(self)
-        self.mw_actions["fitview"] = fitview = FitViewAction(self)
+        self._actions["delete"] = delete = QAction(self)
+        self._actions["fitview"] = fitview = FitViewAction(self)
 
         delete.setShortcut("Del")
         # self.addAction(delete)
@@ -406,6 +407,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 )
                 return
             self.param_model.add_parameter(name, value)
+
+        for part in reader.parts:
+            name = part["name"]
+            obj = part["object"]
+            self.model.add_part(name, obj)
+            for op in part["operations"]:
+                if op != "Workplane":
+                    args = sort_args_kwargs(Part, op, part["operations"][op])
+
+                    op_dict = {"name": op, "parameters": args}
+                    self.model.add_operation(name, obj, op_dict)
+
+            self._actions["fitview"].trigger()
 
 
 def main():

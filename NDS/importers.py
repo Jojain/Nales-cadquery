@@ -1,17 +1,10 @@
 from typing import List
 
-from nales_alpha.NDS.model import NALES_PARAMS_TYPES, NalesParam
+from nales_alpha.NDS.model import NalesParam
 
-# """
-# Partdef
-# Part1
-# box,circle,cutThruAll
-# No
-# """
-# Part1 = cq.Workplane()
-# Part1 = Part1.box(length=10, width=5, height=5, centered=True, combine=True, clean=True)
-# Part1 = Part1.circle(radius=1, forConstruction=False)
-# Part1 = Part1.cutThruAll(clean=True, taper=0)
+import ast
+
+from nales_alpha.nales_cq_impl import Part
 
 
 class PythonFileReader:
@@ -19,8 +12,9 @@ class PythonFileReader:
         with open(file_path, "r") as py_file:
             self.lines = py_file.readlines()
         self.params: List[NalesParam] = []
+        self.parts: List[dict] = []  # dict is : name, operations{name:args}, is_linked
 
-        self._parse_params()
+        self._parse()
 
     def _check_file_validity(self):
         if self.lines[0] != "# This file has been generated automatically by Nales":
@@ -28,29 +22,87 @@ class PythonFileReader:
         else:
             return True
 
-    def _find_parts_idx(self) -> List[int]:
+    def _find_parts_idxes(self) -> List[int]:
         """
         Returns the position of the parts definitions
         """
-        parts_idx = []
+        partsdef_idxes = []
         for idx, line in enumerate(self.lines):
             if line.startswith("#Partdef>>"):
-                parts_idx.append(idx)
+                partsdef_idxes.append(idx)
+        return partsdef_idxes
 
-        return parts_idx
+    def _build_parts(self):
+
+        non_linked_parts = [part for part in self.parts if not part["is_linked"]]
+        linked_parts = [part for part in self.parts if part["is_linked"]]
+
+        for part in non_linked_parts:
+
+            for op in part["operations"]:
+                args = part["operations"][op]
+                if op == "Workplane":
+                    obj = Part(*args, name=part["name"], internal_call=True)
+                else:
+                    obj = eval(f"obj.{op}(*{args}, internal_call=True)")
+
+            part["object"] = obj
+
+        self.parts = non_linked_parts + linked_parts
+
+    def _get_operation_data(self, line: str) -> tuple:
+        def handle_node(node, args, linked_args):
+            if isinstance(node, ast.Name):
+                value = node.id
+                args.append(value)
+                linked_args.append(value)
+            elif isinstance(node, ast.Constant):
+                args.append(node.value)
+            elif isinstance(node, ast.keyword):
+                return handle_node(node.value, args, linked_args)
+            else:
+                raise ValueError(f"Node type {type(node)} not handled")
+
+        ast_node = ast.parse(line)
+        call_node = ast_node.body[0].value
+        name = call_node.func.attr
+        args = []
+        linked_args = []
+        for arg in call_node.args:
+            handle_node(arg, args, linked_args)
+        for kw in call_node.keywords:
+            handle_node(kw, args, linked_args)
+
+        return name, args, linked_args
+
+    def _parse_partdef(self, partdef_idx: int):
+        def remove_prefix(prefix, s):
+            return s[len(prefix) :] if s.startswith(prefix) else s
+
+        part_name, nb_of_ops, is_linked = remove_prefix(
+            "#Partdef>> ", self.lines[partdef_idx]
+        ).split()
+
+        if is_linked == "True":
+            is_linked = True
+        else:
+            is_linked = False
+
+        part_def = {"name": part_name, "operations": {}, "is_linked": is_linked}
+
+        for line in self.lines[partdef_idx + 1 : partdef_idx + int(nb_of_ops) + 1]:
+            op_name, op_args, linked_args = self._get_operation_data(line)
+            part_def["operations"][op_name] = op_args
+
+        return part_def
 
     def _parse_parts(self):
+        partdef_idxes = self._find_parts_idxes()
 
-        parts_idx = self._find_parts_idx()
+        for partdef_idx in partdef_idxes:
+            self.parts.append(self._parse_partdef(partdef_idx))
 
-        for part_idx in parts_idx:
-            part_data = self.lines[part_idx + 1 : part_idx + 3]
-            part_def = {}
-            part_def["name"] = part_data[0].strip()
-            part_def["operations"] = part_data[1].strip().split(",")
-            part_def["link"] = part_data[2].strip()
-
-        self.parts
+        self._build_parts()
 
     def _parse_params(self):
         """
@@ -70,7 +122,7 @@ class PythonFileReader:
             type_ = data[1].strip()
             value = NalesParam.cast(type_, data[0].split("=")[1].strip())
 
-            param = NalesParam(name, value, type_)
+            param = NalesParam(name, value,)
             self.params.append(param)
 
     def _parse(self):

@@ -94,7 +94,12 @@ class PythonFileWriter:
         self._prepare_others_data()
 
     def _arg_data_to_str(self, arg_data: Dict):
-        return f'{arg_data["name"]} = {arg_data["value"]}'
+        if isinstance(arg_data["value"], str):
+            value = f"\"{arg_data['value']}\""
+        else:
+            value = arg_data["value"]
+
+        return f'{arg_data["name"]} = {value}'
 
     def _op_data_to_str(self, op_data: Dict):
 
