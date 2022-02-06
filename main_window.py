@@ -358,13 +358,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # cmd_history.setIcon(icon)
         file_pane.add_ribbon_widget(RibbonButton(self, cmd_history))
 
-        edit_panel = home_tab.add_ribbon_pane("Edit")
+        # edit_panel = home_tab.add_ribbon_pane("Edit")
 
-        view_panel = home_tab.add_ribbon_pane("View")
-        home_tab.add_spacer()
+        # view_panel = home_tab.add_ribbon_pane("View")
+        # home_tab.add_spacer()
 
-        about_tab = self._ribbon.add_ribbon_tab("About")
-        info_panel = about_tab.add_ribbon_pane("Info")
+        # about_tab = self._ribbon.add_ribbon_tab("About")
+        # info_panel = about_tab.add_ribbon_pane("Info")
 
     def save_file(self, path=None):
 
