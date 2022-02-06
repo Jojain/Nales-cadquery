@@ -73,7 +73,7 @@ class PythonFileReader:
         for kw in call_node.keywords:
             handle_node(kw, args, linked_args)
 
-        return name, args, linked_args
+        return name, args + linked_args
 
     def _parse_partdef(self, partdef_idx: int):
         def remove_prefix(prefix, s):
@@ -91,7 +91,7 @@ class PythonFileReader:
         part_def = {"name": part_name, "operations": {}, "is_linked": is_linked}
 
         for line in self.lines[partdef_idx + 1 : partdef_idx + int(nb_of_ops) + 1]:
-            op_name, op_args, linked_args = self._get_operation_data(line)
+            op_name, op_args = self._get_operation_data(line)
             part_def["operations"][op_name] = op_args
 
         return part_def

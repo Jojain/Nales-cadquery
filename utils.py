@@ -24,11 +24,13 @@ def sort_args_kwargs(part_cls, method_name: str, mixed_args: list) -> tuple:
 
     args = []
     kwargs = {}
-    for idx, p in enumerate(sig.parameters.values()):
+    for idx, p in enumerate(
+        list(sig.parameters.values())[1:]
+    ):  # remove the first param with is self
         if p.default is inspect.Parameter.empty:
-            args.append(mixed_args[idx - 1])
+            args.append(mixed_args[idx])
         else:
-            kwargs[p.name] = mixed_args[idx - 1]
+            kwargs[p.name] = mixed_args[idx]
     return args, kwargs
 
 

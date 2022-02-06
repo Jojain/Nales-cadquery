@@ -340,7 +340,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # load action
         load = QAction("Load", self)
-        load.triggered.connect(self.read_file)
+        load.triggered.connect(self.open_file)
         icon = QtGui.QIcon(":/icons/load_dm.png")
         load.setIcon(icon)
         file_pane.add_ribbon_widget(RibbonButton(self, load))
@@ -382,7 +382,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         writer.write_file(path)
 
-    def read_file(self, path=None):
+    def open_file(self, path=None):
 
         last_dir = self.settings.value("LAST_SAVE_PATH")
         if not path:

@@ -107,7 +107,7 @@ class PythonFileWriter:
         for arg in op_data["args"]:
             op_str += self._arg_data_to_str(arg)
             if arg is not op_data["args"][-1]:
-                op_str += ","
+                op_str += ", "
 
         op_str += ")"
         return op_str

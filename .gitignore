@@ -119,3 +119,5 @@ dmypy.json
 tests/tests_files/
 tests/sandbox/
 tests/tests_files/test_export_param.py
+tests/tests_files/test_export_param.py
+tests/tests_files/test.step
