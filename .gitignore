@@ -118,3 +118,4 @@ dmypy.json
 .vscode/tasks.json
 tests/tests_files/
 tests/sandbox/
+*.code-workspace
