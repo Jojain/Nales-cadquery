@@ -10,7 +10,7 @@ install_requires = [
     "qt-material",
     "ncadquery @ git+https://github.com/Jojain/cadquery.git@nales_cadquery",
 ]
-git+https://github.com/Jojain/Nales
+
 with open("LICENSE", "r") as license_file:
     license = license_file.read()
 
