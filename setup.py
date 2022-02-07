@@ -8,9 +8,13 @@ author = "Romain FERRU"
 author_email = "Romain.ferru@gmail.com"
 install_requires = [
     "qt-material",
-    "ncadquery @ git+https://github.com/Jojain/cadquery.git@nales_cadquery",
+    "PyQt5",
+    # "ncadquery @ git+https://github.com/Jojain/cadquery.git@nales_cadquery",
+    # "ncadquery @ git+https://git@github.com/Jojain/cadquery@nales_cadquery#egg=ncadquery",
 ]
-
+dependency_links = [
+    "https://git@github.com/Jojain/cadquery@nales_cadquery#egg=ncadquery"
+]
 with open("LICENSE", "r") as license_file:
     license = license_file.read()
 
@@ -24,6 +28,7 @@ setup(
     long_description=long_description,
     packages=find_packages(where="*"),
     install_requires=install_requires,
+    dependency_links=dependency_links,
     include_package_data=True,
     zip_safe=False,
     platforms="any",
