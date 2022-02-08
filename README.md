@@ -31,22 +31,31 @@ There is still a lot of idea that could be implemented but giving how the CadQue
 
 ## Installation 
 
-To install Nales you have to first install CadQuery :
+You will need Anaconda (or miniconda) to install Nales.
+
+First create a conda env and activate it
+
+```
+conda create -n nales python=3.8.8
+conda activate nales
+```
+
+Then install PyQt5 :
+`pip install PyQt5`
+
+Then install CadQuery :
 [CadQuery Installation](https://github.com/CadQuery/cadquery#getting-started) 
 
-Then you need to install PyQt5 and qt-material
+You will need to install a custom wheel available in the ncadquery repo within nales repo :
 
+````
+cd ./ncadquery
+pip install ncadquery-0.1-py3-none-any.whl
 ```
-pip install PyQt5
-pip install qt-material
-```
+Finally install nales by running :
 
-You will also need to install a modified version of cadquery :
+``python setup.py develop`
 
-```
-pip install git+https://github.com/Jojain/cadquery.git@nales_cadquery
-```
-
-From there you within you conda environement go through the `nales/scripts` repo and run :
+You should now be able to launch nales by running the `run_nales.py` script available in the scripts folder
 
 `python run_nales.py`

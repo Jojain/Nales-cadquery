@@ -1,0 +1,27 @@
+Metadata-Version: 2.1
+Name: nales
+Version: 0.0.1
+Summary: Nales
+Home-page: https://github.com/Jojain/Nales
+Author: Romain FERRU
+Author-email: Romain.ferru@gmail.com
+License: UNKNOWN
+Platform: UNKNOWN
+Classifier: [
+Classifier: "Intended Audience :: Developers",
+Classifier: "Intended Audience :: End Users/Desktop",
+Classifier: "Intended Audience :: Information Technology",
+Classifier: "Intended Audience :: Science/Research",
+Classifier: "License :: OSI Approved :: MIT License",
+Classifier: "Operating System :: POSIX",
+Classifier: "Operating System :: MacOS",
+Classifier: "Operating System :: Unix",
+Classifier: "Programming Language :: Python",
+Classifier: "Topic :: Software Development :: Libraries :: Python Modules",
+Classifier: "Topic :: Internet",
+Classifier: "Topic :: Scientific/Engineering"]
+Requires-Python: >=3.8
+License-File: LICENSE
+
+UNKNOWN
+
