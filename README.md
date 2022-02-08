@@ -40,21 +40,18 @@ conda create -n nales python=3.8.8
 conda activate nales
 ```
 
-Then install PyQt5 :
-`pip install PyQt5`
+Clone this repo somewhere.
+
 
 Then install CadQuery :
 [CadQuery Installation](https://github.com/CadQuery/cadquery#getting-started) 
 
-You will need to install a custom wheel available in the ncadquery repo within nales repo :
+Then install the wheel available in the repo 
 
 ````
-cd ./ncadquery
-pip install ncadquery-0.1-py3-none-any.whl
+cd ./dist
+pip install nales-0.0.1-py3-none-any.whl
 ```
-Finally install nales by running :
-
-``python setup.py develop`
 
 You should now be able to launch nales by running the `run_nales.py` script available in the scripts folder
 
