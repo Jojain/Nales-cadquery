@@ -1,0 +1,11 @@
+[build-system]
+requires = [
+    "setuptools",
+    "wheel",
+    "qtconsole",
+    "qt-material",
+    "pyqt5",
+    "ncadquery @ git+https://github.com/Jojain/cadquery.git@nales_cadquery",
+]
+build-backend = "setuptools.build_meta"
+
