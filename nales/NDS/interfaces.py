@@ -168,13 +168,8 @@ class NPart(NNode):
         self.bldr.Generated(self._solid)
 
         named_shape = self.bldr.NamedShape()
-        self._label.FindAttribute(TNaming_NamedShape.GetID_s(), named_shape)
+        self.ais_shape = TPrsStd_AISPresentation.Set_s(named_shape)
 
-        # self.ais_shape = TPrsStd_AISPresentation.Set_s(named_shape)
-        self.ais_shape = TPrsStd_AISPresentation.Set_s(
-            self._label, TNaming_NamedShape.GetID_s()
-        )
-        # self.ais_shape.SetTransparency(0.1)
         self.ais_shape.Display(update=True)
         self.root_node._viewer.Update()
 
