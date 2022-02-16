@@ -48,7 +48,7 @@ Then install CadQuery :
 
 Then install the wheel available in the repo 
 
-````
+```
 cd ./dist
 pip install nales-0.0.1-py3-none-any.whl
 ```
