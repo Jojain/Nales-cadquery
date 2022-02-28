@@ -1,22 +1,74 @@
 #%%
 import inspect
-from typing import Callable, Dict, List, Literal, Union
-from ncadquery import Workplane
-import ncadquery
-from inspect import signature
-from collections import OrderedDict
+from typing import Any, Callable, Dict, Iterable, List, Literal, Set, Tuple, Union
+
 import ast
+import typing
 
 
-PY_TYPES_TO_AST_NODE = {
-    int: ast.Constant,
-    float: ast.Constant,
-    str: ast.Constant,
-    tuple: ast.Tuple,
-    list: ast.List,
-    bool: ast.Constant,
-    set: ast.Set,
-}
+class TypeChecker:
+    TYPE_MAPPING = {
+        "Tuple": tuple,
+        "List": list,
+        "Dict": dict,
+        "Literal": str,
+        "Set": set,
+        "Iterable": list,
+    }
+
+    def __init__(self, type_) -> None:
+        self._type = type_
+
+    def _subtypes(self, type_=None) -> Any:
+        checktype = self._type if type_ is None else type_
+        origin = typing.get_origin(checktype)
+
+        if origin == Union:
+            for arg in typing.get_args(checktype):
+                yield arg
+        else:
+            yield checktype
+
+    def _cast_from_typing(self, type_, value):
+
+        typing_name = getattr(type_, "_name", None)
+        if (
+            typing_name == "Literal"
+            or type_ == str
+            or typing.get_origin(type_) == Literal
+        ):
+            return str(value)
+
+        eval_value = ast.literal_eval(str(value))
+
+        if typing_name in self.TYPE_MAPPING.keys():
+            return self.TYPE_MAPPING[typing_name](eval_value)
+        else:
+            return type_(eval_value)
+
+    def check(self, value: str) -> bool:
+        """
+        Returns if the input string can be casted in a suitable type
+        """
+        try:
+            self.cast(value)
+            return True
+        except:
+            return False
+
+    def cast(self, value: str) -> Any:
+        """
+        Cast `value` in the first type that match `self._type`
+        """
+        for type_ in self._subtypes():
+            try:
+                return self._cast_from_typing(type_, value)
+            except:
+                pass
+
+        raise ValueError(
+            f"Couldn't cast {value} in any of the types : {[t for t in self._subtypes()]}"
+        )
 
 
 def sort_args_kwargs(part_cls, method_name: str, mixed_args: list) -> tuple:
@@ -38,9 +90,6 @@ def determine_type_from_str(string: str):
 
     if len(string) == 0:
         return None
-    selector_chars = ("%", "|", ">", "<", "#")
-    # if any(char in string for char in selector_chars):
-    #     return str
 
     try:
         node = ast.parse(string).body[0].value
@@ -58,35 +107,14 @@ def determine_type_from_str(string: str):
     elif isinstance(node, ast.Dict):
         return dict
 
-    try:
-        int(string)
+    if string.isnumeric():
         return int
-    except ValueError:
+    else:
         try:
             float(string)
             return float
         except ValueError:
             return str
-
-
-def get_Workplane_methods() -> Dict[str, Callable]:
-    """
-    This function retrieve all the 'operations' of the Workplane
-    object that can be display in the gui
-    """
-
-    # For now it just gives all the public method of the class
-    # but it the future we want to not take in accout things like
-    # workplane, transformed, selectors, etc.
-
-    operations = dict(
-        (func, getattr(Workplane, func))
-        for func in dir(Workplane)
-        if callable(getattr(Workplane, func)) and not func.startswith("_")
-    )
-    operations["Workplane"] = Workplane.__init__
-
-    return operations
 
 
 def get_method_args_with_names(method: Callable, args: List) -> Dict:
@@ -99,95 +127,9 @@ def get_method_args_with_names(method: Callable, args: List) -> Dict:
     return named_args
 
 
-def get_Wp_method_args_name(method: Union[str, Callable]) -> list:
-    if isinstance(method, str):
-        method = get_Workplane_methods()[method]
-    params = inspect.signature(method).parameters
-    args = []
-    for p in params.values():
-        if p.default is p.empty and p.name != "self":
-            # if p.name != "self": # TODO Si l'utilisateur renseigne une valeur à un arg par défaut ça bug
-            args.append(p.name)
-    return args
-
-
-def get_Wp_method_kwargs(method: Union[str, Callable]) -> dict:
-    if isinstance(method, str):
-        method = get_Workplane_methods()[method]
-    params = inspect.signature(method).parameters
-    kwargs = dict()
-    for p in params.values():
-        if not p.default is p.empty:
-            kwargs[p.name] = p.default
-    return kwargs
-
-
-def get_topo_class_methods(class_name: str) -> Dict[str, Callable]:
-
-    topo_class = getattr(ncadquery, class_name)
-    return dict(
-        (func, getattr(topo_class, func))
-        for func in dir(topo_class)
-        if callable(getattr(topo_class, func)) and not func.startswith("_")
-    )
-
-
-def get_cq_topo_classes() -> List[str]:
-    """
-    Returns all the ncadquery topological classes
-    """
-
-    return ["Shape", "Compound", "CompSolid", "Solid", "Face", "Wire", "Edge", "Vertex"]
-
-
-def get_topo_class_args_name(class_name: str, method: str) -> list:
-    if isinstance(method, str):
-        method = get_topo_class_methods(class_name)[method]
-    params = inspect.signature(method).parameters
-    args = []
-    for p in params.values():
-        if p.default is p.empty and p.name != "self":
-            args.append(p.name)
-    return args
-
-
-def get_topo_class_kwargs_name(class_name: str, method: str) -> OrderedDict:
-    if isinstance(method, str):
-        method = get_topo_class_methods(class_name)[method]
-    params = inspect.signature(method).parameters
-    kwargs = OrderedDict()
-    for p in params.values():
-        if not p.default is p.empty:
-            kwargs[p.name] = p.default
-    return kwargs
-
-
-def get_cq_class_kwargs_name(class_name: str) -> OrderedDict:
-
-    cq_classes = {
-        class_name: obj
-        for (class_name, obj) in inspect.getmembers(ncadquery)
-        if inspect.isclass(obj)
-    }
-    params = inspect.signature(cq_classes[class_name]).parameters
-    kwargs = OrderedDict()
-    for p in params.values():
-        if not p.default is p.empty:
-            kwargs[p.name] = p.default
-    return kwargs
-
-
-def get_cq_types():
-    """
-    Returns all the ncadquery available types
-    """
-    types = []
-    for _, obj in inspect.getmembers(ncadquery):
-        if inspect.isclass(obj):
-            types.append(obj)
-    return types
-
-
 if __name__ == "__main__":
-    p = determine_type_from_str("'XY'")
-    print(p)
+    typ = typing.Iterable[
+        typing.Union[typing.Tuple[float, float], typing.Tuple[float, float, float]]
+    ]
+    tc = TypeChecker(typ)
+    print(type(tc.cast("[(5,5,5)]")))

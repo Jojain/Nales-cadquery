@@ -55,7 +55,7 @@ from nales.NDS.interfaces import NArgument, NOperation, NPart
 
 # debugpy.debug_this_thread()
 
-from nales.utils import get_Workplane_methods, sort_args_kwargs
+from nales.utils import sort_args_kwargs
 from nales.widgets.msg_boxs import WrongArgMsgBox, StdErrorMsgBox
 
 from nales.nales_cq_impl import (
@@ -216,16 +216,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if cmd["type"] in ("new_part", "part_override"):
                 self.push_cmd(AddPart(self.model, part_name, part))
 
-            operation = cmd["operations"]
-            if len(operation) != 0:
-                self.push_cmd(AddOperation(self.model, part_name, part, operation))
-                # self.modeling_ops_tree.expandAll()
+            operation = cmd["operation"]
+            self.push_cmd(AddOperation(self.model, part_name, part, operation))
 
-                # self.modeling_ops_tree.expand(self.model.childrens()[0])
-                # self.modeling_ops_tree.expand(
-                #     self.model.childrens(self.model.childrens()[0])[0]
-                # )
-                self.viewer.fit()
+            self.viewer.fit()
+
         self.modeling_ops_tree.expandAll()
 
     def delete_tree_item(self) -> None:

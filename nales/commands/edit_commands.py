@@ -18,13 +18,11 @@ class EditArgument(BaseCommand):
         self.idx = index
 
     def redo(self) -> None:
-        # arg_index = self.model.index_from_node(self.arg_node)
         arg_index = self.idx
         self.arg_node.value = self.edit_value
         self.model.dataChanged.emit(arg_index, arg_index)
 
     def undo(self) -> None:
-        # arg_index = self.model.index_from_node(self.arg_node)
         arg_index = self.idx
         self.arg_node.value = self.old_value
         self.model.dataChanged.emit(arg_index, arg_index)

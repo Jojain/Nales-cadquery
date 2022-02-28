@@ -1,11 +1,9 @@
 # This file test importers and exporters
 import os
-from pathlib import Path
 from typing import List, Tuple
-from ezdxf import is_dxf_file
 from nales.main_window import MainWindow
 
-TESTS_FILES_FOLDER = __file__.strip(__name__ + ".py") + "tests_files"
+TESTS_FILES_FOLDER = __file__.strip(__name__ + ".py") + r"\\tests_files"
 
 
 def _get_file_content(path: str) -> List[str]:

@@ -1,3 +1,4 @@
+from argparse import ArgumentDefaultsHelpFormatter
 from typing import Any, Callable, Dict, List, Literal, Optional
 import inspect
 from functools import wraps
@@ -5,13 +6,72 @@ from functools import wraps
 from PyQt5.QtCore import QObject, pyqtSignal
 from ncadquery import Workplane
 from ncadquery.cq import VectorLike
-from ncadquery.occ_impl.geom import Plane, Vector
 from ncadquery.occ_impl.shapes import Shape, Solid, Face, Wire, Edge, Vertex, Compound
-from OCP.TopoDS import TopoDS_Shape
-from nales.utils import get_Wp_method_kwargs, get_method_args_with_names
-import os
-
+from nales.utils import get_method_args_with_names
+from collections import namedtuple
+from itertools import zip_longest
 from nales.widgets.msg_boxs import StdErrorMsgBox
+
+
+class CQMethodCall:
+    ArgData = namedtuple("ArgData", ("name", "value", "type", "optional"))
+
+    def __init__(self, method: Callable, *args, **kwargs) -> None:
+        self.name = method.__name__
+        self._args = list(args)
+        self._kwargs = kwargs
+        if method.__name__ == "__init__":
+            method = Workplane.__init__
+        self.parameters = parameters = inspect.signature(method).parameters
+        self.pos_params = [
+            p
+            for p in parameters.values()
+            if p.default is p.empty and p.name not in ("self", "cls")
+        ]
+        self.kw_params = [p for p in parameters.values() if p.default is not p.empty]
+
+        self._dispatch_args_correctly()
+
+    def _dispatch_args_correctly(self):
+        """
+        This method makes sure any optional (keyword) parameter that have been called by position
+        and without it's keyword is put in the right attribute (self._args or self._kwargs)
+        """
+        method_params = [
+            p for p in self.parameters.values() if p.name not in ("self", "cls")
+        ]
+        if len(self._args) > len(self.pos_params):
+            actually_kwargs = self._args[len(self.pos_params) :]
+            self._args = self._args[: len(self.pos_params)]
+
+            kwargs_info = method_params[len(self.pos_params) :]
+            for kw, val in zip(kwargs_info, actually_kwargs):
+                self._kwargs[kw.name] = val
+
+        for name, val in self._kwargs.copy().items():
+            if name in [p.name for p in self.pos_params]:
+                self._args.append(self._kwargs.pop(name))
+
+    @property
+    def args(self) -> List[ArgData]:
+        args = []
+
+        for arg, param in zip(self._args, self.pos_params):
+            type_ = param.annotation if param.annotation != param.empty else type(arg)
+            args.append(self.ArgData(param.name, arg, type_, False))
+        for kwparam in self.kw_params:
+            try:
+                value = self._kwargs[kwparam.name]
+            except KeyError:
+                value = kwparam.default
+            type_ = (
+                kwparam.annotation
+                if kwparam.annotation != kwparam.empty
+                else type(value)
+            )
+            args.append(self.ArgData(kwparam.name, value, type_, True))
+
+        return args
 
 
 class SignalsHandler(type(QObject)):
@@ -24,13 +84,11 @@ class SignalsHandler(type(QObject)):
 
 class PartWrapper(SignalsHandler):
     @staticmethod
-    def _create_cmd(
-        part_name, obj, operations: Dict[Literal["name", "operations"], Any]
-    ):
+    def _create_cmd(part_name, obj, operation: CQMethodCall):
         cmd = {
             "type": "part_edit",
             "obj_name": part_name,
-            "operations": operations,
+            "operation": operation,
             "obj": obj,
         }
         return cmd
@@ -57,24 +115,11 @@ class PartWrapper(SignalsHandler):
 
             new_obj = cq_method(parent_obj, *args[1:], **kwargs)
 
-            if (
-                Part._recursion_nb == 1 and not internal_call
-            ):  # we are in the top level method call and the method is used by the user through the console
-                operations = {}
-                default_kwargs = get_Wp_method_kwargs(cq_method.__name__)
-                if kwargs:
-                    for kwarg, val in kwargs.items():
-                        default_kwargs[kwarg] = val
-
-                operations["name"] = cq_method.__name__
-                operations["parameters"] = (
-                    [
-                        arg.name if isinstance(arg, NALES_TYPES) else arg
-                        for arg in args[1:]
-                    ],
-                    default_kwargs,
-                )
-                cmd = PartWrapper._create_cmd(new_obj._name, new_obj, operations)
+            # check that we are in the top level method call and the method is used by the user through the console
+            if Part._recursion_nb == 1 and not internal_call:
+                # remove the Part object (which is the first one) from the args
+                operation = CQMethodCall(cq_method, *args[1:], **kwargs)
+                cmd = PartWrapper._create_cmd(new_obj._name, new_obj, operation)
                 new_obj.on_method_call.emit(cmd)
 
             Part._recursion_nb -= 1
@@ -102,16 +147,17 @@ class PartWrapper(SignalsHandler):
 
 
 class PatchedWorkplane(Workplane):
-    _name = None
-
     def __init__(self, *args, **kwargs):
+        self._name = None
         super().__init__(*args, **kwargs)
 
     def newObject(self, objlist):
         # patching the transmitting of _name attribute, could be changed directly in cq file since, we need to modify the cq
         # class anyway due to name clash between QObject and Workplane classes.
+        __doc__ = super().newObject.__doc__
         new_wp = super().newObject(objlist)
         new_wp._name = self._name
+
         return new_wp
 
     def workplane(
@@ -123,44 +169,7 @@ class PatchedWorkplane(Workplane):
         ] = "ProjectedOrigin",
         origin: Optional[VectorLike] = None,
     ):
-        """
-        Creates a new 2D workplane, located relative to the first face on the stack.
-
-        :param offset:  offset for the workplane in its normal direction . Default
-        :param invert:  invert the normal direction from that of the face.
-        :param centerOption: how local origin of workplane is determined.
-        :param origin: origin for plane center, requires 'ProjectedOrigin' centerOption.
-        :type offset: float or None=0.0
-        :type invert: boolean or None=False
-        :type centerOption: string or None='ProjectedOrigin'
-        :type origin: Vector or None
-        :rtype: Workplane object 
-
-        The first element on the stack must be a face, a set of
-        co-planar faces or a vertex.  If a vertex, then the parent
-        item on the chain immediately before the vertex must be a
-        face.
-
-        The result will be a 2D working plane
-        with a new coordinate system set up as follows:
-
-           * The centerOption parameter sets how the center is defined.
-             Options are 'CenterOfMass', 'CenterOfBoundBox', or 'ProjectedOrigin'.
-             'CenterOfMass' and 'CenterOfBoundBox' are in relation to the selected
-             face(s) or vertex (vertices). 'ProjectedOrigin' uses by default the current origin
-             or the optional origin parameter (if specified) and projects it onto the plane
-             defined by the selected face(s).
-           * The Z direction will be the normal of the face,computed
-             at the center point.
-           * The X direction will be parallel to the x-y plane. If the workplane is  parallel to
-             the global x-y plane, the x direction of the workplane will co-incide with the
-             global x direction.
-
-        Most commonly, the selected face will be planar, and the workplane lies in the same plane
-        of the face ( IE, offset=0).  Occasionally, it is useful to define a face offset from
-        an existing surface, and even more rarely to define a workplane based on a face that is
-        not planar.
-        """
+        __doc__ = super().workplane.__doc__
         new_wp = super().workplane(
             offset, invert, centerOption=centerOption, origin=origin
         )
@@ -218,9 +227,10 @@ class Part(PatchedWorkplane, QObject, metaclass=PartWrapper):
             cmd = {
                 "type": "new_part",
                 "obj_name": self._name,
-                "operations": {},
+                "operation": CQMethodCall(self.__init__, *args, **kwargs),
                 "obj": self,
             }
+
             if not internal_call:
                 self.on_method_call.emit(cmd)
 
@@ -416,17 +426,21 @@ NALES_TYPES = (
 if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication, QMainWindow
     import sys
+    import cadquery as cq
 
-    app = QApplication(sys.argv)
-    mw = QMainWindow()
-    mw.handle_command = lambda x: None
-    NalesShape._mw_instance = mw
+    args = CQMethodCall(cq.Workplane.cylinder, height=5, radius=15).args
+    print(args)
+
+    # app = QApplication(sys.argv)
+    # mw = QMainWindow()
+    # mw.handle_command = lambda x: None
+    # NalesShape._mw_instance = mw
     # mw.show()
 
     # Part.mainwindow = mw
     # p = Part().box(10, 10, 10)
-    a = NalesSolid.makeBox(1, 1, 2)
-    NalesVertex.makeVertex(2, 2, 2)
+    # a = NalesSolid.makeBox(1, 1, 2)
+    # NalesVertex.makeVertex(2, 2, 2)
 
     #
     # p.on_name_error.connect(lambda msg: StdErrorMsgBox(msg, p.mainwindow))

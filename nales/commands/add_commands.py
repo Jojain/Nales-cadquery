@@ -1,5 +1,5 @@
 from typing import Any, TYPE_CHECKING, Callable, Dict, List
-from nales.nales_cq_impl import NalesShape, Part
+from nales.nales_cq_impl import CQMethodCall, NalesShape, Part
 
 if TYPE_CHECKING:
     from nales.NDS.model import NModel, ParamTableModel
@@ -27,7 +27,7 @@ class AddPart(AddTreeItem):
 
 class AddOperation(AddTreeItem):
     def __init__(
-        self, model: "NModel", part_name: str, part_obj: Part, operation: dict
+        self, model: "NModel", part_name: str, part_obj: Part, operation: CQMethodCall
     ):
         super().__init__(model, part_name, part_obj)
         self.operation = operation

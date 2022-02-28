@@ -1,4 +1,17 @@
-from typing import Any, Callable, Dict, List, Literal, Union
+from nales.utils import TypeChecker
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Literal,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
+import typing
 from PyQt5.QtCore import QPersistentModelIndex, Qt
 from ncadquery import Workplane
 
@@ -12,12 +25,12 @@ from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
 from OCP.TDF import TDF_Label, TDF_TagSource
 from OCP.TCollection import TCollection_ExtendedString
 from OCP.TopoDS import TopoDS_Shape
-from nales.utils import PY_TYPES_TO_AST_NODE, get_Workplane_methods
 from OCP.Quantity import Quantity_NameOfColor
-
+import typeguard
 
 from nales.nales_cq_impl import (
     NALES_TYPES,
+    CQMethodCall,
     NalesCompound,
     NalesEdge,
     NalesFace,
@@ -128,12 +141,15 @@ class NNode:
 class NPart(NNode):
     def __init__(self, name: str, part: Workplane, parent):
         super().__init__(name, parent=parent)
-        self.part = part
         self.visible = True
         self._solid = TopoDS_Shape()
         self._active_shape = None
 
         self.display()
+
+    @property
+    def part(self):
+        return self.childs[-1].part_obj
 
     def _update_display_shapes(self):
         try:
@@ -182,6 +198,15 @@ class NPart(NNode):
         child_ops = self.childs
         for pos, child_op in enumerate(child_ops):
             child_op.update(pos)
+
+    def remove_operation(self, row: int):
+        """
+        Remove an operation from the operation tree
+        """
+
+        ops: List[NOperation] = self.childs
+        ops.pop(row)
+        ops[row - 1].update_from_node()
 
 
 class NShape(NNode):
@@ -250,88 +275,66 @@ class NShapeOperation(NNode):
 
 
 class NOperation(NNode):
-    def __init__(self, method_name: str, part: Part, parent: NNode, operations: dict):
+    def __init__(
+        self, method_name: str, part_obj: Part, parent: NNode, operation: CQMethodCall
+    ):
         super().__init__(method_name, parent=parent)
-        self.parent.part = part
-        self.operations = operations
-        self.method = getattr(part, method_name).__func__
+        self.part_obj = part_obj
+        self.operation = operation
+        self.method = getattr(part_obj, method_name).__func__
 
         if method_name == "Workplane":
             self._root_operation = True
         else:
             self._root_operation = False
 
-    def remove_operation(self):
-        """
-        Remove the last operation and update the parent NPart and Part obj accordingly
-        """
-        self.parent.part = self.parent.part._end(1)
-
     def update_from_node(self):
         """
         Update the Part from this node
         It recomputes every operation from this node to the end
         """
-        ops = self.parent.childs
-        first_op = True
+        ops: List[NOperation] = self.parent.childs[self.row :]
         for op in ops:
-            op.new_update(first_op)
-            first_op = False
-
+            op.update()
         self.parent.display(update=True)
 
-    def new_update(self, first_op=False):
+    def update(self) -> bool:
         """
-        
+        Update the CQ objects stack from param modification in the GUI view
         """
-        parent_part = self.parent.part
-        if first_op:
-            pos = len(self.parent.childs) - self.row - 1
-        else:
-            pos = 0
-        part = parent_part._end(pos)
+
+        # parent_part: Part = self.parent.part
+        previous_operations: List[NOperation] = self.parent.childs[: self.row]
+        try:
+            old_part_obj = previous_operations[-1].part_obj
+        except IndexError:
+            # user try to edit the __init__ method
+            raise NotImplementedError(
+                "Need to handle case where user edit the part creation (__init__)"
+            )
         args = [
             child.value if not child.is_linked("obj") else child.linked_obj
             for child in self.childs
         ]
 
         try:
-            part = self.method(part, *args, internal_call=True)
-            self.parent.part = part
-        except ValueError as exc:
+            self.part_obj = self.method(old_part_obj, *args, internal_call=True)
+            return True
+        except ValueError as exc:  # we update parent operations until pending wires have reset
             if exc.args[0] == "No pending wires present":
-                previous_op = self.parent.childs[self._row - 2]
-                previous_op.update(pos + 1)
-                self.update(pos)
+                tried_updates = [self]
+                # recursively call parent ops and store all the failed updates to update them again afterwards
+                while (tried_update := previous_operations[-1].update()) is False:
+                    tried_updates.append(tried_update)
+                for tried_update in tried_updates:
+                    tried_update.update()
+
             else:
                 StdErrorMsgBox(repr(exc))
+            return False
         except Exception as exc:
             StdErrorMsgBox(repr(exc))
-
-    def update(self, pos):
-        """
-        pos : the position of the cq stack
-        It goes in reverse, the operation row 0 is at end(len(stack))
-        """
-        parent_part = self.parent.part
-        part = parent_part._end(pos)
-        args = [
-            child.value if not child.is_linked("obj") else child.linked_obj
-            for child in self.childs
-        ]
-
-        try:
-            part = self.method(part, *args, internal_call=True)
-            self.parent.part = part
-        except ValueError as exc:
-            if exc.args[0] == "No pending wires present":
-                previous_op = self.parent.childs[self._row - 2]
-                previous_op.update(pos + 1)
-                self.update(pos)
-            else:
-                StdErrorMsgBox(repr(exc))
-        except Exception as exc:
-            StdErrorMsgBox(repr(exc))
+            return False
 
     def _restore_pending_wires(self):
         index = 2
@@ -357,16 +360,18 @@ class NArgument(NNode):
     If the Argument is linked to a Parameter, the Parameter name is displayed
     """
 
-    def __init__(self, arg_name: str, value, parent, kwarg=False, shape_arg=False):
+    def __init__(self, arg_name: str, value, arg_type, parent: NNode, kwarg=False):
         super().__init__(arg_name, parent=parent)
 
         self._name = arg_name
         if type(value) == str and (value in self.root_node.console_namespace.keys()):
-            self._type = type(self.root_node.console_namespace[value])
+            self._type = arg_type
             self._value = self.root_node.console_namespace[value]
         else:
-            self._type = type(value)
+            self._type = arg_type
             self._value = value
+
+        self._typechecker = TypeChecker(arg_type)
 
         self._kwarg = kwarg  # Boolean indicating if the arg is a kwarg or not
 
@@ -420,6 +425,45 @@ class NArgument(NNode):
         else:
             raise ValueError("Argument 'by' must be either 'obj' or 'param'")
 
+    def is_optional_type(self) -> bool:
+        """
+        Indicates if the NArgument is optional, i.e the function signature looks something like :
+        method(nargument:Union[float,None] = None) or method(nargument:Optional[float] = None)
+        """
+        if self.is_kwarg():
+            origin = typing.get_origin(self._type)
+            if origin == Optional:
+                return True
+            if origin == Union:
+                for allowed_type in typing.get_args(self._type):
+                    if allowed_type == type(None):
+                        return True
+                return False
+            else:
+                return False
+        else:
+            return False
+
+    def is_literal_type(self) -> bool:
+        origin = typing.get_origin(self.type)
+        if self.type == str or origin == Literal:
+            return True
+        if origin == Union:
+            possible_types = typing.get_args(self.type)
+            for possible_type in possible_types:
+                if possible_type == str or possible_type == Literal:
+                    return True
+        return False
+
+    def is_type_compatible(self, value: str) -> bool:
+        return self._typechecker.check(value)
+
+    def _cast(self, value: Any):
+
+        if type(value) == self._type:
+            return value
+        return self._typechecker.cast(value)
+
     @property
     def type(self):
         return self._type
@@ -463,10 +507,6 @@ class NArgument(NNode):
     @property
     def name(self):
         return self._name
-        # if self.is_linked(by="obj"):
-        #     return self.value.name
-        # else:
-        #     return self._name
 
     @name.setter
     def name(self, value):
@@ -474,14 +514,12 @@ class NArgument(NNode):
 
     @property
     def value(self):
-        if self._type is type(None):
+        if self.is_optional_type() and self._value is None:
             return None
         if self.is_linked(by="param"):
             return self._type(self._param_value_pidx.data())
-        elif self._type not in NALES_TYPES:
-            return self._type(self._value)
         else:
-            return self._value
+            return self._cast(self._value)
 
     @value.setter
     def value(self, value):

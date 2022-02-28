@@ -7,11 +7,12 @@ TODO: handle changing data.
 Taken from : https://gist.github.com/nbassler/342fc56c42df27239fa5276b79fca8e6
 """
 
+import typing
 from PyQt5.QtGui import QColor, QFont
 from collections import OrderedDict, namedtuple
 from inspect import signature
 from tokenize import any
-from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Literal, Tuple, Union
 import sys
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QMenu, QUndoCommand
@@ -37,7 +38,7 @@ from nales.NDS.NOCAF import Application
 # from OCP.TDF import TDF_Label, TDF_TagSource
 # from OCP.TCollection import TCollection_ExtendedString
 # from OCP.TopoDS import TopoDS_Shape
-from nales.utils import determine_type_from_str, get_Wp_method_args_name
+from nales.utils import determine_type_from_str
 from nales.NDS.interfaces import (
     NNode,
     NPart,
@@ -46,15 +47,11 @@ from nales.NDS.interfaces import (
     NShape,
     NShapeOperation,
 )
-from nales.widgets.msg_boxs import WrongArgMsgBox
-import ast
-
-import ncadquery as cq
 
 
 from nales.commands.edit_commands import EditArgument, EditParameter
 
-from nales.nales_cq_impl import NALES_TYPES, NalesShape, Part
+from nales.nales_cq_impl import NALES_TYPES, CQMethodCall, NalesShape, Part
 
 NALES_PARAMS_TYPES = {
     "int": int,
@@ -297,7 +294,7 @@ class NModel(QAbstractItemModel):
                 continue
 
     def add_operation(
-        self, part_name: str, part_obj: Part, operations: dict
+        self, part_name: str, part_obj: Part, operation: CQMethodCall
     ) -> NOperation:
         """
         Add an operation to the operation tree
@@ -315,42 +312,22 @@ class NModel(QAbstractItemModel):
 
         part_idx = self.index(row, 0, parts_idx)
 
-        method_name = operations["name"]
-        noperation = NOperation(method_name, part_obj, parent_part, operations)
+        method_name = operation.name
+        noperation = NOperation(method_name, part_obj, parent_part, operation)
         self.insertRows(self.rowCount(), parent=part_idx)
 
         operation_idx = self.index(noperation.row, 0, part_idx)
 
-        args, kwargs = operations["parameters"][0], operations["parameters"][1]
-        args = [arg.name if isinstance(arg, NPart) else arg for arg in args]
+        for arg in operation.args:
+            node = NArgument(
+                arg.name, arg.value, arg.type, noperation, kwarg=arg.optional
+            )
+            # # the argument is an object stored in the model data structure -----> Proposer de passer par un menu comme la table de param
+            # if not node.is_literal_type() and (obj_node := self._root.find(arg.name)):
+            #     idx = self.index_from_node(obj_node)
+            #     node.link("obj", (idx,))
 
-        args_names = get_Wp_method_args_name(method_name)
-        if len(args) == len(args_names):
-            for pos, arg in enumerate(args):
-                node = NArgument(args_names[pos], arg, noperation)
-
-                if type(arg) is str and (
-                    obj_node := self._root.find(arg)
-                ):  # the argument is an object stored in the model data structure
-                    idx = self.index_from_node(obj_node)
-                    node.link("obj", (idx,))
-
-                self.insertRows(self.rowCount(operation_idx), parent=operation_idx)
-        else:
-            # Means the user passed an argument without calling the keyword
-            nb_short_call_kwarg = len(args) - len(args_names)
-
-            for pos, arg in enumerate(args[0 : nb_short_call_kwarg - 1]):
-                node = NArgument(args_names[pos], arg, noperation)
-                self.insertRows(self.rowCount(operation_idx), parent=operation_idx)
-
-            kw_names = [kw_name for kw_name in list(kwargs.keys())]
-            for kwarg_name, kwarg_val in zip(kw_names, args[nb_short_call_kwarg - 1 :]):
-                kwargs[kwarg_name] = kwarg_val
-
-        for kwarg_name, kwarg_val in kwargs.items():
-            node = NArgument(kwarg_name, kwarg_val, noperation, kwarg=True)
-            self.insertRows(self.rowCount(operation_idx), parent=operation_idx)
+        self.insertRows(self.rowCount(operation_idx), parent=operation_idx)
 
         npart.display(update=True)
 
@@ -361,12 +338,12 @@ class NModel(QAbstractItemModel):
 
     def update_model(self, idx: QModelIndex) -> None:
         """
-        This method is called each time something is changed in the data model
+        This method is called each time something is changed in the data model from the view
         It's job is to dispatch the event to the right method in order to keep the data model 
         synchronized
         """
         if not isinstance(ptr := idx.internalPointer(), NArgument):
-            raise ValueError("Autre chose qu'un Argument a été modifié")
+            raise ValueError("Something else than a NArgument has been modified")
 
         if isinstance(ptr.parent, NOperation):
             self.update_operation(idx)
@@ -401,21 +378,13 @@ class NModel(QAbstractItemModel):
         shape_op.update()
 
     def update_operation(self, idx: QModelIndex) -> None:
+        """
+        Update the CQ / OCP data after a changed in a parameter made by the user
+        """
 
         if isinstance(ptr := idx.internalPointer(), NArgument):
-            starting_op = ptr.parent
-            part = starting_op.parent
-
-            operations = part.childs[starting_op.row :]
-
-            for operation in operations:
-                if operation is starting_op:
-                    pos = len(part.childs) - operation.row
-                else:
-                    pos = 0
-                operation.update(pos)
-
-            part.display(update=True)
+            starting_op: NOperation = ptr.parent
+            starting_op.update_from_node()
 
     def index_from_node(self, node: "NNode") -> QModelIndex:
         for idx in self.walk():
@@ -544,17 +513,11 @@ class NModel(QAbstractItemModel):
         Remove an operation at the given `op_idx` index
         """
 
-        npart = op_idx.parent().internalPointer()
+        npart: NPart = op_idx.parent().internalPointer()
         # We remove the op from the tree
+        npart.remove_operation(op_idx.row())
         self.removeRows([op_idx], op_idx.parent())
 
-        # We update the Part without the last operation
-        try:
-            last_op = npart.childs[-1]
-            last_op.remove_operation()
-        except IndexError:
-            while npart.part.parent_obj is not None:
-                npart.part = npart.part.parent_obj
         npart.display(update=True)
 
     def remove_part(self, part_idx: QModelIndex) -> None:
@@ -623,11 +586,9 @@ class NModel(QAbstractItemModel):
 
         if isinstance(node, NArgument):
             if role == Qt.DisplayRole:
-                if index.column() == 0:  #
+                if index.column() == 0:
                     if node.is_linked(by="param"):
                         return f"{node.name} = {node.linked_param}"
-                    # if node.is_linked(by="obj"):
-                    #     return f"{node.name}"
                     else:
                         return f"{node.name} = {node.value}"
 
@@ -703,8 +664,7 @@ class NModel(QAbstractItemModel):
 
                 else:
                     value_type = determine_type_from_str(value)
-                    if node._type == value_type:
-                        # node.value = value
+                    if node.is_type_compatible(value):
                         self.run_cmd.emit(EditArgument(self, value, index))
 
                     else:
