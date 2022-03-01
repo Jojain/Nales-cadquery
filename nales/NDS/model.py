@@ -52,6 +52,7 @@ from nales.NDS.interfaces import (
 from nales.commands.edit_commands import EditArgument, EditParameter
 
 from nales.nales_cq_impl import NALES_TYPES, CQMethodCall, NalesShape, Part
+from nales.widgets.msg_boxs import StdErrorMsgBox
 
 NALES_PARAMS_TYPES = {
     "int": int,

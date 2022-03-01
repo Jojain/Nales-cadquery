@@ -1,9 +1,46 @@
 #%%
 import inspect
 from typing import Any, Callable, Dict, Iterable, List, Literal, Set, Tuple, Union
-
+from functools import wraps
 import ast
 import typing
+
+from nales.widgets.msg_boxs import StdErrorMsgBox
+
+
+def handle_error(func):
+    """
+    Decorator that handle errors to display them as a MsgBox and avoid app crash
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            func(*args, **kwargs)
+        except Exception as exc:
+            StdErrorMsgBox(exc.args[0])
+
+    return wrapper
+
+
+def handle_cmd_error(method):
+    """
+    Decorator that handle errors to display them as a MsgBox and avoid app crash
+    """
+    if method.__name__ not in ["redo", "undo"]:
+        raise ValueError(f"{method} is not a method of a QUndoCommand")
+
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        try:
+            method(self, *args, **kwargs)
+        except Exception as exc:
+            exc_name = type(exc).__name__
+            exc_val = str(exc)
+            self.setObsolete(True)
+            StdErrorMsgBox([exc_name, exc_val])
+
+    return wrapper
 
 
 class TypeChecker:
@@ -66,7 +103,7 @@ class TypeChecker:
             except:
                 pass
 
-        raise ValueError(
+        raise TypeError(
             f"Couldn't cast {value} in any of the types : {[t for t in self._subtypes()]}"
         )
 

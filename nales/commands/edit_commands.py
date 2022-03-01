@@ -3,6 +3,8 @@ from PyQt5.QtCore import Qt, QModelIndex, QPersistentModelIndex
 
 
 from nales.commands.base_commands import BaseCommand
+from nales.utils import handle_cmd_error, handle_error
+from nales.widgets.msg_boxs import StdErrorMsgBox
 
 if TYPE_CHECKING:
     from nales.NDS.model import NModel, ParamTableModel
@@ -17,6 +19,7 @@ class EditArgument(BaseCommand):
         self.edit_value = value
         self.idx = index
 
+    @handle_cmd_error
     def redo(self) -> None:
         arg_index = self.idx
         self.arg_node.value = self.edit_value
@@ -46,6 +49,7 @@ class LinkParameter(BaseCommand):
         self.selected_args = selected_args
         self.old_values = [arg_idx.internalPointer().value for arg_idx in selected_args]
 
+    @handle_cmd_error
     def redo(self) -> None:
         self.modeling_ops_model.link_parameters(
             self.selected_args,
@@ -95,6 +99,7 @@ class EditParameter(BaseCommand):
         self.value = value
         self.idx = index
 
+    @handle_cmd_error
     def redo(self) -> None:
         if self.idx.column() == 0:
             self.old_value = self.model._data[self.idx.row()].name

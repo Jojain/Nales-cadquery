@@ -385,12 +385,16 @@ class NArgument(NNode):
         """
         Link this parameter to an object in available in the data model
         """
+        raw_val = value[1]
+
+        if not self.is_type_compatible(raw_val):
+            raise TypeError("Couldn't link the param")
+
         if by == "param":
             self._linked_param = value[0]
-            self.value = value[1]
+            self._value = value[1]
             self._param_name_pidx = value[2]
             self._param_value_pidx = value[3]
-            self.type = type(value[3].data())
         else:
             self._linked_obj_idx = value[0]
             linked_node = value[0].data(Qt.EditRole)  # The NNode holding the linked obj
@@ -517,7 +521,7 @@ class NArgument(NNode):
         if self.is_optional_type() and self._value is None:
             return None
         if self.is_linked(by="param"):
-            return self._type(self._param_value_pidx.data())
+            return self._cast(self._param_value_pidx.data())
         else:
             return self._cast(self._value)
 
