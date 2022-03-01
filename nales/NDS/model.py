@@ -89,7 +89,7 @@ class NalesParam:
 
     @value.setter
     def value(self, val):
-        self.type = determine_type_from_str(val).__name__
+        self.type = determine_type_from_str(val).__name__ if val else type(None)
         self._value = val
 
 
