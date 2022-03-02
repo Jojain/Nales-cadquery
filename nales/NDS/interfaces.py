@@ -298,26 +298,39 @@ class NOperation(NNode):
             op.update()
         self.parent.display(update=True)
 
+    def _update_init_part(self):
+        """
+        This method is called when the user try to update __init__ method arguments
+        There is a special handling because it is a bit different from the regular methods
+        """
+        args = [
+            child.value if not child.is_linked("obj") else child.linked_obj
+            for child in self.childs
+        ]
+        try:
+            self.method(self.part_obj, *args, internal_call=True)
+        except Exception as exc:
+            StdErrorMsgBox(repr(exc))
+
     def update(self) -> bool:
         """
         Update the CQ objects stack from param modification in the GUI view
         """
+        # Special handling of __init__ method
+        if self.row == 0:
+            self._update_init_part()
+            return True
 
-        # parent_part: Part = self.parent.part
         previous_operations: List[NOperation] = self.parent.childs[: self.row]
-        try:
-            old_part_obj = previous_operations[-1].part_obj
-        except IndexError:
-            # user try to edit the __init__ method
-            raise NotImplementedError(
-                "Need to handle case where user edit the part creation (__init__)"
-            )
+        old_part_obj = previous_operations[-1].part_obj
+
         args = [
             child.value if not child.is_linked("obj") else child.linked_obj
             for child in self.childs
         ]
 
         try:
+
             self.part_obj = self.method(old_part_obj, *args, internal_call=True)
             return True
         except ValueError as exc:  # we update parent operations until pending wires have reset

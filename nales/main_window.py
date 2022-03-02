@@ -180,9 +180,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.main_menu.addAction(undo)
         self.main_menu.addAction(redo)
 
-        self.uview = QUndoView(self.undo_stack)
-        self.uview.setWindowTitle("Commands")
-        # self.uview.show() # Needs to be passed to a button to open up
+        self.undo_view = QUndoView(self.undo_stack)
+        self.undo_view.setWindowTitle("Commands")
+        self.undo_view.setEmptyLabel("Initial state")
 
         # connect signals
         self.model.run_cmd.connect(lambda cmd: self.push_cmd(cmd))
@@ -351,6 +351,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         cmd_history = QAction("Open cmd\nHistory", self)
         # icon = QtGui.QIcon(":/icons/save_dm.png")
         # cmd_history.setIcon(icon)
+        cmd_history.triggered.connect(self.undo_view.show)
         file_pane.add_ribbon_widget(RibbonButton(self, cmd_history))
 
         # edit_panel = home_tab.add_ribbon_pane("Edit")
