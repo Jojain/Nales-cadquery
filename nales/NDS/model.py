@@ -504,7 +504,10 @@ class NModel(QAbstractItemModel):
 
     def parent(self, index):
         if index.isValid():
-            p = index.internalPointer().parent
+            if hasattr(ptr := index.internalPointer(), "parent"):
+                p = ptr.parent
+            else:
+                p = None
             if p:
                 return self.createIndex(p._row, 0, p)
         return QtCore.QModelIndex()

@@ -92,6 +92,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.setupUi(self)
         self.setWindowTitle("Nales")
+
+        # Private variables
         self._console.setStyleSheet(console_theme)
 
         self.main_menu = QMainWindow.menuBar(self)
@@ -209,15 +211,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if cmd["type"] == "other":
             pass
 
-        if cmd["type"] in ("new_part", "part_edit", "part_override"):
+        if cmd["type"] in ("new_part", "part_edit"):
             part = cmd["obj"]
             part_name = cmd["obj_name"]
-
-            if cmd["type"] in ("new_part", "part_override"):
-                self.push_cmd(AddPart(self.model, part_name, part))
-
             operation = cmd["operation"]
-            self.push_cmd(AddOperation(self.model, part_name, part, operation))
+
+            if cmd["type"] == "new_part":
+                self.push_cmd(AddPart(self.model, part_name, part, operation))
+            else:
+                self.push_cmd(AddOperation(self.model, part_name, part, operation))
 
             self.viewer.fit()
 
@@ -253,6 +255,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         Push the reiceved command on the stack
         """
+
         self.undo_stack.push(cmd)
 
     def _setup_modeling_ops_view(self):

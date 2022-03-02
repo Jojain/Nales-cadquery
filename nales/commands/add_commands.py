@@ -8,9 +8,12 @@ from nales.commands.base_commands import AddTreeItem, BaseCommand
 
 
 class AddPart(AddTreeItem):
-    def __init__(self, model: "NModel", part_name: str, part_obj: Part):
+    def __init__(
+        self, model: "NModel", part_name: str, part_obj: Part, operation: CQMethodCall
+    ):
         super().__init__(model, part_name, part_obj)
         self.has_been_undone = False
+        self.operation = operation
 
     def redo(self):
         if self.has_been_undone:
@@ -18,6 +21,7 @@ class AddPart(AddTreeItem):
             self.has_been_undone = False
 
         self.model.add_part(self.item_name, self.item_obj)
+        self.model.add_operation(self.item_name, self.item_obj, self.operation)
 
     def undo(self):
         self.has_been_undone = True

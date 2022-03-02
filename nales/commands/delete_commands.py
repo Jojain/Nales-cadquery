@@ -25,7 +25,7 @@ class DeletePart(DeleteTreeItem):
         self.node = self.model.add_part(self.part_name, self.node.part)
 
         for nop in self.noperations:
-            self.model.add_operation(nop.parent.name, self.item_obj, nop.operations)
+            self.model.add_operation(nop.parent.name, self.item_obj, nop.operation)
 
         # If we recreate the part we need to update it in the Part names
         if self.part_name not in Part._names:
@@ -52,7 +52,7 @@ class DeleteShape(DeleteTreeItem):
         self.node = self.model.add_part(self.part_name, self.node.part)
 
         for nop in self.noperations:
-            self.model.add_operation(nop.parent.name, self.part_obj, nop.operations)
+            self.model.add_operation(nop.parent.name, self.part_obj, nop.operation)
 
         # If we recreate the part we need to update it in the Part names
         if self.part_name not in Part._names:

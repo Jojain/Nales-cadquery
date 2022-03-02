@@ -116,6 +116,7 @@ class PartWrapper(SignalsHandler):
             new_obj = cq_method(parent_obj, *args[1:], **kwargs)
 
             # check that we are in the top level method call and the method is used by the user through the console
+            # and that
             if Part._recursion_nb == 1 and not internal_call:
                 # remove the Part object (which is the first one) from the args
                 operation = CQMethodCall(cq_method, *args[1:], **kwargs)
@@ -204,7 +205,6 @@ class Part(PatchedWorkplane, QObject, metaclass=PartWrapper):
 
         PatchedWorkplane.__init__(self, *args, **kwargs)
 
-        self.on_name_error.connect(lambda msg: StdErrorMsgBox(msg, self._mw_instance))
         self.on_method_call.connect(lambda ops: self._mw_instance.handle_command(ops))
 
         if self._recursion_nb == 0:
@@ -212,10 +212,10 @@ class Part(PatchedWorkplane, QObject, metaclass=PartWrapper):
                 if name not in Part._names:
                     Part._names.append(name)
                 else:
-                    self.on_name_error.emit(
-                        "This part name is already taken,\ndelete it or use another name."
+                    raise ValueError(
+                        f"The part name : {name} is already taken, delete it or use another name."
                     )
-                    return
+
                 self._name = name
 
             else:
