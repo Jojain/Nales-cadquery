@@ -512,14 +512,14 @@ class NModel(QAbstractItemModel):
                 return self.createIndex(p._row, 0, p)
         return QtCore.QModelIndex()
 
-    def remove_operation(self, op_idx: QModelIndex) -> None:
+    def remove_operation(self, op_node: NOperation) -> None:
         """
         Remove an operation at the given `op_idx` index
         """
 
-        npart: NPart = op_idx.parent().internalPointer()
+        npart: NPart = op_node.parent
+        op_idx = self.index_from_node(op_node)
         # We remove the op from the tree
-        npart.remove_operation(op_idx.row())
         self.removeRows([op_idx], op_idx.parent())
 
         npart.display(update=True)
