@@ -115,3 +115,30 @@ class EditParameter(BaseCommand):
         elif self.idx.column() == 1:
             self.model._data[self.idx.row()].value = self.old_value
         self.model.dataChanged.emit(self.idx, self.idx)
+
+
+class LinkObject(BaseCommand):
+    def __init__(
+        self,
+        modeling_ops_model: "NModel",
+        obj_node_idx: QModelIndex,
+        selected_args: List[QModelIndex],
+    ) -> None:
+
+        super().__init__()
+        self.modeling_ops_model = modeling_ops_model
+        self.selected_args = selected_args
+        self.obj_node_idx = obj_node_idx
+        self.old_values = [arg_idx.internalPointer().value for arg_idx in selected_args]
+
+    @handle_cmd_error
+    def redo(self) -> None:
+        self.modeling_ops_model.link_object(
+            self.selected_args, QPersistentModelIndex(self.obj_node_idx),
+        )
+
+    def undo(self) -> None:
+        for arg, value in zip(self.selected_args, self.old_values):
+            self.modeling_ops_model.unlink_parameter(arg)
+            arg.internalPointer().value = value
+            self.modeling_ops_model.dataChanged.emit(arg, arg)

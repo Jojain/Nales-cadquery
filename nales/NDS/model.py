@@ -410,6 +410,19 @@ class NModel(QAbstractItemModel):
         shapes_idx = self.index(self._root.child(1)._row, 0)
         self.insertRows(self.rowCount(shapes_idx), parent=shapes_idx)
 
+    def link_object(self, idxes_to_link: List[QModelIndex], obj_idx: QModelIndex):
+        """
+        Link all the provided nodes indexes with the provided obj_idx
+        """
+        for idx in idxes_to_link:
+            node = idx.internalPointer()
+            node.link("obj", obj_idx)
+        self.dataChanged.emit(idxes_to_link[0], idxes_to_link[-1])
+
+    def unlink_object(self, linked_node_idx: QModelIndex):
+        linked_node = linked_node_idx.internalPointer()
+        linked_node.unlink()
+
     def link_parameters(
         self,
         indexes: List[QModelIndex],
@@ -706,6 +719,13 @@ class NModel(QAbstractItemModel):
     def parts(self) -> List[NPart]:
         nparts = self._root.childs[0].childs
         return nparts
+
+    @property
+    def objects(self) -> List[Union[NPart, NShape]]:
+        objs = []
+        for child in self._root.childs:
+            objs.extend(child.childs)
+        return objs
 
     @property
     def console(self):
