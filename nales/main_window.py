@@ -296,14 +296,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         selection = [
             idx for idx in selection if isinstance(idx.internalPointer(), NArgument)
         ]
+        context_menu = QMenu("Parameter selection", tree)
+        param_submenu = context_menu.addMenu("Set parameter")
+        object_submenu = context_menu.addMenu("Set object")
 
         for item in selection:
             node = item.internalPointer()
-            context_menu = QMenu("Parameter selection", tree)
-            param_submenu = context_menu.addMenu("Set parameter")
-            object_submenu = context_menu.addMenu("Set object")
-
-            if node.is_linked():
+            if node.is_linked(by="param"):
                 rmv_param_action = context_menu.addAction("Remove parameter")
                 rmv_param_action.triggered.connect(
                     lambda: self.push_cmd(
@@ -333,14 +332,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if nobj != parent_nobj:
                     action = object_submenu.addAction(nobj.name)
                     nobj_idx = self.model.index_from_node(nobj)
+
                     action.triggered.connect(
                         lambda: self.push_cmd(
                             LinkObject(self.model, nobj_idx, selection)
                         )
-                    )
+                    
 
-            context_menu.move(tree.mapToGlobal(pos))
-            context_menu.show()
+        context_menu.move(tree.mapToGlobal(pos))
+        context_menu.show()
 
     def _setup_ribbon(self):
         self.addToolBar(self._ribbon)

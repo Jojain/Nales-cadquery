@@ -377,12 +377,8 @@ class NArgument(NNode):
         super().__init__(arg_name, parent=parent)
 
         self._name = arg_name
-        if type(value) == str and (value in self.root_node.console_namespace.keys()):
-            self._type = arg_type
-            self._value = self.root_node.console_namespace[value]
-        else:
-            self._type = arg_type
-            self._value = value
+        self._type = arg_type
+        self._value = value
 
         self._typechecker = TypeChecker(arg_type)
 
@@ -395,7 +391,9 @@ class NArgument(NNode):
         self._param_value_pidx = None
 
     def link(
-        self, by: Literal["param", "obj"], value: Union[Tuple, QPersistentModelIndex]
+        self,
+        by: Literal["param", "obj"],
+        value: Union[Tuple, QPersistentModelIndex, Any],
     ):
         """
         Link this parameter to an object in available in the data model
@@ -414,8 +412,7 @@ class NArgument(NNode):
         else:
             self._linked_nobj_idx = value
 
-    def unlink(self):
-        self._linked_nobj_idx = None
+    def unlink_param(self):
         self._linked_param = None
         self._param_name_pidx = None
         self._param_value_pidx = None
@@ -492,13 +489,20 @@ class NArgument(NNode):
             raise ValueError("This argument is not linked to a param")
 
     @property
+    def linked_node(self):
+        if not self._linked_nobj_idx:
+            raise ValueError("This argument isn't linked to any node")
+
+        else:
+            return self._linked_nobj_idx.data(Qt.EditRole)
+
+    @property
     def linked_obj(self):
         if self.is_linked(by="obj"):
-            linked_node = self._linked_nobj_idx.data(Qt.EditRole)
-            if hasattr(linked_node, "part"):
-                return linked_node.part
-            elif hasattr(linked_node, "shape"):
-                return linked_node.shape
+            if hasattr(self.linked_node, "part"):
+                return self.linked_node.part
+            elif hasattr(self.linked_node, "shape"):
+                return self.linked_node.shape
             else:
                 raise NotImplementedError(
                     "This argument is linked to a object that is not supported yet"
@@ -526,8 +530,12 @@ class NArgument(NNode):
         if self.is_linked(by="param"):
             return self._cast(self._param_value_pidx.data())
         elif self.is_linked(by="obj"):
-            return self._linked_nobj_idx.data(Qt.EditRole).name
+            return self.linked_obj
+        elif not isinstance(self._value, str):
+            # Upon argument creation self._value is already of the right type
+            return self._value
         else:
+            # If self._value is a string, means the users modified the argument in the GUI
             return self._cast(self._value)
 
     @value.setter
