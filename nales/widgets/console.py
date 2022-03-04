@@ -1,12 +1,13 @@
-import inspect
-from typing import Any, List
-from PyQt5.QtWidgets import QApplication, QHBoxLayout, QWidget, QMainWindow
-from PyQt5.QtCore import pyqtSlot, pyqtSignal
-from qtconsole.rich_jupyter_widget import RichJupyterWidget
-from qtconsole.inprocess import QtInProcessKernelManager
 import sys
-from nales.nales_cq_impl import Part
 from pprint import pprint
+from typing import Any, List
+
+from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtWidgets import QApplication
+from qtconsole.inprocess import QtInProcessKernelManager
+from qtconsole.rich_jupyter_widget import RichJupyterWidget
+
+from nales.nales_cq_impl import Part
 
 # sys.stdout = sys.stderr = io.StringIO() # QtInProcessKernelManager related see https://github.com/ipython/ipython/issues/10658#issuecomment-307757082
 
@@ -17,10 +18,6 @@ class ConsoleWidget(RichJupyterWidget):
 
     def __init__(self, customBanner=None, namespace=dict(), *args, **kwargs):
         super(ConsoleWidget, self).__init__(*args, **kwargs)
-
-        #        if not customBanner is None:
-        #            self.banner = customBanner
-
         self.font_size = 6
         self.kernel_manager = kernel_manager = QtInProcessKernelManager()
         kernel_manager.start_kernel(show_banner=False)

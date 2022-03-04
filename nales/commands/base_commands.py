@@ -1,10 +1,9 @@
-from functools import wraps
-from typing import Any, TYPE_CHECKING
-from PyQt5.QtWidgets import QUndoCommand
+from typing import TYPE_CHECKING, Any
+
 from PyQt5.QtCore import QModelIndex
+from PyQt5.QtWidgets import QUndoCommand
 
 from nales.NDS.interfaces import NOperation, NPart, NShape
-from nales.widgets.msg_boxs import StdErrorMsgBox
 
 if TYPE_CHECKING:
     from nales.NDS.model import NModel

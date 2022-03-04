@@ -1,10 +1,9 @@
-from typing import Any, TYPE_CHECKING, List
-from PyQt5.QtCore import Qt, QModelIndex, QPersistentModelIndex
+from typing import TYPE_CHECKING, Any, List
 
+from PyQt5.QtCore import QModelIndex, QPersistentModelIndex, Qt
 
 from nales.commands.base_commands import BaseCommand
-from nales.utils import handle_cmd_error, handle_error
-from nales.widgets.msg_boxs import StdErrorMsgBox
+from nales.utils import handle_cmd_error
 
 if TYPE_CHECKING:
     from nales.NDS.model import NModel, ParamTableModel

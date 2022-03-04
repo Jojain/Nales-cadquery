@@ -1,16 +1,14 @@
-from PyQt5.QtCore import QModelIndex, QObject, QPersistentModelIndex, QPoint, Qt
+from typing import Optional
+
+from PyQt5.QtCore import QModelIndex, QObject, Qt
 from PyQt5.QtGui import QPalette
-from nales.NDS.model import NModel, ParamTableModel
-from nales.NDS.interfaces import NArgument
 from PyQt5.QtWidgets import (
-    QMenu,
     QStyle,
-    QStyleOptionViewItem,
     QStyledItemDelegate,
+    QStyleOptionViewItem,
     QTreeView,
     QWidget,
 )
-from typing import List, Optional
 
 
 class MyDelegate(QStyledItemDelegate):

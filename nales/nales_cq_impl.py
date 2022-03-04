@@ -1,15 +1,14 @@
-from argparse import ArgumentDefaultsHelpFormatter
-from typing import Any, Callable, Dict, List, Literal, Optional
 import inspect
+from collections import namedtuple
 from functools import wraps
+from typing import Any, Callable, Dict, List, Literal, Optional
 
-from PyQt5.QtCore import QObject, pyqtSignal
 from ncadquery import Workplane
 from ncadquery.cq import VectorLike
-from ncadquery.occ_impl.shapes import Shape, Solid, Face, Wire, Edge, Vertex, Compound
+from ncadquery.occ_impl.shapes import Compound, Edge, Face, Shape, Solid, Vertex, Wire
+from PyQt5.QtCore import QObject, pyqtSignal
+
 from nales.utils import get_method_args_with_names
-from collections import namedtuple
-from itertools import zip_longest
 from nales.widgets.msg_boxs import StdErrorMsgBox
 
 
@@ -424,9 +423,10 @@ NALES_TYPES = (
 
 
 if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication, QMainWindow
     import sys
+
     import cadquery as cq
+    from PyQt5.QtWidgets import QApplication, QMainWindow
 
     args = CQMethodCall(cq.Workplane.cylinder, height=5, radius=15).args
     print(args)

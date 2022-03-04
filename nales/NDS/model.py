@@ -7,52 +7,34 @@ TODO: handle changing data.
 Taken from : https://gist.github.com/nbassler/342fc56c42df27239fa5276b79fca8e6
 """
 
-import typing
-from PyQt5.QtGui import QColor, QFont
-from collections import OrderedDict, namedtuple
-from inspect import signature
-from tokenize import any
-from typing import Any, Callable, Dict, Iterable, List, Literal, Tuple, Union
+
 import sys
+from typing import Any, Callable, Dict, List, Union
+
 from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtWidgets import QMenu, QUndoCommand
 from PyQt5.QtCore import (
-    QModelIndex,
     QAbstractItemModel,
     QAbstractTableModel,
+    QModelIndex,
     QPersistentModelIndex,
     Qt,
     pyqtSignal,
 )
-from ncadquery import Workplane
+from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import QUndoCommand
 
-# from OCP.TDataStd import TDataStd_Name
-# from OCP.TPrsStd import TPrsStd_AISPresentation
-from ncadquery.occ_impl.shapes import Shape
-
-# from OCP.AIS import AIS_InteractiveObject, AIS_ColoredShape
-# from OCP.TNaming import TNaming_Builder, TNaming_NamedShape
-from nales.NDS.NOCAF import Application
-
-# from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
-# from OCP.TDF import TDF_Label, TDF_TagSource
-# from OCP.TCollection import TCollection_ExtendedString
-# from OCP.TopoDS import TopoDS_Shape
-from nales.utils import determine_type_from_str
+from nales.commands.edit_commands import EditArgument, EditParameter
+from nales.nales_cq_impl import NALES_TYPES, CQMethodCall, NalesShape, Part
 from nales.NDS.interfaces import (
-    NNode,
-    NPart,
-    NOperation,
     NArgument,
+    NNode,
+    NOperation,
+    NPart,
     NShape,
     NShapeOperation,
 )
-
-
-from nales.commands.edit_commands import EditArgument, EditParameter
-
-from nales.nales_cq_impl import NALES_TYPES, CQMethodCall, NalesShape, Part
-from nales.widgets.msg_boxs import StdErrorMsgBox
+from nales.NDS.NOCAF import Application
+from nales.utils import determine_type_from_str
 
 NALES_PARAMS_TYPES = {
     "int": int,
