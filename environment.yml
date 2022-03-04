@@ -1,0 +1,11 @@
+name: nales-env
+dependencies: 
+- python>=3.8
+- pip
+- git
+- pip:
+  - pyqt5
+  - qtconsole
+  - qt-material
+  - typeguard
+  - ncadquery@git+https://github.com/Jojain/cadquery.git@nales_cadquery
