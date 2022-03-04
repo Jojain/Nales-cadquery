@@ -442,8 +442,8 @@ class NModel(QAbstractItemModel):
         self, arg_idx: QModelIndex = None, param_idx: QModelIndex = None
     ):
         if arg_idx and not param_idx:
-            arg = arg_idx.internalPointer()
-            arg.unlink_parameter()
+            arg: NArgument = arg_idx.internalPointer()
+            arg.unlink_param()
             self.dataChanged.emit(arg_idx, arg_idx)
 
         elif param_idx and not arg_idx:
@@ -466,7 +466,7 @@ class NModel(QAbstractItemModel):
 
             node = idx.internalPointer()
             if isinstance(node, NArgument):
-                if node.is_linked():
+                if node.is_linked(by="param"):
                     node._linked_param = node._param_name_pidx.data()
                     node.value = node._param_value_pidx.data()
 
