@@ -8,6 +8,8 @@ dependencies:
   - git
   - cadquery
   - pip:
+    - pytest
+    - pytest-qt
     - pyqt5
     - qtconsole
     - qt-material
