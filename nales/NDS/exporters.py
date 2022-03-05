@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict
 
 from nales.NDS.model import NModel
 
@@ -143,4 +143,3 @@ class PythonFileWriter:
                 py_file.write(self._get_part_header(part))
                 py_file.write(self._part_data_to_str(part))
                 py_file.write("\n")
-

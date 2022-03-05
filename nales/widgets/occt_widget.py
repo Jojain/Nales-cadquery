@@ -1,18 +1,12 @@
 from sys import platform
 
-from ncadquery.occ_impl.assembly import toCAF
-from PyQt5.QtWidgets import QWidget, QApplication, QTabWidget
-from PyQt5.QtCore import pyqtSlot, pyqtSignal, Qt, QEvent
-
-import OCP
-
-from OCP.XCAFPrs import XCAFPrs_AISObject
+from OCP.AIS import AIS_ColoredShape, AIS_DisplayMode, AIS_InteractiveContext
 from OCP.Aspect import Aspect_DisplayConnection, Aspect_TypeOfTriedronPosition
 from OCP.OpenGl import OpenGl_GraphicDriver
-from OCP.V3d import V3d_Viewer
-from OCP.AIS import AIS_InteractiveContext, AIS_DisplayMode, AIS_Shape, AIS_ColoredShape
 from OCP.Quantity import Quantity_Color
-
+from OCP.V3d import V3d_Viewer
+from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
+from PyQt5.QtWidgets import QWidget
 
 ZOOM_STEP = 0.9
 
@@ -176,29 +170,3 @@ class OCCTWidget(QWidget):
         from OCP.Cocoa import Cocoa_Window
 
         return Cocoa_Window(wid.ascapsule())
-
-
-def make_AIS(obj, options={}):
-
-    shape = None
-
-    if isinstance(obj, cq.Assembly):
-        label, shape = toCAF(obj)
-        ais = XCAFPrs_AISObject(label)
-    elif isinstance(obj, AIS_Shape):
-        ais = obj
-    else:
-        # shape = to_compound(obj)
-        ais = AIS_ColoredShape(shape.wrapped)
-
-    if "alpha" in options:
-        ais.SetTransparency(options["alpha"])
-    if "color" in options:
-        ais.SetColor(to_occ_color(options["color"]))
-    if "rgba" in options:
-        r, g, b, a = options["rgba"]
-        ais.SetColor(to_occ_color((r, g, b)))
-        ais.SetTransparency(a)
-
-    return ais, shape
-

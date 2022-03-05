@@ -1,6 +1,6 @@
 from typing import List, Union
-from PyQt5.QtWidgets import QApplication, QMessageBox, QWidget
-from PyQt5.QtCore import QSize, Qt
+
+from PyQt5.QtWidgets import QApplication, QMessageBox
 from qt_material import apply_stylesheet
 
 
@@ -36,4 +36,3 @@ if __name__ == "__main__":
     apply_stylesheet(app, theme="dark_teal.xml")
     msgbox = WrongArgMsgBox(tuple)
     app.exec_()
-

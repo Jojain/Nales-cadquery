@@ -1,4 +1,4 @@
-from nales.utils import TypeChecker
+import typing
 from typing import (
     Any,
     Callable,
@@ -11,36 +11,19 @@ from typing import (
     Tuple,
     Union,
 )
-import typing
-from PyQt5.QtCore import QPersistentModelIndex, Qt
+
 from ncadquery import Workplane
-
-from OCP.TDataStd import TDataStd_Name
-from OCP.TPrsStd import TPrsStd_AISPresentation
-from ncadquery.occ_impl.shapes import Shape
-from OCP.AIS import AIS_InteractiveObject, AIS_ColoredShape
-from OCP.TNaming import TNaming_Builder, TNaming_NamedShape
-from nales.NDS.NOCAF import Application
-from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
-from OCP.TDF import TDF_Label, TDF_TagSource
-from OCP.TCollection import TCollection_ExtendedString
-from OCP.TopoDS import TopoDS_Shape
 from OCP.Quantity import Quantity_NameOfColor
-import typeguard
+from OCP.TCollection import TCollection_ExtendedString
+from OCP.TDataStd import TDataStd_Name
+from OCP.TDF import TDF_Label, TDF_TagSource
+from OCP.TNaming import TNaming_Builder, TNaming_NamedShape
+from OCP.TopoDS import TopoDS_Shape
+from OCP.TPrsStd import TPrsStd_AISPresentation
+from PyQt5.QtCore import QPersistentModelIndex, Qt
 
-from nales.nales_cq_impl import (
-    NALES_TYPES,
-    CQMethodCall,
-    NalesCompound,
-    NalesEdge,
-    NalesFace,
-    NalesShape,
-    NalesSolid,
-    NalesVertex,
-    NalesWire,
-    Part,
-)
-
+from nales.nales_cq_impl import NALES_TYPES, CQMethodCall, Part
+from nales.utils import TypeChecker
 from nales.widgets.msg_boxs import StdErrorMsgBox
 
 
@@ -545,4 +528,3 @@ class NArgument(NNode):
     @property
     def linked_param(self):
         return self._linked_param
-

@@ -1,9 +1,9 @@
-from typing import Any, TYPE_CHECKING, Dict, List
-from PyQt5.QtCore import QModelIndex
-from nales.nales_cq_impl import Part
+from typing import TYPE_CHECKING, List
 
+from PyQt5.QtCore import QModelIndex
 
 from nales.commands.base_commands import BaseCommand, DeleteTreeItem
+from nales.nales_cq_impl import Part
 
 if TYPE_CHECKING:
     from nales.NDS.model import NModel, ParamTableModel
