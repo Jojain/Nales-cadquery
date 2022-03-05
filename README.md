@@ -26,12 +26,14 @@ There is a lot of things planned but not so much time to develop, however here i
 - Clipping planes
 - Measurements tools
 - Code synthesis through the GUI (Selector synthesis, Assembly constraint synthesis, etc)
+- And much more (you can propose improvements you would like to see)
 
 There is still a lot of idea that could be implemented but giving how the CadQuery is at this moment it may be difficult to implement some of them (like bringing full GUI handling of model creation), roadmap is allowed to evolve as the project takes shape.
 
 ## Installation 
 
-You will need Anaconda (or miniconda) to install Nales.
+You will need Anaconda (or miniconda) to install Nales 
+([Miniconda installation guide](https://docs.conda.io/en/latest/miniconda.html)).
 
 First create a conda env and activate it
 
@@ -43,16 +45,14 @@ conda activate nales
 Clone this repo somewhere.
 
 
-Then install CadQuery :
-[CadQuery Installation](https://github.com/CadQuery/cadquery#getting-started) 
-
-Then install the wheel available in the repo 
+Then in the top level repo run (it will install all the needed dependencies required to run Nales): 
 
 ```
-cd ./dist
-pip install nales-0.0.1-py3-none-any.whl
+conda env update --file environment.yml -n nales
 ```
 
 You should now be able to launch nales by running the `run_nales.py` script available in the scripts folder
 
-`python run_nales.py`
+```
+python run_nales.py
+```

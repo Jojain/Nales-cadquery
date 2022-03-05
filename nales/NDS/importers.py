@@ -130,4 +130,3 @@ class PythonFileReader:
 
         self._parse_params()
         self._parse_parts()
-

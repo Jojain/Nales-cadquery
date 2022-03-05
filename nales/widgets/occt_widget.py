@@ -170,4 +170,3 @@ class OCCTWidget(QWidget):
         from OCP.Cocoa import Cocoa_Window
 
         return Cocoa_Window(wid.ascapsule())
-

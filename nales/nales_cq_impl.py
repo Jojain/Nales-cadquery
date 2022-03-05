@@ -445,4 +445,3 @@ if __name__ == "__main__":
     #
     # p.on_name_error.connect(lambda msg: StdErrorMsgBox(msg, p.mainwindow))
     # p.on_name_error.emit("This part name is already taken,\ndelete it or use another name.")
-

@@ -36,4 +36,3 @@ if __name__ == "__main__":
     apply_stylesheet(app, theme="dark_teal.xml")
     msgbox = WrongArgMsgBox(tuple)
     app.exec_()
-
