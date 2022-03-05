@@ -45,6 +45,17 @@ class NNode:
             self._name = "root"
             self._row = 0
 
+    def _create_sublabel(self):
+        """
+        Create an additionnal OCCT label that is needed if you want to display several shapes
+        (It's one shape per label)
+        """
+        sublabel = TDF_TagSource.NewChild_s(self._label)
+        TDataStd_Name.Set_s(
+            sublabel, TCollection_ExtendedString(f"{self.name} subshape")
+        )
+        return sublabel
+
     def walk(self, node: "NNode" = None) -> "NNode":
         """
         Walks all the node starting from 'node'
@@ -142,15 +153,18 @@ class NPart(NNode):
 
         self._solid = solid
 
-        if active_shape := self.part._val().wrapped is solid:
-            self._active_shape = None
-        else:
+        if not (active_shape := self.part._val().wrapped) is solid and isinstance(
+            active_shape, TopoDS_Shape
+        ):
             self._active_shape = active_shape
+        else:
+            self._active_shape = None
 
     def hide(self):
 
         self.visible = False
-        self.ais_shape.Erase(remove=True)
+        self.ais_solid.Erase(remove=True)
+        self.ais_active_shape.Erase(remove=True)
         self.root_node._viewer.Update()
 
     def display(self, update=False):
@@ -159,17 +173,31 @@ class NPart(NNode):
         """
 
         if update:
-            self.ais_shape.Erase(remove=True)
+            self.ais_solid.Erase(remove=True)
+            if self._active_shape:
+                self.ais_active_shape.Erase(remove=True)
             self._update_display_shapes()
+            # self.root_node._viewer.Update()
+
+        solid_bldr = TNaming_Builder(self._label)  # _label is  TDF_Label
+        solid_bldr.Generated(self._solid)
+        solid_shape_attr = solid_bldr.NamedShape()
+        self.ais_solid = TPrsStd_AISPresentation.Set_s(solid_shape_attr)
+
+        if self._active_shape:
+            active_shape_bldr = TNaming_Builder(self._create_sublabel())
+            active_shape_bldr.Generated(self._active_shape)
+            active_shape_attr = active_shape_bldr.NamedShape()
+            self.ais_active_shape = TPrsStd_AISPresentation.Set_s(active_shape_attr)
+            self.ais_active_shape.SetColor(Quantity_NameOfColor.Quantity_NOC_RED)
+            self.ais_active_shape.Display(update=True)
             self.root_node._viewer.Update()
+        # There is color mixing due to overlapping, maybe this can help to solve the issue :
+        # https://dev.opencascade.org/doc/refman/html/class_a_i_s___interactive_context.html#a1e0f9550cc001adbb52329ac243bb3b2
+        # It's considered good enough for now
+        self.ais_solid.SetTransparency(0.9)
+        self.ais_solid.Display()
 
-        self.bldr = TNaming_Builder(self._label)  # _label is  TDF_Label
-        self.bldr.Generated(self._solid)
-
-        named_shape = self.bldr.NamedShape()
-        self.ais_shape = TPrsStd_AISPresentation.Set_s(named_shape)
-
-        self.ais_shape.Display(update=True)
         self.root_node._viewer.Update()
 
         self.visible = True
