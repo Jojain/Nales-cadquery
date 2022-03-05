@@ -1,4 +1,3 @@
-import inspect
 import os
 import sys
 from typing import List
@@ -17,6 +16,8 @@ from PyQt5.QtWidgets import (
     QLabel,
     QFileDialog,
 )
+
+from functools import partial
 
 from nales.widgets.ribbon_widget import RibbonButton
 from nales.uic.mainwindow import Ui_MainWindow
@@ -37,6 +38,7 @@ from nales.commands.delete_commands import (
     DeletePart,
 )
 from nales.commands.edit_commands import (
+    LinkObject,
     LinkParameter,
     UnlinkParameter,
 )
@@ -292,44 +294,54 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self, tree: ModelingOpsView, pos: QPoint, selection: List[QModelIndex]
     ):
         param_model = self.param_model
-        for item in selection:
-            node = item.internalPointer()
-            if isinstance(node, NArgument):
-                context_menu = QMenu("Parameter selection", tree)
-                submenu = context_menu.addMenu("Set parameter")
+        selection = [
+            idx for idx in selection if isinstance(idx.internalPointer(), NArgument)
+        ]
+        context_menu = QMenu("Parameter selection", tree)
+        param_submenu = context_menu.addMenu("Set parameter")
+        object_submenu = context_menu.addMenu("Set object")
 
-                if node.is_linked():
-                    rmv_param_action = context_menu.addAction("Remove parameter")
-                    rmv_param_action.triggered.connect(
-                        lambda: self.push_cmd(
-                            UnlinkParameter(self.param_model, self.model, selection)
-                        )
-                    )
+        selected_nodes = [item.internalPointer() for item in selection]
+        if all([node.is_linked(by="param") for node in selected_nodes]):
+            rmv_param_action = context_menu.addAction("Remove parameter")
+            rmv_param_action.triggered.connect(
+                lambda: self.push_cmd(
+                    UnlinkParameter(self.param_model, self.model, selection)
+                )
+            )
 
-                # add all the parameters available as linking possibility
-                for (name_idx, val_idx) in [
-                    (param_model.index(i, 0), param_model.index(i, 1))
-                    for i in range(param_model.rowCount())
-                ]:
+            # add all the parameters available as linking possibility
+        for (name_idx, val_idx) in [
+            (param_model.index(i, 0), param_model.index(i, 1))
+            for i in range(param_model.rowCount())
+        ]:
 
-                    param_name = name_idx.internalPointer()
-                    action = submenu.addAction(param_name)
-                    action.triggered.connect(
-                        lambda: self.push_cmd(
-                            LinkParameter(
-                                self.param_model,
-                                self.model,
-                                selection,
-                                name_idx,
-                                val_idx,
-                            )
-                        )
-                    )
+            param_name = name_idx.internalPointer()
+            action = param_submenu.addAction(param_name)
+            # Using partial instead of lambda to solve problem of closure with lambda within loops
+            # Check here for reference : https://stackoverflow.com/questions/19837486/lambda-in-a-loop
+            action.triggered.connect(
+                partial(
+                    self.push_cmd,
+                    LinkParameter(
+                        self.param_model, self.model, selection, name_idx, val_idx,
+                    ),
+                )
+            )
 
-                context_menu.move(tree.mapToGlobal(pos))
-                context_menu.show()
-            else:
-                return
+        # add all the objects available as linking possibility
+        parent_nobjs = [arg.parent.parent for arg in selected_nodes]
+        for nobj in self.model.objects:
+            if nobj not in parent_nobjs:
+                action = object_submenu.addAction(nobj.name)
+                nobj_idx = self.model.index_from_node(nobj)
+
+                action.triggered.connect(
+                    partial(self.push_cmd, LinkObject(self.model, nobj_idx, selection))
+                )
+
+            context_menu.move(tree.mapToGlobal(pos))
+            context_menu.show()
 
     def _setup_ribbon(self):
         self.addToolBar(self._ribbon)

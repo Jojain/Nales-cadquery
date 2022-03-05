@@ -323,10 +323,11 @@ class NModel(QAbstractItemModel):
             node = NArgument(
                 arg.name, arg.value, arg.type, noperation, kwarg=arg.optional
             )
-            # # the argument is an object stored in the model data structure -----> Proposer de passer par un menu comme la table de param
-            # if not node.is_literal_type() and (obj_node := self._root.find(arg.name)):
-            #     idx = self.index_from_node(obj_node)
-            #     node.link("obj", (idx,))
+            # the argument is an object stored in the model data structure
+            if isinstance(arg.value, NALES_TYPES):
+                obj_node = self._root.find(arg.value._name)
+                idx = self.index_from_node(obj_node)
+                node.link("obj", idx)
 
         self.insertRows(self.rowCount(operation_idx), parent=operation_idx)
 
@@ -410,6 +411,19 @@ class NModel(QAbstractItemModel):
         shapes_idx = self.index(self._root.child(1)._row, 0)
         self.insertRows(self.rowCount(shapes_idx), parent=shapes_idx)
 
+    def link_object(self, idxes_to_link: List[QModelIndex], obj_idx: QModelIndex):
+        """
+        Link all the provided nodes indexes with the provided obj_idx
+        """
+        for idx in idxes_to_link:
+            node = idx.internalPointer()
+            node.link("obj", obj_idx)
+        self.dataChanged.emit(idxes_to_link[0], idxes_to_link[-1])
+
+    def unlink_object(self, linked_node_idx: QModelIndex):
+        linked_node = linked_node_idx.internalPointer()
+        linked_node.unlink()
+
     def link_parameters(
         self,
         indexes: List[QModelIndex],
@@ -428,8 +442,8 @@ class NModel(QAbstractItemModel):
         self, arg_idx: QModelIndex = None, param_idx: QModelIndex = None
     ):
         if arg_idx and not param_idx:
-            arg = arg_idx.internalPointer()
-            arg.unlink()
+            arg: NArgument = arg_idx.internalPointer()
+            arg.unlink_param()
             self.dataChanged.emit(arg_idx, arg_idx)
 
         elif param_idx and not arg_idx:
@@ -452,7 +466,7 @@ class NModel(QAbstractItemModel):
 
             node = idx.internalPointer()
             if isinstance(node, NArgument):
-                if node.is_linked():
+                if node.is_linked(by="param"):
                     node._linked_param = node._param_name_pidx.data()
                     node.value = node._param_value_pidx.data()
 
@@ -512,13 +526,12 @@ class NModel(QAbstractItemModel):
                 return self.createIndex(p._row, 0, p)
         return QtCore.QModelIndex()
 
-    def remove_operation(self, op_node: NOperation) -> None:
+    def remove_operation(self, op_idx: QModelIndex) -> None:
         """
         Remove an operation at the given `op_idx` index
         """
 
-        npart: NPart = op_node.parent
-        op_idx = self.index_from_node(op_node)
+        npart: NPart = op_idx.internalPointer().parent
         # We remove the op from the tree
         self.removeRows([op_idx], op_idx.parent())
 
@@ -593,6 +606,8 @@ class NModel(QAbstractItemModel):
                 if index.column() == 0:
                     if node.is_linked(by="param"):
                         return f"{node.name} = {node.linked_param}"
+                    elif node.is_linked(by="obj"):
+                        return f"{node.name} = {node.linked_node.name}"
                     else:
                         return f"{node.name} = {node.value}"
 
@@ -706,6 +721,13 @@ class NModel(QAbstractItemModel):
     def parts(self) -> List[NPart]:
         nparts = self._root.childs[0].childs
         return nparts
+
+    @property
+    def objects(self) -> List[Union[NPart, NShape]]:
+        objs = []
+        for child in self._root.childs:
+            objs.extend(child.childs)
+        return objs
 
     @property
     def console(self):
