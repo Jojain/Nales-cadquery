@@ -1,4 +1,4 @@
-name: Python Package using Conda
+name: Build and checks Nales install
 
 on: [push]
 
@@ -26,7 +26,7 @@ jobs:
 
     - name: Install Nales
       run: |
-        python ./nales/setup.py install 
+        python setup.py install 
 
     # - name: Lint with flake8
     #   run: |
