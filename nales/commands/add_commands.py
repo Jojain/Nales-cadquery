@@ -1,10 +1,10 @@
-from typing import Any, TYPE_CHECKING, Callable, Dict, List
+from typing import TYPE_CHECKING, Callable, Dict
+
+from nales.commands.base_commands import AddTreeItem, BaseCommand
 from nales.nales_cq_impl import CQMethodCall, NalesShape, Part
 
 if TYPE_CHECKING:
     from nales.NDS.model import NModel, ParamTableModel
-
-from nales.commands.base_commands import AddTreeItem, BaseCommand
 
 
 class AddPart(AddTreeItem):
