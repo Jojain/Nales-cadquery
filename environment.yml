@@ -1,11 +1,14 @@
 name: nales-env
+channels:
+  - conda-forge
+  - cadquery
 dependencies: 
-- python>=3.8
-- pip
-- git
-- pip:
-  - pyqt5
-  - qtconsole
-  - qt-material
-  - typeguard
-  - ncadquery@git+https://github.com/Jojain/cadquery.git@nales_cadquery
+  - python>=3.8
+  - pip
+  - git
+  - cadquery
+  - pip:
+    - pyqt5
+    - qtconsole
+    - qt-material
+    - ncadquery@git+https://github.com/Jojain/cadquery.git@nales_cadquery
