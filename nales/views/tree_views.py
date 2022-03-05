@@ -30,4 +30,3 @@ class ModelingOpsView(QTreeView):
         # self.dl = MyDelegate()
         # self.setItemDelegateForRow(0,self.dl)
         # self.actions = []
-

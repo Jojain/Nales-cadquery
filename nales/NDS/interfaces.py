@@ -528,4 +528,3 @@ class NArgument(NNode):
     @property
     def linked_param(self):
         return self._linked_param
-
