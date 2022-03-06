@@ -37,10 +37,13 @@ class AddOperation(AddTreeItem):
         self.operation = operation
 
     def redo(self):
-        self.model.add_operation(self.item_name, self.item_obj, self.operation)
+        self.node = self.model.add_operation(
+            self.item_name, self.item_obj, self.operation
+        )
+        self.row = self.node.row
 
     def undo(self):
-        parent_idx = self.model.get_part_index(self.part_name)
+        parent_idx = self.model.get_part_index(self.item_name)
         node_idx = self.model.index(self.row, 0, parent_idx)
         self.model.remove_operation(node_idx)
 

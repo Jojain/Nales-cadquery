@@ -16,6 +16,8 @@ If you have used CadQuery and felt annoyed by :
 
 Then you might be interested by Nales which aims to solve all of these points and more.
 
+:warning: **Nales is currently barely usable, expect a lot of issues/crash so beware of what you are doing**
+
 ## Roadmap
 
 There is a lot of things planned but not so much time to develop, however here is a list of what is expected to be in Nales in the near future:
@@ -28,7 +30,7 @@ There is a lot of things planned but not so much time to develop, however here i
 - Code synthesis through the GUI (Selector synthesis, Assembly constraint synthesis, etc)
 - And much more (you can propose improvements you would like to see)
 
-There is still a lot of idea that could be implemented but giving how the CadQuery is at this moment it may be difficult to implement some of them (like bringing full GUI handling of model creation), roadmap is allowed to evolve as the project takes shape.
+Roadmap is allowed to evolve as the project takes shape, any idea or contribution is welcome.
 
 ## Installation 
 
@@ -56,3 +58,32 @@ You should now be able to launch nales by running the `run_nales.py` script avai
 ```
 python run_nales.py
 ```
+
+## How to use Nales ?
+
+You can type cadquery code in the console and that will directly populate the tree view on the left.
+
+Note that you don't have to import any Cadquery related libraries, everything is already available in the Nales console. For now the console comes loaded with these classes :
+
+- Shape
+- Vertex
+- Edge
+- Wire 
+- Face 
+- Solid
+- Compound
+- Part 
+- nales
+
+All the topological classes are wrappers around the Cadquery ones, so you can use them as you would use Cadquery ones.
+
+The `Part` class is a wrapper around the Workplane class of Cadquery that handles GUI stuff. (There is also `Workplane` available which is an alias for `Part`)
+
+Finally the `nales` namespace provide an API of nales internals, even if it not really the case yet, the goal is to make all the GUI actions available from code within the `nales` namespace. 
+Type `help(nales)` to view all the actions already available.
+
+## Shortcuts
+
+There is already some shortcuts available for you to use :
+- ctrl+z / ctrl+y -> undo / redo
+- f -> fit the view of the viewer to the shape (click in the tree view to loose console focus)

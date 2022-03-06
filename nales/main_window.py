@@ -100,8 +100,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._setup_exposed_classes()
         self._console.push_vars(
             {
-                "mw": self,
                 "nales": self.api,
+                "Workplane": Part,
                 "Part": Part,
                 "Shape": NalesShape,
                 "Compound": NalesCompound,

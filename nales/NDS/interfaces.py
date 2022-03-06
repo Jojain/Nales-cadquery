@@ -189,7 +189,6 @@ class NPart(NNode):
             active_shape_bldr.Generated(self._active_shape)
             active_shape_attr = active_shape_bldr.NamedShape()
             self.ais_active_shape = TPrsStd_AISPresentation.Set_s(active_shape_attr)
-            self.ais_active_shape.SetColor(Quantity_NameOfColor.Quantity_NOC_RED)
             self.ais_active_shape.Display(update=True)
             self.root_node._viewer.Update()
         # There is color mixing due to overlapping, maybe this can help to solve the issue :

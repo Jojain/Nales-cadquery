@@ -1,6 +1,7 @@
 import inspect
 from collections import namedtuple
 from functools import wraps
+from http.client import FORBIDDEN
 from typing import Any, Callable, Dict, List, Literal, Optional
 
 from ncadquery import Workplane
@@ -82,6 +83,25 @@ class SignalsHandler(type(QObject)):
 
 
 class PartWrapper(SignalsHandler):
+    # Declare all the methods that must not be wrapped by the GUI handling of Nales
+    FORBIDDEN_METHODS = [
+        "val",
+        "vals",
+        "first",
+        "item",
+        "last",
+        "toSVG",
+        "exportSVG" "end",
+        "findSolid",
+        "all",
+        "size",
+        "copyWorkplane",
+        "toOCC",
+        "workplaneFromTagged",
+        "largestDimension",
+        "sketch",
+    ]
+
     @staticmethod
     def _create_cmd(part_name, obj, operation: CQMethodCall):
         cmd = {
@@ -134,8 +154,11 @@ class PartWrapper(SignalsHandler):
         for method in [
             method
             for (name, method) in inspect.getmembers(PatchedWorkplane)
-            if not (name.startswith("_") and (name != "val" or name != "vals"))
+            if not (name.startswith("_"))
+            and callable(method)
+            and name not in PartWrapper.FORBIDDEN_METHODS
         ]:
+
             method = PartWrapper._operation_handler(method)
             dct[method.__name__] = method
 
