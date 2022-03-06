@@ -240,7 +240,7 @@ class NModel(QAbstractItemModel):
         NNode("Others", self._root)
         self.insertRows(0, 3)
 
-    def add_part(self, name: str, part: Part) -> NPart:
+    def add_part(self, name: str) -> NPart:
         """
         Add a Part to the data model
 
@@ -254,7 +254,7 @@ class NModel(QAbstractItemModel):
             part_idx = self.index(part_node._row - 1, 0, parts_idx)
             self.removeRows([part_idx], part_idx.parent())
 
-        node = NPart(name, part, self._root.child(0))
+        node = NPart(name, self._root.child(0))
         self.insertRows(self.rowCount(parts_idx), parent=parts_idx)
 
         node.display()

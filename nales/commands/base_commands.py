@@ -16,7 +16,7 @@ class BaseCommand(QUndoCommand):
 
 
 class AddTreeItem(BaseCommand):
-    def __init__(self, model: "NModel", item_name: str, item_obj: Any):
+    def __init__(self, model: "NModel", item_name: str, item_obj: Any = None):
         super().__init__()
         self.model = model
         self.item_name = item_name

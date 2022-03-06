@@ -2,9 +2,51 @@ import ast
 import inspect
 import typing
 from functools import wraps
-from typing import Any, Callable, Dict, List, Literal, Union
+from typing import Any, Callable, Dict, Iterable, List, Literal, Tuple, Union
 
 from nales.widgets.msg_boxs import StdErrorMsgBox
+
+
+class DependencySolver:
+    """
+    Solves dependencies of NNone so they can be written in the right order
+    """
+
+    def __init__(self, relations: Dict[str, tuple] = None) -> None:
+        self.relations = relations if relations is not None else {}
+
+    def add_relation(self, node_name: str, dependencies: Iterable[str]) -> None:
+        """
+        Add a dependency relation to the dependency solver
+        """
+        self.relations[node_name] = dependencies
+
+    def resolve(self) -> List[str]:
+        """
+        Solve the dependencies and return a sorted list of nodes names to be written 
+        """
+        relations = self.relations
+        resolved = []
+        while relations:
+            old_relations = relations
+            for node, dep in relations.items():
+                # the node has no dependency
+                if not dep:
+                    resolved.append(node)
+
+            # thin down the relations by removing nodes already resolved from the keys and from the deps
+            relations = {
+                node: tuple(nkey for nkey in dep if nkey not in resolved)
+                for (node, dep) in relations.items()
+                if node not in resolved
+            }
+
+            if relations == old_relations:
+                raise ValueError(
+                    "Cannot solve dependency, there is circular dependency across nodes"
+                )
+
+        return resolved
 
 
 def handle_error(func):

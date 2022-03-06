@@ -20,7 +20,7 @@ class AddPart(AddTreeItem):
             Part._names.append(self.item_name)
             self.has_been_undone = False
 
-        self.model.add_part(self.item_name, self.item_obj)
+        self.model.add_part(self.item_name)
         self.model.add_operation(self.item_name, self.item_obj, self.operation)
 
     def undo(self):

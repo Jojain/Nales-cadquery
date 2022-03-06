@@ -24,6 +24,7 @@ from nales.commands.delete_commands import DeleteOperation, DeleteParameter, Del
 from nales.commands.edit_commands import LinkObject, LinkParameter, UnlinkParameter
 from nales.data_user_interface import NalesPublicAPI
 from nales.nales_cq_impl import (
+    CQMethodCall,
     NalesCompound,
     NalesEdge,
     NalesFace,
@@ -392,14 +393,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         for part in reader.parts:
             name = part["name"]
-            obj = part["object"]
-            self.model.add_part(name, obj)
+            self.model.add_part(name)
             for op in part["operations"]:
+                obj = reader.objects[op]
                 if op != "Workplane":
                     args = sort_args_kwargs(Part, op, part["operations"][op])
 
-                    op_dict = {"name": op, "parameters": args}
-                    self.model.add_operation(name, obj, op_dict)
+                    method = getattr(Part, op)
+                    operation = CQMethodCall(method, *args[0], **args[1])
+                    self.model.add_operation(name, obj, operation)
 
             self._actions["fitview"].trigger()
 

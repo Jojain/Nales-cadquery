@@ -1,6 +1,9 @@
-from typing import Dict
+from operator import rshift
+from typing import Dict, List
 
+from nales.NDS.interfaces import NPart
 from nales.NDS.model import NModel
+from nales.utils import DependencySolver
 
 
 class FileWriter:
@@ -39,6 +42,8 @@ class PythonFileWriter:
 
         if narg.is_linked(by="param"):
             val = narg.linked_param
+        elif narg.is_linked(by="obj"):
+            val = narg.linked_node.name
         else:
             val = narg.value
 
@@ -76,10 +81,32 @@ class PythonFileWriter:
 
         return part_data
 
+    def _sort_parts_data(self, nparts: List[NPart]) -> List[NPart]:
+        """
+        Sorts NParts that are linked in order to have valid python code
+        (If NPart A depend on B, then A must be written before B in the file)
+        """
+        dep_solver = DependencySolver()
+
+        for npart in nparts:
+            deps = []
+            for nop in npart.childs:
+                for narg in nop.childs:
+                    if narg.is_linked(by="obj"):
+                        deps.append(narg.linked_node.name)
+            dep_solver.add_relation(npart.name, set(deps))
+
+        result = dep_solver.resolve()
+
+        sorted_parts = sorted(nparts, key=lambda node: result.index(node.name))
+        return sorted_parts
+
     def _prepare_parts_data(self):
         nparts = self.model.parts
 
-        for npart in nparts:
+        sorted_nparts = self._sort_parts_data(nparts)
+
+        for npart in sorted_nparts:
             self.parts_data.append(self._get_part_data(npart))
 
     def _prepare_shapes_data(self):
@@ -94,7 +121,7 @@ class PythonFileWriter:
         self._prepare_others_data()
 
     def _arg_data_to_str(self, arg_data: Dict):
-        if isinstance(arg_data["value"], str):
+        if isinstance(arg_data["value"], str) and not arg_data["linked"]:
             value = f"\"{arg_data['value']}\""
         else:
             value = arg_data["value"]
@@ -114,7 +141,7 @@ class PythonFileWriter:
 
     def _get_part_header(self, pdata):
         name = pdata["name"]
-        nb_ops = len(pdata["operations"]) + 1
+        nb_ops = len(pdata["operations"])
         link = pdata["linked"]
         header = f"#Partdef>> {name} {nb_ops} {link}\n"
         return header
@@ -124,7 +151,10 @@ class PythonFileWriter:
         part_str = f'{part_data["name"]} = cq.Workplane()\n'
 
         for op in part_data["operations"]:
-            part_str += f'{part_data["name"]} = {part_data["name"]}.{self._op_data_to_str(op)}\n'
+            if op["name"] == "__init__":
+                part_str = f'{part_data["name"]} = cq.Workplane{self._op_data_to_str(op).strip(op["name"])}\n'
+            else:
+                part_str += f'{part_data["name"]} = {part_data["name"]}.{self._op_data_to_str(op)}\n'
 
         return part_str
 

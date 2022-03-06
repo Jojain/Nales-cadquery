@@ -2,7 +2,7 @@ import inspect
 from collections import namedtuple
 from functools import wraps
 from http.client import FORBIDDEN
-from typing import Any, Callable, Dict, List, Literal, Optional
+from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
 from ncadquery import Workplane
 from ncadquery.cq import VectorLike
@@ -20,7 +20,7 @@ class CQMethodCall:
         self.name = method.__name__
         self._args = list(args)
         self._kwargs = kwargs
-        if method.__name__ == "__init__":
+        if self.name == "__init__" or self.name == "Workplane":
             method = Workplane.__init__
         self.parameters = parameters = inspect.signature(method).parameters
         self.pos_params = [

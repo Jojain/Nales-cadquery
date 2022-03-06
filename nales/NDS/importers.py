@@ -1,10 +1,9 @@
-from typing import List
-
-from nales.NDS.model import NalesParam
-
 import ast
+from os import link
+from typing import List, Tuple
 
 from nales.nales_cq_impl import Part
+from nales.NDS.model import NalesParam
 
 
 class PythonFileReader:
@@ -15,7 +14,7 @@ class PythonFileReader:
         self.parts: List[dict] = []  # dict is : name, operations{name:args}, is_linked
 
         self._parse()
-        self._sort_link_dependency()
+        # self._sort_link_dependency()
 
     def _check_file_validity(self):
         if self.lines[0] != "# This file has been generated automatically by Nales":
@@ -38,6 +37,8 @@ class PythonFileReader:
         non_linked_parts = [part for part in self.parts if not part["is_linked"]]
         linked_parts = [part for part in self.parts if part["is_linked"]]
 
+        self.objects = {}
+
         for part in non_linked_parts:
 
             for op in part["operations"]:
@@ -47,11 +48,15 @@ class PythonFileReader:
                 else:
                     obj = eval(f"obj.{op}(*{args}, internal_call=True)")
 
-            part["object"] = obj
+                self.objects[op] = obj
 
         self.parts = non_linked_parts + linked_parts
 
-    def _get_operation_data(self, line: str) -> tuple:
+    def _get_operation_data(self, line: str) -> Tuple[str, str]:
+        """
+        Gets data operation data from a line in the python file
+        """
+
         def handle_node(node, args, linked_args):
             if isinstance(node, ast.Name):
                 value = node.id
@@ -61,6 +66,12 @@ class PythonFileReader:
                 args.append(node.value)
             elif isinstance(node, ast.keyword):
                 return handle_node(node.value, args, linked_args)
+            elif isinstance(node, ast.Tuple):
+                elts = []
+                for node_elem in node.elts:
+                    handle_node(node_elem, elts, [])
+                args.append(tuple(elts))
+
             else:
                 raise ValueError(f"Node type {type(node)} not handled")
 

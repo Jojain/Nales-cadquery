@@ -133,7 +133,7 @@ class NNode:
 
 
 class NPart(NNode):
-    def __init__(self, name: str, part: Workplane, parent):
+    def __init__(self, name: str, parent):
         super().__init__(name, parent=parent)
         self.visible = True
         self._solid = TopoDS_Shape()
