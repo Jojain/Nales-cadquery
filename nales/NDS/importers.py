@@ -14,7 +14,6 @@ class PythonFileReader:
         self.parts: List[dict] = []  # dict is : name, operations{name:args}, is_linked
 
         self._parse()
-        # self._sort_link_dependency()
 
     def _check_file_validity(self):
         if self.lines[0] != "# This file has been generated automatically by Nales":

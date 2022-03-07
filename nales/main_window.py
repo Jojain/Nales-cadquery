@@ -41,6 +41,7 @@ from nales.NDS.model import NModel, ParamTableModel
 from nales.uic.mainwindow import Ui_MainWindow
 from nales.utils import sort_args_kwargs
 from nales.views.tree_views import ModelingOpsView
+from nales.widgets.console import ConsoleWidget
 from nales.widgets.msg_boxs import StdErrorMsgBox, WrongArgMsgBox
 from nales.widgets.ribbon_widget import RibbonButton
 
@@ -394,12 +395,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for part in reader.parts:
             name = part["name"]
             self.model.add_part(name)
-            for op in part["operations"]:
-                obj = reader.objects[op]
-                if op != "Workplane":
-                    args = sort_args_kwargs(Part, op, part["operations"][op])
+            for op_name, args in part["operations"]:
+                obj = reader.objects[op_name]
+                if op_name != "Workplane":
+                    args = sort_args_kwargs(Part, op_name, args)
 
-                    method = getattr(Part, op)
+                    method = getattr(Part, op_name)
                     operation = CQMethodCall(method, *args[0], **args[1])
                     self.model.add_operation(name, obj, operation)
 

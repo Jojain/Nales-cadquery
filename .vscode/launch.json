@@ -1,0 +1,40 @@
+{
+    // Utilisez IntelliSense pour en savoir plus sur les attributs possibles.
+    // Pointez pour afficher la description des attributs existants.
+    // Pour plus d'informations, visitez : https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python : Fichier actuel",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Debug Nales",
+            "type": "python",
+            "request": "launch",
+            "program": "D:/Projets/Nales/nales_alpha/nales_proj/nales/main_window.py",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+    ]
+]
+}
+// {
+//     "configurations": [
+//         {
+//             "name": "Python : Fichier actuel",
+//             "type": "python",
+//             "request": "launch",
+//             "program": "${file}",
+//             "console": "integratedTerminal",
+//             "autoReload": {
+//                 "enable": true
+//               },
+//             "subProcess": true
+//         }
+//     ]
+// }

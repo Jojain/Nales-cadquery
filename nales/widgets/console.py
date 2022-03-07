@@ -65,9 +65,6 @@ class ConsoleWidget(RichJupyterWidget):
         """
         super()._execute(source, hidden)
 
-    # def _get_console_namespace(self):
-    #     return self.kernel_manager.kernel.shell.user_global_ns
-
     def _get_cq_obj(self, var_name):
         """
         Retrieve a Workplane object from the IKernel namespace

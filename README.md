@@ -53,6 +53,11 @@ Then in the top level repo run (it will install all the needed dependencies requ
 conda env update --file environment.yml -n nales
 ```
 
+Then install nales
+```
+python setup.py install
+```
+
 You should now be able to launch nales by running the `run_nales.py` script available in the scripts folder
 
 ```
