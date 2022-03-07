@@ -87,6 +87,9 @@ The `Part` class is a wrapper around the Workplane class of Cadquery that handle
 Finally the `nales` namespace provide an API of nales internals, even if it not really the case yet, the goal is to make all the GUI actions available from code within the `nales` namespace. 
 Type `help(nales)` to view all the actions already available.
 
+You can also try out  and load the [Examples](./examples/). (which are borrowed from the CQ repo):
+
+
 ## Shortcuts
 
 There is already some shortcuts available for you to use :
