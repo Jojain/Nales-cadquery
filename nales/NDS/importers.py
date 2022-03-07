@@ -1,5 +1,4 @@
 import ast
-from os import link
 from typing import List, Tuple
 
 from nales.nales_cq_impl import Part
@@ -13,7 +12,12 @@ class PythonFileReader:
         self.params: List[NalesParam] = []
         self.parts: List[dict] = []  # dict is : name, operations{name:args}, is_linked
 
-        self._parse()
+        try:
+            self._parse()
+            self.success = True
+        except Exception as exc:
+            self.success = False
+            self.error = repr(exc)
 
     def _check_file_validity(self):
         if self.lines[0] != "# This file has been generated automatically by Nales":
@@ -40,14 +44,14 @@ class PythonFileReader:
 
         for part in non_linked_parts:
 
-            for op in part["operations"]:
-                args = part["operations"][op]
-                if op == "Workplane":
-                    obj = Part(*args, name=part["name"], internal_call=True)
-                else:
-                    obj = eval(f"obj.{op}(*{args}, internal_call=True)")
+            for op_name, args in part["operations"]:
 
-                self.objects[op] = obj
+                if op_name == "Workplane":
+                    obj = Part(*args, name=part["name"])
+                else:
+                    obj = eval(f"obj.{op_name}(*{args}, internal_call=True)")
+
+                self.objects[op_name] = obj
 
         self.parts = non_linked_parts + linked_parts
 
@@ -57,6 +61,7 @@ class PythonFileReader:
         """
 
         def handle_node(node, args, linked_args):
+            # TODO : change this to return values instead of modifying the one received
             if isinstance(node, ast.Name):
                 value = node.id
                 args.append(value)
@@ -70,6 +75,9 @@ class PythonFileReader:
                 for node_elem in node.elts:
                     handle_node(node_elem, elts, [])
                 args.append(tuple(elts))
+            elif isinstance(node, ast.UnaryOp):
+                if isinstance(node.op, ast.USub):
+                    args.append(-node.operand.value)
 
             else:
                 raise ValueError(f"Node type {type(node)} not handled")
@@ -99,11 +107,11 @@ class PythonFileReader:
         else:
             is_linked = False
 
-        part_def = {"name": part_name, "operations": {}, "is_linked": is_linked}
+        part_def = {"name": part_name, "operations": [], "is_linked": is_linked}
 
         for line in self.lines[partdef_idx + 1 : partdef_idx + int(nb_of_ops) + 1]:
             op_name, op_args = self._get_operation_data(line)
-            part_def["operations"][op_name] = op_args
+            part_def["operations"].append((op_name, op_args))
 
         return part_def
 

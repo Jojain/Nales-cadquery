@@ -381,6 +381,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         reader = PythonFileReader(path)
 
+        if not reader.success:
+            StdErrorMsgBox(reader.error)
+            return
+
         for param in reader.params:
             name = param.name
             try:
