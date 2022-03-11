@@ -367,6 +367,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         writer.write_file(path)
 
     def open_file(self, path=None):
+        print("have been called")
 
         last_dir = self.settings.value("LAST_SAVE_PATH")
         if not path:
@@ -374,7 +375,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self, "Open a file", last_dir, "Python files (*.py)"
             )
 
-        if path == "":  # the users exited the Filedialog
+        if path == "":  # the user exited the Filedialog
             return
 
         self.settings.setValue("LAST_READ_PATH", os.path.dirname(path))
@@ -398,7 +399,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         for part in reader.parts:
             name = part["name"]
-            self.model.add_part(name)
             for op_name, args in part["operations"]:
                 obj = reader.objects[op_name]
                 if op_name != "Workplane":

@@ -1,17 +1,25 @@
+import typing
+
+from nales.NDS.model import NalesParam
+
+if typing.TYPE_CHECKING:
+    from nales.main_window import MainWindow
+
+
 class NalesPublicAPI:
     # This class is used to separate what's available to the user through the console
     # all the methods defined in this class are supposed to be accessible to the user so that he can retrieve
     # data from the app
 
-    def __init__(self, mainwindow):
+    def __init__(self, mainwindow: "MainWindow"):
         self.mw = mainwindow
 
-    def get_parameter(self, name):
+    def get_parameter(self, name: str) -> NalesParam:
         parameters = self.mw.param_model.parameters
 
-        for param_name in parameters.keys():
-            if param_name == name:
-                return parameters[param_name]
+        for param in parameters:
+            if param.name == name:
+                return param
 
     def get_part(self, name):
         nparts = self.mw.model.parts

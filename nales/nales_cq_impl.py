@@ -256,6 +256,14 @@ class Part(PatchedWorkplane, QObject, metaclass=PartWrapper):
             if not internal_call:
                 self.on_method_call.emit(cmd)
 
+    def __del__(self):
+        # This overload is needed since for the test, several instance of MainWindow
+        # are created but they share the same Part class so name clash can happen
+        try:
+            self._names.remove(self._name)
+        except ValueError:
+            pass
+
     @property
     def name(self):
         return self._name
