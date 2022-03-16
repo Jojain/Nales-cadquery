@@ -1,9 +1,10 @@
 # This file test importers and exporters
 import os
 from typing import List, Tuple
+
 from nales.main_window import MainWindow
 
-TESTS_FILES_FOLDER = __file__.strip(__name__ + ".py") + r"\\tests_files"
+TESTS_FILES_FOLDER = __file__.strip(__name__ + ".py") + "tests_files"
 
 
 def _get_file_content(path: str) -> List[str]:
@@ -95,24 +96,27 @@ def test_export_parts(qtbot):
                     part_def_lines.append(l.strip())
                 break
 
-        # In the futur it would be better to test that we have the ast node correct, so we don't care about formatting
-        assert part_def_lines[0] == "test_part = cq.Workplane()"
-        assert (
-            part_def_lines[1]
-            == "test_part = test_part.box(length = 10, width = 10, height = 10, centered = True, combine = True, clean = True)"
-        )
-        assert (
-            part_def_lines[2]
-            == 'test_part = test_part.faces(selector = ">Z", tag = None)'
-        )
-        assert (
-            part_def_lines[3]
-            == 'test_part = test_part.workplane(offset = 0.0, invert = False, centerOption = "ProjectedOrigin", origin = None)'
-        )
-        assert (
-            part_def_lines[4]
-            == "test_part = test_part.hole(diameter = 1.5, depth = None, clean = True)"
-        )
+    # In the futur it would be better to test that we have the ast node correct, so we don't care about formatting
+    assert (
+        part_def_lines[0]
+        == 'test_part = cq.Workplane(inPlane = "XY", origin = (0, 0, 0), obj = None)'
+    )
+    assert (
+        part_def_lines[1]
+        == "test_part = test_part.box(length = 10, width = 10, height = 10, centered = True, combine = True, clean = True)"
+    )
+    assert (
+        part_def_lines[2]
+        == 'test_part = test_part.faces(selector = ">Z", tag = None)'
+    )
+    assert (
+        part_def_lines[3]
+        == 'test_part = test_part.workplane(offset = 0.0, invert = False, centerOption = "ProjectedOrigin", origin = None)'
+    )
+    assert (
+        part_def_lines[4]
+        == "test_part = test_part.hole(diameter = 1.5, depth = None, clean = True)"
+    )
 
 
 def test_import_parts(qtbot):
@@ -123,10 +127,16 @@ def test_import_parts(qtbot):
     mw._console.execute_command(f"nales.load(r'{test_import_file}')")
     assert len(mw.model.parts) == 1
     p = mw.model.parts[0]
-    assert (
-        len(p.childs) == 4
-    )  # check that all operations have been loaded, atm doesn't consider __init__ operation
+    # check that all operations have been loaded, atm doesn't consider __init__ operation
+    assert len(p.childs) == 5
+    # check that we have all args of the method `box` in this case
+    assert len(p.childs[1].childs) == 6
 
-    assert (
-        len(p.childs[0].childs) == 6
-    )  # check that we have all args of the method `box` in this case
+
+if __name__ == "__main__":
+    test_import_file = os.path.join(TESTS_FILES_FOLDER, "test_import_parts.py")
+    from nales.main_window import main
+
+    main()
+
+    # mw._console.execute_command(f"nales.load(r'{test_import_file}')")
