@@ -216,16 +216,17 @@ class NModel(QAbstractItemModel):
     run_cmd = pyqtSignal(QUndoCommand)
     display_node = pyqtSignal(NNode)
     hide_node = pyqtSignal(NNode)
+    console_remove_obj = pyqtSignal()
+    console_update_part = pyqtSignal(NPart)
 
-    def __init__(self, root_label: TDF_Label, console=None):
+    def __init__(self, root_label: TDF_Label):
         """
         ctx: occt viewer context
         """
         super().__init__()
-        self._console = console
+
         self._root = NNode(None)
         self._root._label = root_label
-        self._root.console_namespace = console.namespace if console else None
 
         self._setup_top_level_nodes()
 
@@ -305,7 +306,7 @@ class NModel(QAbstractItemModel):
         self.display_node.emit(npart)
 
         # update copies of the part in the console
-        self._console.update_part(part_name, npart.part)
+        self.console_update_part.emit(npart)
 
         return noperation
 
@@ -517,7 +518,7 @@ class NModel(QAbstractItemModel):
 
         # Remove all reference everywhere it's needed
         Part._names.remove(part_node.name)
-        self._console.remove_obj(part_node.part)
+        self.console_remove_obj.emit(part_node.part)
         self.hide_node.emit(part_node)
         # self.app.viewer_redraw()
 
@@ -530,7 +531,7 @@ class NModel(QAbstractItemModel):
 
         # Remove all reference everywhere it's needed
         NalesShape._names.remove(shape_node.name)
-        self._console.remove_obj(shape_node.shape)
+        self.console_remove_obj.emit(shape_node.shape)
         self.hide_node.emit(shape_node)
 
     def removeRows(
@@ -664,9 +665,8 @@ class NModel(QAbstractItemModel):
 
             # Update variables linked to this part in the console
             if not SHAPEARG:
-                self._console.update_part(
-                    node.parent.parent.name, node.parent.parent.part
-                )
+                npart = node.parent.parent
+                self.console_update_part.emit(npart)
 
         elif role == Qt.CheckStateRole:
             if isinstance(node, NPart) or isinstance(node, NShape):
@@ -699,10 +699,6 @@ class NModel(QAbstractItemModel):
         for child in self._root.childs:
             objs.extend(child.childs)
         return objs
-
-    @property
-    def console(self):
-        return self._console
 
 
 if __name__ == "__main__":

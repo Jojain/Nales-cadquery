@@ -226,9 +226,7 @@ class Part(PatchedWorkplane, QObject, metaclass=PartWrapper):
             internal_call = False
 
         PatchedWorkplane.__init__(self, *args, **kwargs)
-
         self.on_method_call.connect(lambda ops: self._mw_instance.handle_command(ops))
-
         if self._recursion_nb == 0:
             if name:
                 if name not in Part._names:

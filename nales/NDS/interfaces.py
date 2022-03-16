@@ -38,7 +38,8 @@ class NNode:
             self._row = len(parent._childs)
             parent._childs.append(self)
             parent._columns_nb = max(self.column, parent.column)
-            self._label = TDF_TagSource.NewChild_s(parent._label)
+            # self._label = TDF_TagSource.NewChild_s(parent._label)
+            self._label = parent._label.NewChild()
             self._name = name
             TDataStd_Name.Set_s(self._label, TCollection_ExtendedString(name))
         else:

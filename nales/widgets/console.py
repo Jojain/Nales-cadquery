@@ -105,10 +105,11 @@ class ConsoleWidget(RichJupyterWidget):
 
         return ""
 
-    def update_part(self, name: str, updated_part: "Part"):
+    def update_part(self, updated_part: "Part"):
         """
         Update all instances of a part in the console when it's modified in the GUI
         """
+        raise NotImplementedError("Je dois revoir le fonctionnement de ce point")
         for var, part in [
             (var, part)
             for var, part in self.namespace.items()

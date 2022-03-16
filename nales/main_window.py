@@ -78,7 +78,7 @@ class NalesApp(QMainWindow, Ui_MainWindow):
 
         self.settings = QSettings("Nales Tech", "Nales", self)
 
-        self.model = NModel(self._ocafapp.root_label, self._console)
+        self.model = NModel(self._ocafapp.root_label)
         self.modeling_ops_tree.setModel(self.model)
         self.param_model = ParamTableModel([])
         self.param_table_view.setModel(self.param_model)
@@ -124,6 +124,9 @@ class NalesApp(QMainWindow, Ui_MainWindow):
         self.model.display_node.connect(self.display_node)
         self.model.hide_node.connect(self.hide_node)
         self.model.dataChanged.connect(self._ocafapp.presentation_redraw)
+
+        self.model.console_remove_obj.connect(self._console.remove_obj)
+        self.model.console_update_part.connect(self._console.update_part)
 
     def _setup_exposed_classes(self):
         Part._mw_instance = self  # give a reference to the main_window to the Part class, for connecting signals and slots
