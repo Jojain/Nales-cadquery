@@ -12,6 +12,7 @@ from typing import (
     Union,
 )
 
+import ncadquery
 from ncadquery import Workplane
 from OCP.Quantity import Quantity_NameOfColor
 from OCP.TCollection import TCollection_ExtendedString
@@ -69,6 +70,9 @@ class NNode:
             yield from self.walk(child)
 
     def find(self, node_name: str, node_type=None) -> "NNode" or None:
+        """
+        Finds a node by the specified name, one can filter nodes by type
+        """
         for node in self.walk():
             if node.name == node_name:
                 if node_type:
@@ -131,13 +135,19 @@ class NNode:
     def row(self):
         return self._row
 
+    @property
+    def label(self):
+        return self._label
+
 
 class NPart(NNode):
     def __init__(self, name: str, parent):
         super().__init__(name, parent=parent)
         self.visible = True
         self._solid = TopoDS_Shape()
-        self._active_shape = None
+        self._active_shape = TopoDS_Shape()
+        self.ais_solid = None
+        self.ais_active_shape = None
 
         self.display()
 
@@ -153,19 +163,26 @@ class NPart(NNode):
 
         self._solid = solid
 
-        if not (active_shape := self.part._val().wrapped) is solid and isinstance(
-            active_shape, TopoDS_Shape
-        ):
+        if len(self.part.objects) > 1:
+            try:
+                # if there is objects that aren't shape, catch the error
+                active_shape = ncadquery.Compound.makeCompound(
+                    self.part.objects
+                ).wrapped
+            except ValueError:
+                active_shape = None
+        else:
+            active_shape = self.part._val().wrapped
+        if not active_shape is solid and isinstance(active_shape, TopoDS_Shape):
             self._active_shape = active_shape
         else:
-            self._active_shape = None
+            self._active_shape = TopoDS_Shape()
 
     def hide(self):
 
         self.visible = False
         self.ais_solid.Erase(remove=True)
         self.ais_active_shape.Erase(remove=True)
-        self.root_node._viewer.Update()
 
     def display(self, update=False):
         """
@@ -173,11 +190,10 @@ class NPart(NNode):
         """
 
         if update:
-            self.ais_solid.Erase(remove=True)
-            if self._active_shape:
+            if self._active_shape or self.ais_solid:
+                self.ais_solid.Erase(remove=True)
                 self.ais_active_shape.Erase(remove=True)
             self._update_display_shapes()
-            # self.root_node._viewer.Update()
 
         solid_bldr = TNaming_Builder(self._label)  # _label is  TDF_Label
         solid_bldr.Generated(self._solid)
@@ -190,15 +206,11 @@ class NPart(NNode):
             active_shape_attr = active_shape_bldr.NamedShape()
             self.ais_active_shape = TPrsStd_AISPresentation.Set_s(active_shape_attr)
             self.ais_active_shape.Display(update=True)
-            self.root_node._viewer.Update()
         # There is color mixing due to overlapping, maybe this can help to solve the issue :
         # https://dev.opencascade.org/doc/refman/html/class_a_i_s___interactive_context.html#a1e0f9550cc001adbb52329ac243bb3b2
         # It's considered good enough for now
         self.ais_solid.SetTransparency(0.9)
         self.ais_solid.Display()
-
-        self.root_node._viewer.Update()
-
         self.visible = True
 
     def update(self):
@@ -241,7 +253,6 @@ class NShape(NNode):
     def hide(self):
         self.visible = False
         self.ais_shape.Erase()
-        self.root_node._viewer.Update()
 
     def display(self, update=False):
         """
@@ -249,7 +260,6 @@ class NShape(NNode):
         """
         if update:
             self.ais_shape.Erase(remove=True)
-            self.root_node._viewer.Update()
         self.bldr = TNaming_Builder(self._label)  # _label is  TDF_Label
         self.bldr.Generated(self._occt_shape)
 
@@ -260,7 +270,6 @@ class NShape(NNode):
         self.ais_shape.SetTransparency(0.5)
         self.ais_shape.SetColor(Quantity_NameOfColor.Quantity_NOC_ALICEBLUE)
         self.ais_shape.Display(update=True)
-        self.root_node._viewer.Update()
 
         self.visible = True
 

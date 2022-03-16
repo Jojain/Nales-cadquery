@@ -2,7 +2,7 @@
 import os
 from typing import List, Tuple
 
-from nales.main_window import MainWindow
+from nales.main_window import NalesApp
 
 TESTS_FILES_FOLDER = __file__.strip(__name__ + ".py") + "tests_files"
 
@@ -36,7 +36,7 @@ def _read_params(file_data: List[str]) -> Tuple:
 
 def test_export_param(qtbot):
     test_export_file = os.path.join(TESTS_FILES_FOLDER, "test_export_param.py")
-    mw = MainWindow()
+    mw = NalesApp()
     mw.hide()
     qtbot.addWidget(mw)
     mw.param_model.add_parameter("p1", 15)
@@ -58,7 +58,7 @@ def test_export_param(qtbot):
 def test_import_param(qtbot):
     # Load the file created by the export test
     test_import_file = os.path.join(TESTS_FILES_FOLDER, "test_export_param.py")
-    mw = MainWindow()
+    mw = NalesApp()
     mw.hide()
     qtbot.addWidget(mw)
 
@@ -77,7 +77,7 @@ def test_import_param(qtbot):
 
 def test_export_parts(qtbot):
     test_import_file = os.path.join(TESTS_FILES_FOLDER, "test_import_parts.py")
-    mw = MainWindow()
+    mw = NalesApp()
     mw.hide()
     qtbot.addWidget(mw)
     mw._console.execute_command(
@@ -106,8 +106,7 @@ def test_export_parts(qtbot):
         == "test_part = test_part.box(length = 10, width = 10, height = 10, centered = True, combine = True, clean = True)"
     )
     assert (
-        part_def_lines[2]
-        == 'test_part = test_part.faces(selector = ">Z", tag = None)'
+        part_def_lines[2] == 'test_part = test_part.faces(selector = ">Z", tag = None)'
     )
     assert (
         part_def_lines[3]
@@ -121,7 +120,7 @@ def test_export_parts(qtbot):
 
 def test_import_parts(qtbot):
     test_import_file = os.path.join(TESTS_FILES_FOLDER, "test_import_parts.py")
-    mw = MainWindow()
+    mw = NalesApp()
     mw.hide()
     qtbot.addWidget(mw)
     mw._console.execute_command(f"nales.load(r'{test_import_file}')")

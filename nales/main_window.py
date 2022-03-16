@@ -36,8 +36,9 @@ from nales.nales_cq_impl import (
 )
 from nales.NDS.exporters import PythonFileWriter
 from nales.NDS.importers import PythonFileReader
-from nales.NDS.interfaces import NArgument, NOperation, NPart
+from nales.NDS.interfaces import NArgument, NNode, NOperation, NPart
 from nales.NDS.model import NModel, ParamTableModel
+from nales.NDS.NOCAF import OCAFApplication
 from nales.uic.mainwindow import Ui_MainWindow
 from nales.utils import sort_args_kwargs
 from nales.views.tree_views import ModelingOpsView
@@ -58,7 +59,7 @@ console_theme = """QPlainTextEdit, QTextEdit { background-color: yellow;
 """
 
 
-class MainWindow(QMainWindow, Ui_MainWindow):
+class NalesApp(QMainWindow, Ui_MainWindow):
 
     instance = None
 
@@ -70,14 +71,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Private variables
         self._console.setStyleSheet(console_theme)
+        self._ocafapp = OCAFApplication(ctx=self.viewer.context)
 
         self.main_menu = QMainWindow.menuBar(self)
         self.main_menu.setEnabled(True)
 
         self.settings = QSettings("Nales Tech", "Nales", self)
 
-        ctx = self.viewer.context
-        self.model = NModel(ctx=ctx, console=self._console)
+        self.model = NModel(self._ocafapp.root_label, self._console)
         self.modeling_ops_tree.setModel(self.model)
         self.param_model = ParamTableModel([])
         self.param_table_view.setModel(self.param_model)
@@ -119,6 +120,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.model.on_arg_error.connect(
             lambda exp_typ, rcv_typ: WrongArgMsgBox(exp_typ, rcv_typ, self)
         )
+
+        self.model.display_node.connect(self.display_node)
+        self.model.hide_node.connect(self.hide_node)
+        self.model.dataChanged.connect(self._ocafapp.presentation_redraw)
 
     def _setup_exposed_classes(self):
         Part._mw_instance = self  # give a reference to the main_window to the Part class, for connecting signals and slots
@@ -350,6 +355,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # about_tab = self._ribbon.add_ribbon_tab("About")
         # info_panel = about_tab.add_ribbon_pane("Info")
 
+    def hide_node(self, node: NNode):
+        """
+        Hides the provided node in the 3D viewer
+        """
+        node.hide()
+        self._ocafapp.presentation_redraw()
+
+    def display_node(self, node: NNode):
+        """
+        Displays the provided node in the 3D viewer
+        """
+        update = True if node.ais_solid else False
+        node.display(update)
+        self._ocafapp.presentation_redraw()
+
     def save_file(self, path=None):
 
         last_dir = self.settings.value("LAST_SAVE_PATH")
@@ -413,7 +433,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
-    window = MainWindow()
+    window = NalesApp()
     extra = {
         # Button colors
         "danger": "#dc3545",

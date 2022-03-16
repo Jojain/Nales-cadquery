@@ -11,6 +11,7 @@ Taken from : https://gist.github.com/nbassler/342fc56c42df27239fa5276b79fca8e6
 import sys
 from typing import Any, Callable, Dict, List, Union
 
+from OCP.TDF import TDF_Label
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import (
     QAbstractItemModel,
@@ -33,7 +34,7 @@ from nales.NDS.interfaces import (
     NShape,
     NShapeOperation,
 )
-from nales.NDS.NOCAF import Application
+from nales.NDS.NOCAF import OCAFApplication
 from nales.utils import determine_type_from_str
 
 NALES_PARAMS_TYPES = {
@@ -213,21 +214,18 @@ class NModel(QAbstractItemModel):
 
     on_arg_error = pyqtSignal(object, object)
     run_cmd = pyqtSignal(QUndoCommand)
+    display_node = pyqtSignal(NNode)
+    hide_node = pyqtSignal(NNode)
 
-    def __init__(self, ctx, nodes=None, console=None):
+    def __init__(self, root_label: TDF_Label, console=None):
         """
         ctx: occt viewer context
         """
         super().__init__()
-        self.app = Application()
-        self.app.init_viewer_presentation(ctx)
         self._console = console
         self._root = NNode(None)
-        self._root._viewer = (
-            self.app._pres_viewer
-        )  # attach the viewer to the root node so child interfaces can Update the viewer without the need to send a signal
-        self._root._label = self.app.doc.GetData().Root()
-        self._root.console_namespace = console.namespace
+        self._root._label = root_label
+        self._root.console_namespace = console.namespace if console else None
 
         self._setup_top_level_nodes()
 
@@ -245,19 +243,10 @@ class NModel(QAbstractItemModel):
         Add a Part to the data model
 
         """
-        # ce genre de truc devra être géré par le model
-        # actuellement le code reconstruirait toutes les parts meme si elles n'ont pas été modifiées
         parts_idx = self.index(0, 0)
-
-        # We check if the part is already defined
-        if part_node := self._root.find(name):
-            part_idx = self.index(part_node._row - 1, 0, parts_idx)
-            self.removeRows([part_idx], part_idx.parent())
-
-        node = NPart(name, self._root.child(0))
+        parts_node = [part for part in self._root.childs if part.name == "Parts"][0]
+        node = NPart(name, parts_node)
         self.insertRows(self.rowCount(parts_idx), parent=parts_idx)
-
-        node.display()
         return node
 
     def get_part_index(self, part_name: str) -> Union[QModelIndex, None]:
@@ -313,7 +302,7 @@ class NModel(QAbstractItemModel):
 
         self.insertRows(self.rowCount(operation_idx), parent=operation_idx)
 
-        npart.display(update=True)
+        self.display_node.emit(npart)
 
         # update copies of the part in the console
         self._console.update_part(part_name, npart.part)
@@ -517,7 +506,7 @@ class NModel(QAbstractItemModel):
         # We remove the op from the tree
         self.removeRows([op_idx], op_idx.parent())
 
-        npart.display(update=True)
+        self.display_node.emit(npart)
 
     def remove_part(self, part_idx: QModelIndex) -> None:
         """
@@ -529,7 +518,7 @@ class NModel(QAbstractItemModel):
         # Remove all reference everywhere it's needed
         Part._names.remove(part_node.name)
         self._console.remove_obj(part_node.part)
-        part_node.hide()
+        self.hide_node.emit(part_node)
         # self.app.viewer_redraw()
 
     def remove_shape(self, shape_idx: QModelIndex) -> None:
@@ -542,7 +531,7 @@ class NModel(QAbstractItemModel):
         # Remove all reference everywhere it's needed
         NalesShape._names.remove(shape_node.name)
         self._console.remove_obj(shape_node.shape)
-        shape_node.hide()
+        self.hide_node.emit(shape_node)
 
     def removeRows(
         self, rmv_idxs: List[QModelIndex], parent: QModelIndex = QModelIndex()
@@ -682,9 +671,9 @@ class NModel(QAbstractItemModel):
         elif role == Qt.CheckStateRole:
             if isinstance(node, NPart) or isinstance(node, NShape):
                 if node.visible:
-                    node.hide()
+                    self.hide_node.emit(node)
                 else:
-                    node.display(update=True)
+                    self.display_node.emit(node)
 
         return True
 

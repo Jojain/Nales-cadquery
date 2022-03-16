@@ -8,8 +8,8 @@ from OCP.TPrsStd import TPrsStd_AISViewer
 from OCP.XmlDrivers import XmlDrivers
 
 
-class Application(TDocStd_Application):
-    def __init__(self, binary=False):
+class OCAFApplication(TDocStd_Application):
+    def __init__(self, binary=False, ctx=None):
         super().__init__()
         if binary:
             BinDrivers.DefineFormat_s(self)
@@ -24,14 +24,18 @@ class Application(TDocStd_Application):
 
         self.NewDocument(TCollection_ExtendedString(self.doc_format), self.doc)
 
-    def viewer_redraw(self):
+        self.ctx = ctx
+
+        self.init_viewer_presentation()
+
+    def presentation_redraw(self):
         """
         Redraw the viewer (refresh the view even if the user isn't moving the view)
         """
-        self._pres_viewer.Update()
+        self._viewer_pres.Update()
 
-    def init_viewer_presentation(self, context: OCP.AIS.AIS_InteractiveContext):
-        self._pres_viewer = TPrsStd_AISViewer.New_s(self.doc.GetData().Root(), context)
+    def init_viewer_presentation(self) -> TPrsStd_AISViewer:
+        self._viewer_pres = TPrsStd_AISViewer.New_s(self.root_label, self.ctx)
 
     def save_as(self, path: str):
         """
@@ -47,3 +51,7 @@ class Application(TDocStd_Application):
 
     def close(self):
         self.Close(self.document)
+
+    @property
+    def root_label(self):
+        return self.doc.GetData().Root()

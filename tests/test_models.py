@@ -1,49 +1,135 @@
 # Tests of Nales Models classes
 
-from nales.main_window import MainWindow
 
-
-def setup_window(qtbot):
-    mw = MainWindow()
-    mw.hide()
-    qtbot.addWidget(mw)
-    return mw
+from nales.NDS.model import NModel
 
 ############################################################
 ###############         NMODEL TESTING       ###############
 ############################################################
 
-def test_nmodel_add_part(qtbot):
-def test_nmodel_add_operation(qtbot):
-def test_nmodel_add_shape(qtbot):
-def test_nmodel_get_part_index(qtbot):
-def test_nmodel_get_shape_index(qtbot):
-def test_nmodel_update_model(qtbot):
-def test_nmodel_update_objs_linked_to_obj(qtbot):
-def test_nmodel_update_shape(qtbot):
-def test_nmodel_update_operation(qtbot):
-def test_nmodel_index_from_node(qtbot):
-def test_nmodel_link_object(qtbot):
-def test_nmodel_unlink_object(qtbot):
-def test_nmodel_link_parameters(qtbot):
-def test_nmodel_unlink_parameters(qtbot):
-def test_nmodel_remove_operation(qtbot):
-def test_nmodel_remove_part(qtbot):
-def test_nmodel_remove_shape(qtbot):
 
-def test_nmodel_parts(qtbot):
-def test_nmodel_objects(qtbot):
-def test_nmodel_console(qtbot):
+def test_nmodel_add_part():
+    model = NModel(None)
+    root_tree = model._root
+    model.add_part("Toto")
 
-def test_nmodel_removeRows(qtbot):
-def test_nmodel_data(qtbot):
-def test_nmodel_flags(qtbot):
-def test_nmodel_setData(qtbot):
-def test_nmodel_insertRows(qtbot):
+    assert (node := root_tree.find("Toto")) is not None
+    parts_node = root_tree.find("Parts")
+    assert node in parts_node.childs
 
 
-def test_nmodel_childrens(qtbot):
-def test_nmodel_rowCount(qtbot):
-def test_nmodel_columnCount(qtbot):
-def test_nmodel_index(qtbot):
-def test_nmodel_parent(qtbot):
+def test_nmodel_add_operation():
+    pass
+
+
+def test_nmodel_add_shape():
+    pass
+
+
+def test_nmodel_get_part_index():
+    pass
+
+
+def test_nmodel_get_shape_index():
+    pass
+
+
+def test_nmodel_update_model():
+    pass
+
+
+def test_nmodel_update_objs_linked_to_obj():
+    pass
+
+
+def test_nmodel_update_shape():
+    pass
+
+
+def test_nmodel_update_operation():
+    pass
+
+
+def test_nmodel_index_from_node():
+    pass
+
+
+def test_nmodel_link_object():
+    pass
+
+
+def test_nmodel_unlink_object():
+    pass
+
+
+def test_nmodel_link_parameters():
+    pass
+
+
+def test_nmodel_unlink_parameters():
+    pass
+
+
+def test_nmodel_remove_operation():
+    pass
+
+
+def test_nmodel_remove_part():
+    pass
+
+
+def test_nmodel_remove_shape():
+    pass
+
+
+def test_nmodel_parts():
+    pass
+
+
+def test_nmodel_objects():
+    pass
+
+
+def test_nmodel_console():
+    pass
+
+
+def test_nmodel_removeRows():
+    pass
+
+
+def test_nmodel_data():
+    pass
+
+
+def test_nmodel_flags():
+    pass
+
+
+def test_nmodel_setData():
+    pass
+
+
+def test_nmodel_insertRows():
+    pass
+
+
+def test_nmodel_childrens():
+    pass
+
+
+def test_nmodel_rowCount():
+    pass
+
+
+def test_nmodel_columnCount():
+    pass
+
+
+def test_nmodel_index():
+    pass
+
+
+def test_nmodel_parent():
+    pass
+

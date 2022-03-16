@@ -3,7 +3,7 @@ import typing
 from nales.NDS.model import NalesParam
 
 if typing.TYPE_CHECKING:
-    from nales.main_window import MainWindow
+    from nales.main_window import NalesApp
 
 
 class NalesPublicAPI:
@@ -11,7 +11,7 @@ class NalesPublicAPI:
     # all the methods defined in this class are supposed to be accessible to the user so that he can retrieve
     # data from the app
 
-    def __init__(self, mainwindow: "MainWindow"):
+    def __init__(self, mainwindow: "NalesApp"):
         self.mw = mainwindow
 
     def get_parameter(self, name: str) -> NalesParam:
