@@ -272,7 +272,6 @@ class NModel(QAbstractItemModel):
         """
         Add an operation to the operation tree
 
-        :return: the node of 
         """
         nparts = self._root.child(0).childs
         parts_idx = self.index(0, 0)  # the Parts container index
@@ -297,9 +296,9 @@ class NModel(QAbstractItemModel):
             )
             # the argument is an object stored in the model data structure
             if isinstance(arg.value, NALES_TYPES):
-                obj_node = self._root.find(arg.value._name)
+                obj_node = self._root.find(arg.value.name)
                 idx = self.index_from_node(obj_node)
-                node.link("obj", idx)
+                node.link("obj", QPersistentModelIndex(idx))
 
         self.insertRows(self.rowCount(operation_idx), parent=operation_idx)
 
@@ -329,7 +328,7 @@ class NModel(QAbstractItemModel):
             shape_obj = ptr.parent.parent.shape
             self.update_objs_linked_to_obj(shape_obj)
         else:
-            raise ValueError
+            raise ValueError(f"Parent node of node {ptr.name} is not an Operation")
 
     def update_objs_linked_to_obj(self, obj: Any):
         """

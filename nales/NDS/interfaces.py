@@ -70,7 +70,7 @@ class NNode:
         for child in base_node.childs:
             yield from self.walk(child)
 
-    def find(self, node_name: str, node_type=None) -> "NNode" or None:
+    def find(self, node_name: str, node_type=None) -> "NNode":
         """
         Finds a node by the specified name, one can filter nodes by type
         """
@@ -81,6 +81,8 @@ class NNode:
                         return node
                 else:
                     return node
+
+        raise ValueError(f"Couldn't find a node named {node_name} in the data tree")
 
     def data(self, column):
         if column >= 0 and column < len(self._data):
