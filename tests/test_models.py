@@ -215,12 +215,11 @@ def test_nmodel_update_objs_linked_to_obj(data):
     pass
 
 
-def test_nmodel_update_model(data):
+def test_nmodel_update_model(dummy_model):
     """
     Tests that the model return the correct index when asking for a shape index
     """
-    data.add_dummy_part()
-    m: NModel = data.model
+    m: NModel = dummy_model.model
 
     # change the model data by hand
     npart = m.parts_nodes[0]
@@ -271,28 +270,17 @@ def test_nmodel_update_operation(data):
     assert initial_volume < new_volume
 
 
-def test_nmodel_link_object(data):
-    data.add_dummy_2part()
-    m: NModel = data.model
-    cut_arg_node: NArgument = m._root.find("toCut", NArgument)
-    obj_node = m._root.find("test1", NPart)
-
-    m.link_object(
-        [m.index_from_node(n) for n in [cut_arg_node]], m.index_from_node(obj_node)
-    )
-
-    assert cut_arg_node.is_linked(by="obj")
-
-
-def test_nmodel_unlink_object(data):
-    data.add_dummy_2part()
-    m: NModel = data.model
+def test_nmodel_link_object(dummy_model):
+    m: NModel = dummy_model.model
     cut_arg_node: NArgument = m._root.find("toCut", NArgument)
     obj_node = m._root.find("test1", NPart)
     idx = m.index_from_node(cut_arg_node)
     m.link_object([idx], m.index_from_node(obj_node))
-    m.unlink_object(idx)
 
+    assert cut_arg_node.is_linked(by="obj")
+
+    # and test the un linking
+    m.unlink_object(idx)
     assert not cut_arg_node.is_linked(by="obj")
 
 
