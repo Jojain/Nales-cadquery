@@ -22,7 +22,7 @@ class NalesPublicAPI:
                 return param
 
     def get_part(self, name):
-        nparts = self.mw.model.parts
+        nparts = self.mw.model.parts_nodes
 
         for npart in nparts:
             if npart.name == name:

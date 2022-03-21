@@ -414,7 +414,7 @@ class NModel(QAbstractItemModel):
     ):
         if arg_idx and not param_idx:
             arg: NArgument = arg_idx.internalPointer()
-            arg.unlink_param()
+            arg.unlink()
             self.dataChanged.emit(arg_idx, arg_idx)
 
         elif param_idx and not arg_idx:
@@ -446,7 +446,10 @@ class NModel(QAbstractItemModel):
                     )  # here we could modify the behaviour to send only one signal after we modified all the nodes
 
     def walk(self, index: QModelIndex = QModelIndex()) -> QModelIndex:
-
+        """
+        This method is a generator, it walks the data tree by yielding QModelIndexes
+        If `index` is not provided starts from the root, else starts at the given index
+        """
         yield index
 
         for child in self.childrens(index):
@@ -688,7 +691,7 @@ class NModel(QAbstractItemModel):
         self.layoutChanged.emit()
 
     @property
-    def parts(self) -> List[NPart]:
+    def parts_nodes(self) -> List[NPart]:
         nparts = self._root.childs[0].childs
         return nparts
 

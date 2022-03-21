@@ -434,10 +434,11 @@ class NArgument(NNode):
         else:
             self._linked_nobj_idx = value
 
-    def unlink_param(self):
+    def unlink(self):
         self._linked_param = None
         self._param_name_pidx = None
         self._param_value_pidx = None
+        self._linked_nobj_idx = None
 
     def is_kwarg(self):
         return self._kwarg

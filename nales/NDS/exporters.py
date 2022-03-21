@@ -102,7 +102,7 @@ class PythonFileWriter:
         return sorted_parts
 
     def _prepare_parts_data(self):
-        nparts = self.model.parts
+        nparts = self.model.parts_nodes
 
         sorted_nparts = self._sort_parts_data(nparts)
 

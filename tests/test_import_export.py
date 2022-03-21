@@ -124,8 +124,8 @@ def test_import_parts(qtbot):
     mw.hide()
     qtbot.addWidget(mw)
     mw._console.execute_command(f"nales.load(r'{test_import_file}')")
-    assert len(mw.model.parts) == 1
-    p = mw.model.parts[0]
+    assert len(mw.model.parts_nodes) == 1
+    p = mw.model.parts_nodes[0]
     # check that all operations have been loaded, atm doesn't consider __init__ operation
     assert len(p.childs) == 5
     # check that we have all args of the method `box` in this case

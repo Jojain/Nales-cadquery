@@ -3,7 +3,7 @@
 import pytest
 
 from nales.nales_cq_impl import CQMethodCall, Part
-from nales.NDS.interfaces import NArgument
+from nales.NDS.interfaces import NArgument, NNode, NPart
 from nales.NDS.model import NModel
 from nales.NDS.NOCAF import OCAFApplication
 
@@ -28,6 +28,29 @@ class DataFixture:
         """
         Sets the NModel data as if the user had type:
         Part().box(10,10,10) 
+        in the console.
+        It is used by tests that needs data to be feeded into the model to be relevant
+        """
+        name1 = "test1"
+        self.model.add_part(name1)
+        # Preparing data
+        method1 = Part.__init__
+        method2 = Part.box
+        args1 = (10, 10, 10)
+
+        call1 = CQMethodCall(method1)
+        call2 = CQMethodCall(method2, *args1)
+
+        obj1 = Part(name=name1, internal_call=True)
+        self.model.add_operation(name1, obj1, call1)
+        obj1 = obj1.box(*args1, internal_call=True)
+        self.box_op = self.model.add_operation(name1, obj1, call2)
+
+    def add_dummy_2part(self):
+        """
+        Sets the NModel data as if the user had type:
+        obj = Part(name="test1").box(10,10,10) 
+        Part(name="test2").box(20,20,20).cut(obj)
         in the console.
         It is used by tests that needs data to be feeded into the model to be relevant
         """
@@ -62,6 +85,13 @@ class DataFixture:
 @pytest.fixture
 def data() -> DataFixture:
     return DataFixture()
+
+
+@pytest.fixture
+def dummy_model() -> DataFixture:
+    d = DataFixture()
+    d.add_dummy_2part()
+    return d
 
 
 # d = DataFixture()
@@ -115,6 +145,21 @@ def test_nmodel_add_shape(data):
     raise NotImplementedError
 
 
+def test_nmodel_walk(dummy_model):
+    """
+    Test the walking of the data tree
+    """
+    m: NModel = dummy_model.model
+    idxs = []
+    for idx in m.walk():
+        idxs.append(idx)
+
+    assert len(idxs) == 31
+    assert idxs[0].internalPointer() is None
+    assert idxs[1].internalPointer().name == "Parts"
+    assert idxs[2].internalPointer().name == "test1"
+
+
 def test_nmodel_get_part_index(data):
     """
     Tests that the model return the correct index when asking for a part index
@@ -157,6 +202,13 @@ def test_nmodel_index_from_node(data):
     """
     Tests that the model creates the right index from a specific node
     """
+    m: NModel = data.model
+    node1 = m.add_part("p1")
+    node2 = NNode("dummy")
+    assert m.index_from_node(node1).internalPointer() is node1
+
+    with pytest.raises(ValueError):
+        m.index_from_node(node2)
 
 
 def test_nmodel_update_objs_linked_to_obj(data):
@@ -171,8 +223,8 @@ def test_nmodel_update_model(data):
     m: NModel = data.model
 
     # change the model data by hand
-    npart = m.parts[0]
-    part1, part2 = tuple(node.part for node in m.parts)
+    npart = m.parts_nodes[0]
+    part1, part2 = tuple(node.part for node in m.parts_nodes)
     arg = npart.childs[1].childs[0]  # return NArgument length
     arg.value = 26  # change the data
     changed_idx = m.index_from_node(arg)
@@ -181,7 +233,7 @@ def test_nmodel_update_model(data):
     m.dataChanged.emit(changed_idx, changed_idx)
 
     m.update_model(changed_idx)
-    updated_part1, updated_part2 = tuple(node.part for node in m.parts)
+    updated_part1, updated_part2 = tuple(node.part for node in m.parts_nodes)
 
     assert updated_part1._val().Volume() > part1._val().Volume()
     # part2 is a box from which we cut part1, so if part1 size increase
@@ -201,15 +253,47 @@ def test_nmodel_update_shape(data):
 
 
 def test_nmodel_update_operation(data):
-    raise NotImplementedError
+    data.add_dummy_part()
+    m: NModel = data.model
+    part = m.parts_nodes[0].part
+    initial_volume = part._val().Volume()
+    # modifying value of the param
+    box_op = data.box_op
+    length = box_op.childs[0]
+    length.value = 20
+    idx = m.index_from_node(length)
+    m.update_operation(idx)
+
+    # check that part has correctly been updated
+    part = m.parts_nodes[0].part
+    new_volume = part._val().Volume()
+
+    assert initial_volume < new_volume
 
 
 def test_nmodel_link_object(data):
-    raise NotImplementedError
+    data.add_dummy_2part()
+    m: NModel = data.model
+    cut_arg_node: NArgument = m._root.find("toCut", NArgument)
+    obj_node = m._root.find("test1", NPart)
+
+    m.link_object(
+        [m.index_from_node(n) for n in [cut_arg_node]], m.index_from_node(obj_node)
+    )
+
+    assert cut_arg_node.is_linked(by="obj")
 
 
 def test_nmodel_unlink_object(data):
-    raise NotImplementedError
+    data.add_dummy_2part()
+    m: NModel = data.model
+    cut_arg_node: NArgument = m._root.find("toCut", NArgument)
+    obj_node = m._root.find("test1", NPart)
+    idx = m.index_from_node(cut_arg_node)
+    m.link_object([idx], m.index_from_node(obj_node))
+    m.unlink_object(idx)
+
+    assert not cut_arg_node.is_linked(by="obj")
 
 
 def test_nmodel_link_parameters(data):
